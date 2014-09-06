@@ -1,0 +1,67 @@
+# http://apetec.com/support/GenerateSAN-CSR.htm
+
+#### Generate Multidomain CSR using config file and existing CSR
+openssl req -new -key ${domain}.priv.key -out ${domain}.new.csr -config ${domain}.conf\
+ -subj "$(openssl req -in ${domain}.csr -subject -noout | sed 's/^subject=//' | sed -n l0 | sed 's/$$//')"
+ 
+
+#### Generate Multidomain CSR using config file and existing CRT
+openssl req -new -key ${domain}.priv.key -out ${domain}.new.csr -config ${domain}.conf\
+ -subj "$(openssl x509 -in ${domain}.crt -subject -noout | sed 's/^subject= //' | sed -n l0 | sed 's/$$//')"
+
+# Contents of domain.cnf for creating the CSR
+################################################################################
+
+[req]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+
+[req_distinguished_name]
+countryName = Country Name (2 letter code)
+countryName_default = US
+stateOrProvinceName = State or Province Name (full name)
+stateOrProvinceName_default = MN
+localityName = Locality Name (eg, city)
+localityName_default = Minneapolis
+organizationalUnitName = Organizational Unit Name (eg, section)
+organizationalUnitName_default= Domain Control Validated
+commonName = Internet Widgits Ltd
+commonName_max = 64
+
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = altdomain1.tld
+DNS.2 = altdomain2.tld
+DNS.3 = altdomain3.tld
+IP.1 = 
+IP.2 = 
+IP.3 = 
+
+################################################################################
+
+
+#### Generate self-signed Multidomain SSL using config file
+openssl x509 -req -days 3650 -in ${domain}.csr -signkey ${domain}.priv.key -out ${domain}.new.crt -extensions v3_req -extfile ${domain}.cnf
+
+
+# Contents of domain.cnf for signing the self-signed cert.
+################################################################################
+
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = altdomain1.tld
+DNS.2 = altdomain2.tld
+DNS.3 = altdomain3.tld
+IP.1 = 
+IP.2 = 
+IP.3 = 
+
+################################################################################
