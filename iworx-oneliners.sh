@@ -15,6 +15,11 @@ addip(){
   nodeworx -u -n -c Siteworx -a addIp --domain $(~iworx/bin/listaccounts.pex | awk "/$(getusr)/"'{print $2}') --ipv4 $ipAddress
 }
 
+# Mark IP as available for Resellers
+resellip(){
+  nodeworx -u -n -c Ip -a edit --ip $ipAddress --is_reseller 1
+}
+
 # Enable Siteworx backups
 nodeworx -u -n -c Siteworx -a edit --domain $(~iworx/bin/listaccounts.pex | awk "/$(getusr)/"'{print $2}') --OPT_BACKUP 1
 

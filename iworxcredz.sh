@@ -29,7 +29,7 @@ genPass(){
 if [[ $1 == '-d' ]]; then
   primaryDomain=$2; shift; shift;
 else
-  primaryDomain=$(~iworx/bin/listaccounts.pex | grep $(getusr) | awk '{print $2}')
+  primaryDomain=$(~iworx/bin/listaccounts.pex | awk "/$(getusr)/"'{print $2}')
 fi
 
 case $1 in
