@@ -49,11 +49,16 @@ printf "$FMT" "MySQL Version" "$(mysql --version | awk '{print $5}' | tr -d ,) $
 # Interworx Version
 printf "$FMT" "Interworx" "$(grep -A1 'user="iworx"' /home/interworx/iworx.ini | tail -1 | cut -d\" -f2)"
 
+if [[ $1 =~ -v ]]; then
 # Version Control
-printf "$FMT" "Rev. Control" "Git ($(git --version | awk '{print $3}')); SVN ($(svn --version | awk 'NR<2 {print $3,$4}')); $(hg --version | awk 'NR<2 {print $1" ("$NF}')"
+printf "$FMT" "Rev. Control" "Git ($(git --version | awk '{print $3}')); SVN ($(svn --version | awk 'NR<2 {print $3}')); $(hg --version | awk 'NR<2 {print $1" ("$NF}')"
+
+# Scripting Languages
+printf "$FMT" "Script Langs" "$(perl -v | awk '/v[0-9]/ {print "Perl ("$4")"}' | sed 's/v//'); $(python -V 2>&1 | awk '{print $1" ("$2")"}'); $(ruby -v | awk '{print "Ruby ("$2")"}')"
 
 # FTP/SFTP/SSH
 printf "$FMT" "FTP/sFTP/SSH" "ProFTPD ($(proftpd --version | awk '{print $3}')); OpenSSH ($(ssh -V 2>&1 | cut -d, -f1 | awk -F_ '{print $2}'))"
+fi
 
 # Installed Memory
 printf "$FMT" "Memory (RAM)" "$(free -m | awk '/Mem/ {print ($2/1000)"G / "($4/1000)"G ("($4/$2*100)"% Free)"}')"
