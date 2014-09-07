@@ -54,7 +54,11 @@ if [[ $1 =~ -v ]]; then
 printf "$FMT" "Rev. Control" "Git ($(git --version | awk '{print $3}')); SVN ($(svn --version | awk 'NR<2 {print $3}')); $(hg --version | awk 'NR<2 {print $1" ("$NF}')"
 
 # Scripting Languages
-printf "$FMT" "Script Langs" "$(perl -v | awk '/v[0-9]/ {print "Perl ("$4")"}' | sed 's/v//'); $(python -V 2>&1 | awk '{print $1" ("$2")"}'); $(ruby -v | awk '{print "Ruby ("$2")"}')"
+perlv=$(perl -v | awk '/v[0-9]/ {print "Perl ("$4")"}' | sed 's/v//')
+pythv=$(python -V 2>&1 | awk '{print $1" ("$2")"}')
+rubyv=$(ruby -v | awk '{print "Ruby ("$2")"}')
+railv=$(if [[ ! $(which rails 2>&1) =~ /which ]]; then rails -v | awk '{print $1" ("$2")"}'; fi)
+printf "$FMT" "Script Langs" "${perlv}; ${pythv}; ${rubyv}; ${railv:-No Rails}"
 
 # FTP/SFTP/SSH
 printf "$FMT" "FTP/sFTP/SSH" "ProFTPD ($(proftpd --version | awk '{print $3}')); OpenSSH ($(ssh -V 2>&1 | cut -d, -f1 | awk -F_ '{print $2}'))"
