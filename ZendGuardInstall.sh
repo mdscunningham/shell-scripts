@@ -1,4 +1,5 @@
-ver="$1"
+if [[ $1 =~ [0-9]\.[0-9] ]]; then ver="$1";
+else read -p "What is the running PHP version: " ver; fi
 
 # Create Download Directory
 if [[ ! -d ~/downloads ]]; then mkdir ~/downloads; fi
