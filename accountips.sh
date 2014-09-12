@@ -15,7 +15,7 @@ accountips ()
         I=$(awk '/.irtual.ost/ {print $2}' $vhost 2> /dev/null | head -n1 | cut -d: -f1);
         S=$(if grep -q ':443' $vhost &> /dev/null; then echo SSL; fi)
 	F=$(if grep -q 'MAGE_RUN' $vhost &> /dev/null; then echo FIX; fi)
-	T=$(if [[ -n $(awk '/.irtual.ost/ {print $3}' $vhost &> /dev/null) ]]; then echo FIX; fi)
+	T=$(if [[ -n $(awk '/.irtual.ost/ {print $3}' $vhost) ]]; then echo FIX; fi)
         if [[ $I != $L ]]; then
             printf "$HIGHLIGHT" "$I" "$L" "${S:- - }" "${F:- - }" "${T:- - }" "$1$D";
         else

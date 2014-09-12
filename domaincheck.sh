@@ -47,7 +47,7 @@ dash(){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
    I=$(dig +short +time=1 +tries=1 $D | head -1 | grep -v \;);
    S=$(if grep :443 $x &> /dev/null; then echo SSL; fi);
    F=$(if grep MAGE_RUN $x &> /dev/null; then echo FIX; fi);
-   T=$(if [[ -n $(awk '/.irtual.ost/ {print $3}' $x &> /dev/null) ]]; then echo FIX; fi)
+   T=$(if [[ -n $(awk '/.irtual.ost/ {print $3}' $x) ]]; then echo FIX; fi)
    if [[ "$I" != "$V" ]];
    then printf "$HLT" "$V" "$I" "${S:- - }" "${F:- - }" "${T:- - }" "$D";
    else printf "$FMT" "$V" "$I" "${S:- - }" "${F:- - }" "${T:- - }" "$D"; fi
