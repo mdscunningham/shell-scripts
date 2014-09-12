@@ -103,6 +103,15 @@ alias devbashrc='nano ~/bashrc.sh; cp ~/bashrc.sh /home/robotzom/nanobots.robotz
 alias getbashrc='wget -q -O ~/.bashrc nanobots.robotzombies.net/bashrc.sh; source ~/.bashrc;'
 alias quotas='checkquota'
 
+# Iworx DB
+i(){ $(grep -B1 'dsn.orig=' ~iworx/iworx.ini | head -1 | sed 's|.*://\(.*\):\(.*\)@.*\(/usr.*.sock\)..\(.*\)"|mysql -u \1 -p\2 -S \3 \4|') "$@"; }
+
+# ProFTPd
+f(){ $(grep -A1 '\[proftpd\]' ~iworx/iworx.ini | tail -1 | sed 's|.*://\(.*\):\(.*\)@.*\(/usr.*.sock\)..\(.*\)"|mysql -u \1 -p\2 -S \3 \4|') "$@"; }
+
+# Vpopmail
+v(){ $(grep -A1 '\[vpopmail\]' ~iworx/iworx.ini | tail -1 | sed 's|.*://\(.*\):\(.*\)@.*\(/usr.*.sock\)..\(.*\)"|mysql -u \1 -p\2 -S \3 \4|') "$@"; }
+
 ## Lookup mail account password (http://www.qmailwiki.org/Vpopmail#vuserinfo)
 emailpass(){ echo -e "\nUsername: $1\nPassword: $(~vpopmail/bin/vuserinfo -C $1)\n"; }
 
