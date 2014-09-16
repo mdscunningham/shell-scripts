@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-21
-# Updated: 2014-07-29
+# Updated: 2014-09-16
 #
 #
 #!/bin/bash
@@ -23,14 +23,18 @@ INTERNAL=(
 172.17.192.113_r1bs-34.nexcess.net_208.69.120.241
 172.17.192.111_r1bs-35.nexcess.net_208.69.120.110
 172.17.192.109_r1bs-36.nexcess.net_208.69.120.112
+172.17.192.107_r1bs-37.nexcess.net_
+172.17.192.105_r1bs-38.nexcess.net_
+172.17.192.103_r1bs-39.nexcess.net_
+172.17.192.101_r1bs-40.nexcess.net_
 )
 # ^^^ US servers using internal IPs
 # Lookup r1bs in lookup table above
 
 _printbackupsvr(){
   if [[ $1 =~ ^172\. ]]; then
-    IP=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | grep $1 | cut -d_ -f3; done)
-    RDNS=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | grep $1 | cut -d_ -f2; done)
+    IP=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | awk -F_ "/$1/"'{print $3}'; done)
+    RDNS=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | awk -F_ "/$1/"'{print $2}'; done)
   else
     IP=$1
     RDNS=$(dig +short -x $1 2> /dev/null);
