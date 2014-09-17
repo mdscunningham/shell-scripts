@@ -434,25 +434,14 @@ esac
 ## Show backupserver and disk usage for current home directory
 backupsvr(){
 checkquota;
-NEW_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | tail -1 | tr -d \' | sed 's/10\.17\./178\.17\./g' | sed 's/10\.1\./103\.1\./g' | sed 's/10\.240\./192\.240\./g');
-ALL_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | sort | uniq | tr -d \' | sed 's/10\.17\./178\.17\./g' | sed 's/10\.1\./103\.1\./g' | sed 's/10\.240\./192\.240\./g');
-INTERNAL=(
-172.17.192.119_r1bs-31.nexcess.net_208.69.120.91
-172.17.192.117_r1bs-32.nexcess.net_208.69.120.106
-172.17.192.115_r1bs-33.nexcess.net_208.69.120.108
-172.17.192.113_r1bs-34.nexcess.net_208.69.120.241
-172.17.192.111_r1bs-35.nexcess.net_208.69.120.110
-172.17.192.109_r1bs-36.nexcess.net_208.69.120.112
-172.17.192.107_r1bs-37.nexcess.net_208.69.120.114
-172.17.192.105_r1bs-38.nexcess.net_208.69.120.116
-172.17.192.103_r1bs-39.nexcess.net_
-172.17.192.101_r1bs-40.nexcess.net_
-)
+NEW_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | tail -1 | tr -d \' | sed 's/10\.17\./178\.17\./g; s/10\.1\./103\.1\./g; s/10\.240\./192\.240\./g');
+ALL_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | sort | uniq | tr -d \' | sed 's/10\.17\./178\.17\./g; s/10\.1\./103\.1\./g; s/10\.240\./192\.240\./g');
+if [[ $NEW_IPADDR =~ ^172\. ]]; then INTERNAL=($(curl -s nanobots.robotzombies.net/r1bs-internal)); fi
 
 _printbackupsvr(){
   if [[ $1 =~ ^172\. ]]; then
-    IP=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | grep $1 | cut -d_ -f3; done)
-    RDNS=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | grep $1 | cut -d_ -f2; done)
+    IP=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | awk -F_ "/$1/"'{print $3}'; done)
+    RDNS=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | awk -F_ "/$1/"'{print $2}'; done)
   else IP=$1; RDNS=$(dig +short -x $1 2> /dev/null); fi
   echo "R1Soft IP..: https://${IP}:8001";
   if [[ -n $RDNS ]]; then echo "R1Soft rDNS: https://$(echo $RDNS | sed 's/\.$//'):8001"; fi;
