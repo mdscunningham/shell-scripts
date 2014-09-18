@@ -436,15 +436,16 @@ backupsvr(){
 checkquota;
 NEW_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | tail -1 | tr -d \' | sed 's/10\.17\./178\.17\./g; s/10\.1\./103\.1\./g; s/10\.240\./192\.240\./g');
 ALL_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | sort | uniq | tr -d \' | sed 's/10\.17\./178\.17\./g; s/10\.1\./103\.1\./g; s/10\.240\./192\.240\./g');
-if [[ $NEW_IPADDR =~ ^172\. ]]; then INTERNAL=($(curl -s nanobots.robotzombies.net/r1bs-internal)); fi
+if [[ $NEW_IPADDR =~ ^172\. ]]; then INTERNAL=$(curl -s nanobots.robotzombies.net/r1bs-internal); fi
 
 _printbackupsvr(){
   if [[ $1 =~ ^172\. ]]; then
-    IP=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | awk -F_ "/$1/"'{print $3}'; done)
-    RDNS=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | awk -F_ "/$1/"'{print $2}'; done)
-  else IP=$1; RDNS=$(dig +short -x $1 2> /dev/null); fi
-  echo "R1Soft IP..: https://${IP}:8001";
-  if [[ -n $RDNS ]]; then echo "R1Soft rDNS: https://$(echo $RDNS | sed 's/\.$//'):8001"; fi;
+    for x in $INTERNAL; do echo -n $x | awk -F_ "/$1/"'{printf "R1Soft IP..: https://"$3":8001\n" "R1Soft rDNS: https://"$2":8001\n"}'; done
+  else
+    IP=$1; RDNS=$(dig +short -x $1 2> /dev/null);
+    echo "R1Soft IP..: https://${IP}:8001";
+    if [[ -n $RDNS ]]; then echo "R1Soft rDNS: https://$(echo $RDNS | sed 's/\.$//'):8001"; fi;
+  fi
   echo
 }
 

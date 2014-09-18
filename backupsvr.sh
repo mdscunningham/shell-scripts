@@ -16,21 +16,19 @@ ALL_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log |
 # 10.1.x.x   --> 103.1.x.x   -- AU Servers
 # 10.240.x.x --> 192.240.x.x -- MIA Servers
 
-if [[ $NEW_IPADDR =~ ^172\. ]]; then INTERNAL=($(curl -s nanobots.robotzombies.net/r1bs-internal)); fi
+if [[ $NEW_IPADDR =~ ^172\. ]]; then INTERNAL=$(curl -s nanobots.robotzombies.net/r1bs-internal); fi
 
 # ^^^ US servers using internal IPs -- Lookup r1bs in lookup table above
 # 172.x.x.x  --> Internal IP for US servers
 
 _printbackupsvr(){
   if [[ $1 =~ ^172\. ]]; then
-    IP=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | awk -F_ "/$1/"'{print $3}'; done)
-    RDNS=$(for ((i=0;i<${#INTERNAL[@]};i++)); do echo ${INTERNAL[i]} | awk -F_ "/$1/"'{print $2}'; done)
+    for x in $INTERNAL; do echo -n $x | awk -F_ "/$1/"'{printf "R1Soft IP..: https://"$3":8001\n" "R1Soft rDNS: https://"$2":8001\n"}'; done
   else
-    IP=$1
-    RDNS=$(dig +short -x $1 2> /dev/null);
+    IP=$1; RDNS=$(dig +short -x $1 2> /dev/null);
+    echo "R1Soft IP..: https://${IP}:8001";
+    if [[ -n $RDNS ]]; then echo "R1Soft rDNS: https://$(echo $RDNS | sed 's/\.$//'):8001"; fi;
   fi
-  echo "R1Soft IP..: https://${IP}:8001";
-  if [[ -n $RDNS ]]; then echo "R1Soft rDNS: https://$(echo $RDNS | sed 's/\.$//'):8001"; fi;
   echo
 }
 
