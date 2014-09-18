@@ -1269,10 +1269,20 @@ done; echo
 
 ## Watch connections to server, and the IPs those connections are coming from
 liveips(){
-if [[ -n $(ss | grep -o '::ffff:.*:http ') ]]; then
-  watch -n0.1 "ss | grep -E 'EST.*:http' | awk -F: '{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn";
-else
-  watch -n0.1 "ss | grep -E 'EST.*:http' | awk -F: '{print \$1,\$2}' | awk '{print \$4,\"<--\",\$6}' | column -t | sort | uniq -c | sort -rn";
+if [[ -n $(grep ' 4\.' /etc/redhat-release) ]]; then # CentOS 4
+  if [[ $1 =~ -q ]]; then watch -n0.1 "netstat -ant | awk -F: '/ffff.*:80.*EST/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn" # Established Connections
+    else watch -n0.1 "netstat -ant | awk -F: '/ffff.*:80/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn" # Verbose (EST and WAIT Connections)
+  fi
+else # Not CentOS 4
+  if [[ -n $(ss | grep ffff) ]]; then # output as pseudo ipv6
+    if [[ $1 =~ -q ]]; then watch -n0.1 "ss -ant | awk -F: '/EST.*ffff.*:80/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn" # Established Connections
+      else watch -n0.1 "ss -ant | awk -F: '/ffff.*:80/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn" # Verbose (EST and WAIT Connections)
+    fi
+  else # output as ipv4
+    if [[ $1 =~ -q ]]; then watch -n0.1 "ss -ant | awk -F: '/EST.*:80/ && !/\*/ {print \$1,\$2}' | awk '{print \$4,\"<--\",\$6}' | column -t | sort | uniq -c | sort -rn" # Established Connections
+      else watch -n0.1 "ss -ant | awk -F: '/:80/ && !/\*/ {print \$1,\$2}' | awk '{print \$4,\"<--\",\$6}' | column -t | sort | uniq -c | sort -rn" # Verbose (EST and WAIT Connections)
+    fi
+  fi
 fi
 }
 
