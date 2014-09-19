@@ -20,7 +20,7 @@ for x in /home/*/var/*/ssl/*.csr; do
   _subject="$(openssl req -in ${x} -subject -noout | sed 's/^subject=//' | sed -n l0 | sed 's/$$//')"
 
   mkdir $_domain
-  openssl req -nodes -newkey rsa:2048 -keyout ${_domain}/${_keyfile} -out ${_domain}/${_csrfile} -subj "$_subject"
+  openssl req -nodes -sha256 -newkey rsa:2048 -keyout ${_domain}/${_keyfile} -out ${_domain}/${_csrfile} -subj "$_subject"
 done
 
 #### Generate Multidomain CSR using config file and existing CSR

@@ -1,12 +1,12 @@
 # http://apetec.com/support/GenerateSAN-CSR.htm
 
 #### Generate Multidomain CSR using config file and existing CSR
-openssl req -new -key ${domain}.priv.key -out ${domain}.new.csr -config ${domain}.conf\
+openssl req -sha256 -new -key ${domain}.priv.key -out ${domain}.new.csr -config ${domain}.conf\
  -subj "$(openssl req -in ${domain}.csr -subject -noout | sed 's/^subject=//' | sed -n l0 | sed 's/$$//')"
  
 
 #### Generate Multidomain CSR using config file and existing CRT
-openssl req -new -key ${domain}.priv.key -out ${domain}.new.csr -config ${domain}.conf\
+openssl req -sha256 -new -key ${domain}.priv.key -out ${domain}.new.csr -config ${domain}.conf\
  -subj "$(openssl x509 -in ${domain}.crt -subject -noout | sed 's/^subject= //' | sed -n l0 | sed 's/$$//')"
 
 # Contents of domain.cnf for creating the CSR
