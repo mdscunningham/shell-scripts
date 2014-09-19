@@ -125,7 +125,7 @@ you were working with, the command you ran, and the error you received. I will
 try and get back to you with either an explaination or a fix, as soon as I can.\n
 Once you save and exit this file, this message will be sent and this file removed.\n"
 read -p "Script is paused, press [Enter] to begin editing the message ..."
-echo -e "Bug Report (.bashrc): <Put the subject here>\n\nSERVER: $(serverName)\nUSER: $SUDO_USER\nPWD: $PWD\n$IworxVersion\n\nFiles:\n\nCommands:\n\nErrors:\n\n" > ~/tmp.file
+echo -e "Bug Report (.bashrc): <Put the subject here>\n\nSERVER: $(serverName)\nUSER: $SUDO_USER\nPWD: $PWD\n\n$(cat /etc/redhat-release)\n$IworxVersion\n\nFiles:\n\nCommands:\n\nErrors:\n\n" > ~/tmp.file
 vim ~/tmp.file && cat ~/tmp.file | mail -s "$(head -1 ~/tmp.file)" "mcunningham@nexcess.net" && rm ~/tmp.file
 }
 

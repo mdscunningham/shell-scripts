@@ -23,7 +23,7 @@ read -p "Script is paused, press [Enter] to begin editing the message ..."
 IworxVersion=$(echo -n $(grep -A1 'user=\"iworx\"' /home/interworx/iworx.ini | cut -d\" -f2 | sed 's/^\(.\)/\U\1/'))
 
 # Input basic infomration in to temp file as a framework for the report
-echo -e "Bug Report (.bashrc): <Put the subject here>\n\nSERVER: $(serverName)\nUSER: $SUDO_USER\nPWD: $PWD\n$IworxVersion\n\nFiles:\n\nCommands:\n\nErrors:\n\n" > ~/tmp.file
+echo -e "Bug Report (.bashrc): <Put the subject here>\n\nSERVER: $(serverName)\nUSER: $SUDO_USER\nPWD: $PWD\n\n$(cat /etc/redhat-release)\n$IworxVersion\n\nFiles:\n\nCommands:\n\nErrors:\n\n" > ~/tmp.file
 
 # Open the temp file for editing, and send the contents of the temp file as email, then remove temp file
 vim ~/tmp.file && cat ~/tmp.file | mail -s "$(head -1 ~/tmp.file)" "mcunningham@nexcess.net" && rm ~/tmp.file
