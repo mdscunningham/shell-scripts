@@ -293,8 +293,7 @@ _printbackupsvr(){
   if [[ $1 =~ ^172\. ]]; then
     for x in $INTERNAL; do echo -n $x | awk -F_ "/$1/"'{printf "R1Soft IP..: https://"$3":8001\n" "R1Soft rDNS: https://"$2":8001\n"}'; done
   else
-    IP=$1; RDNS=$(dig +short -x $1 2> /dev/null);
-    echo "R1Soft IP..: https://${IP}:8001";
+    IP=$1; RDNS=$(dig +short -x $1 2> /dev/null); echo "R1Soft IP..: https://${IP}:8001";
     if [[ -n $RDNS ]]; then echo "R1Soft rDNS: https://$(echo $RDNS | sed 's/\.$//'):8001"; fi;
   fi
   echo
@@ -589,22 +588,25 @@ if [[ "$2" == "in" ]]; then SRC="d="; DST="s=";
       HOST="$3"; CMNT="$4"; TYPE=""
 
 _addrule(){
-if grep -Eq "\#.*$(getusr)" $CONFIG; then sed -i "s|\(\#.*$(getusr).*\)|\1, ${TYPE} ${CMNT}|" $CONFIG; echo
-  else echo -e "\n# $(getusr) $TYPE $CMNT" >> $CONFIG; echo; fi
-
-for x in $HOST;
+echo; if ! grep -q "^\#.*$(getusr)" $CONFIG; then echo -e "\n# $(getusr)" >> $CONFIG; fi
+for x in $HOST; 
     do echo "${SRC}${PORT}${DST}${x} .. added to $CONFIG";
-    sed -i "s|\(\#.*$(getusr).*\)|\1\n${SRC}${PORT}${DST}${x}|" $CONFIG
+    sed -i "s|\(^\#.*$(getusr).*$\)|\1\n${SRC}${PORT}${DST}${x}|" $CONFIG
   done;
+sed -i "s|\(^\#.*$(getusr).*$\)|\1\n# ${TYPE} ${CMNT}|" $CONFIG;
 if [[ "$SRC" != "sshd" ]]; then echo; service apf restart; fi;
-echo -e "\nGreetings,\n\nI have white-listed the requested IP address(es) ( $(for x in $HOST; do printf "$x, "; done)) for $TYPE access on $(serverName).\nYou should be all set. Please let us know if you need any further assistance.\n\nSincerely,\n"
+echo -e "\nHello,\n\nI have white-listed the requested IP address(es) ( $(for x in $HOST; do printf "$x, "; done)) for $TYPE access on $(hostname).\nYou should be all set. Please let us know if you need any further assistance.\n\nSincerely,\n"
 }
 
 case $1 in
   f|ftp ) CONFIG='/etc/apf/allow_hosts.rules'; TYPE="(FTP $2)"; PORT="21:"; _addrule ;;
   m|mysql ) CONFIG='/etc/apf/allow_hosts.rules'; TYPE="(MySQL $2)"; PORT="3306:"; _addrule ;;
-  o|other ) CONFIG='/etc/apf/allow_hosts.rules'; TYPE="(port $4 $2)"; PORT="$4:"; CMNT="$5" ; _addrule ;;
-  s|ssh ) CONFIG='/etc/hosts.allow'; if [[ "$2" != "in" && "$2" != "out" ]]; then HOST="$2"; CMNT="$3"; fi; TYPE="(SSH/SFTP)"; SRC="sshd"; DST=": "; PORT=""; _addrule ;;
+  o|other ) CONFIG='/etc/apf/allow_hosts.rules'; TYPE="(port $4 $2)"; PORT="${4}:"; CMNT="$5" ; _addrule ;;
+  s|ssh )
+    CONFIG='/etc/hosts.allow'; if [[ "$2" != "in" && "$2" != "out" ]]; then HOST="$2"; CMNT="$3"; fi; TYPE="(SSH/SFTP)"; SRC="sshd"; DST=": "; PORT=""; _addrule
+    echo "Adding whitelist in APF for forward compatability."
+    CONFIG='/etc/apf/allow_hosts.rules'; if [[ "$2" != "in" && "$2" != "out" ]]; then HOST="$2"; CMNT="$3"; fi; TYPE="(SSH/SFTP)"; SRC="d="; DST="s="; PORT="22:"; _addrule
+    ;;
   -h|--help|*) echo -e "\n Usage: whitelist [ftp|mysql|ssh|other] [in|out] <ip/host> [port#] [comment]
     Ex: whitelist ssh \"10.0.0.1 10.0.1.1 10.1.1.1\" ABCD-1234
     Ex: whitelist mysql in 10.0.0.2 EFGH-5678
