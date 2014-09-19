@@ -21,17 +21,23 @@
 # ss | grep -E 'EST.*:http' | awk -F: '{print $1,$2}' | awk '{print $4,"<--",$6}' | column -t | sort | uniq -c | sort -rn
 
 if [[ -n $(grep ' 4\.' /etc/redhat-release) ]]; then # CentOS 4
-  if [[ $1 =~ -q ]]; then watch -n0.1 "netstat -ant | awk -F: '/ffff.*:80.*EST/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn" # Established Connections
-    else watch -n0.1 "netstat -ant | awk -F: '/ffff.*:80/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn" # Verbose (EST and WAIT Connections)
+  if [[ $1 =~ -q ]]; then # Established Connections
+    watch -n0.1 "netstat -ant | awk -F: '/ffff.*:80.*EST/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn"
+  else # Verbose (EST and WAIT Connections)
+    watch -n0.1 "netstat -ant | awk -F: '/ffff.*:80/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn"
   fi
 else # Not CentOS 4
-  if [[ -n $(ss | grep ffff) ]]; then
-    if [[ $1 =~ -q ]]; then watch -n0.1 "ss -ant | awk -F: '/EST.*ffff.*:80/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn" # Established Connections
-      else watch -n0.1 "ss -ant | awk -F: '/ffff.*:80/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn" # Verbose (EST and WAIT Connections)
+  if [[ -n "$(ss -ant | grep ffff.*:80)" ]]; then # Pseudo IPv6
+    if [[ $1 =~ -q ]]; then # Established Connections
+      watch -n0.1 "ss -ant | awk -F: '/EST.*ffff.*:80/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn"
+    else # Verbose (EST and WAIT Connections)
+      watch -n0.1 "ss -ant | awk -F: '/ffff.*:80/{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn"
     fi
-  else
-    if [[ $1 =~ -q ]]; then watch -n0.1 "ss -ant | awk -F: '/EST.*:80/ && !/\*/ {print \$1,\$2}' | awk '{print \$4,\"<--\",\$6}' | column -t | sort | uniq -c | sort -rn" # Established Connections
-      else watch -n0.1 "ss -ant | awk -F: '/:80/ && !/\*/ {print \$1,\$2}' | awk '{print \$4,\"<--\",\$6}' | column -t | sort | uniq -c | sort -rn" # Verbose (EST and WAIT Connections)
+  else # IPv4
+    if [[ $1 =~ -q ]]; then # Established Connections
+      watch -n0.1 "ss -ant | awk '/EST/ && (\$4 ~ /:80/) && !/\*/ {print \$4,\"<--\",\$5}' | sed 's/:80//g; s/:.*$//g' | column -t | sort | uniq -c | sort -rn"
+    else # Verbose (EST and WAIT Connections)
+      watch -n0.1 "ss -ant | awk '(\$4 ~ /:80/) && !/\*/ {print \$4,\"<--\",\$5}' | sed 's/:80//g; s/:.*$//g' | column -t | sort | uniq -c | sort -rn"
     fi
   fi
 fi
