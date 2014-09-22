@@ -16,9 +16,9 @@ else echo "ioncube_loader_lin already exists backing up before continuing."
 gzip /usr/lib64/php/modules/ioncube_loader_lin_${ver}*; cp ~/downloads/ioncube/ioncube_loader_lin_${ver}* /usr/lib64/php/modules/; fi
 
 # Create correct config file for the service
-if [[ ! -f /etc/php.d/*ioncube*.ini ]]; then
-echo -e "zend_extension=/usr/lib64/php/modules/ioncube_loader_lin_${ver}.so" >> /etc/php.d/ioncube.ini
-else echo "ioncube ini file already exists!"; fi
+if [[ -f /etc/php.d/ioncube.ini || -f /etc/php.d/ioncube-loader.ini ]]; then echo "ioncube ini file already exists!";
+else echo -e "zend_extension=/usr/lib64/php/modules/ioncube_loader_lin_${ver}.so" >> /etc/php.d/ioncube-loader.ini; fi
 
 # Check configs and restart php/httpd services
-php -v && (service php-fpm restart; service httpd restart)
+php -v && service php-fpm restart
+httpd -t && service httpd restart
