@@ -19,10 +19,10 @@ newcsr="/home/*/var/${domain}/ssl/${domain}.sha256.csr"
 
 if [[ -f $csrfile && -f $privkey ]]; then
   subject="$(openssl req -in $csrfile -subject -noout | sed 's/^subject=//' | sed -n l0 | sed 's/$$//')"
-  openssl req -nodes -sha256 -new -key $privkey -out $newcsr -subj ${subject} && cat $newcsr
+  openssl req -nodes -sha256 -new -key $privkey -out $newcsr -subj "${subject}" && cat $newcsr
 elif [[ -f $crtfile && -f $privkey ]]; then
   subject="$(openssl x509 -in $crtfile -subject -noout | sed 's/^subject= //' | sed -n l0 | sed 's/$$//')"
-  openssl req -nodes -sha256 -new -key $privkey -out $newcsr -subj ${subject} && cat $newcsr
+  openssl req -nodes -sha256 -new -key $privkey -out $newcsr -subj "${subject}" && cat $newcsr
 else
   echo -e "\nNo CSR or CRT to souce from!\n"
 fi
