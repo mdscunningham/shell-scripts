@@ -973,10 +973,15 @@ sslrekey(){
 if [[ -z $1 ]]; then read -p "Domain Name: " domain; else domain="$(echo $1 | sed 's:/::g')"; fi
 csrfile="/home/*/var/${domain}/ssl/${domain}.csr"
 crtfile="/home/*/var/${domain}/ssl/${domain}.crt"
-if [[ -f $csrfile ]]; then subject="$(openssl req -in $csrfile -subject -noout | sed 's/^subject=//' | sed -n l0 | sed 's/$$//')"
-elif [[ -f $crtfile ]]; then subject="$(openssl x509 -in $crtfile -subject -noout | sed 's/^subject= //' | sed -n l0 | sed 's/$$//')"
+if [[ -f $(echo $csrfile) ]]; then
+  subject="$(openssl req -in $csrfile -subject -noout | sed 's/^subject=//' | sed -n l0 | sed 's/$$//')"
+  openssl req -nodes -sha256 -newkey rsa:2048 -keyout new.$domain.priv.key -out new.$domain.csr -subj "$subject" && cat new.${domain}.*
+elif [[ -f $(echo $crtfile) ]]; then
+  subject="$(openssl x509 -in $crtfile -subject -noout | sed 's/^subject= //' | sed -n l0 | sed 's/$$//')"
+  openssl req -nodes -sha256 -newkey rsa:2048 -keyout new.$domain.priv.key -out new.$domain.csr -subj "$subject" && cat new.${domain}.*
+else
+  echo -e "\nNo CSR/CRT to souce from!\n"
 fi
-openssl req -nodes -sha256 -newkey rsa:2048 -keyout new.$domain.priv.key -out new.$domain.csr -subj "$subject" && cat new.${domain}.*
 }
 
 ## Use CSR or CRT, and KEY, generate new CSR (SHA-256)
@@ -985,10 +990,16 @@ if [[ -z $1 ]]; then read -p "Domain Name: " domain; else domain="$(echo $1 | se
 keyfile="/home/*/var/${domain}/ssl/${domain}.priv.key"
 csrfile="/home/*/var/${domain}/ssl/${domain}.csr"
 crtfile="/home/*/var/${domain}/ssl/${domain}.crt"
-if [[ -f $csrfile ]]; then subject="$(openssl req -in $csrfile -subject -noout | sed 's/^subject=//' | sed -n l0 | sed 's/$$//')"
-elif [[ -f $crtfile ]]; then subject="$(openssl x509 -in $crtfile -subject -noout | sed 's/^subject= //' | sed -n l0 | sed 's/$$//')"
+
+if [[ -f $(echo $csrfile) && -f $(echo $keyfile) ]]; then
+  subject="$(openssl req -in $csrfile -subject -noout | sed 's/^subject=//' | sed -n l0 | sed 's/$$//')"
+  openssl req -nodes -sha256 -new -key $keyfile -out $domain.sha256.csr -subj "${subject}" && cat $domain.sha256.csr
+elif [[ -f $(echo $crtfile) && -f $(echo $keyfile) ]]; then
+  subject="$(openssl x509 -in $crtfile -subject -noout | sed 's/^subject= //' | sed -n l0 | sed 's/$$//')"
+  openssl req -nodes -sha256 -new -key $keyfile -out $domain.sha256.csr -subj "${subject}" && cat $domain.sha256.csr
+else
+  echo -e "\nNo CSR/CRT or KEY to souce from!\n"
 fi
-openssl req -nodes -sha256 -new -key $keyfile -out new.$domain.csr -subj "$subject" && cat new.${domain}.*
 }
 
 ## Create symlinks to log directories for user

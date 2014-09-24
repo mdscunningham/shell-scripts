@@ -17,10 +17,10 @@ csrfile="/home/*/var/${domain}/ssl/${domain}.csr"
 crtfile="/home/*/var/${domain}/ssl/${domain}.crt"
 newcsr="/home/*/var/${domain}/ssl/${domain}.sha256.csr"
 
-if [[ -f $csrfile && -f $privkey ]]; then
+if [[ -f $(echo $csrfile) && -f $(echo $privkey) ]]; then
   subject="$(openssl req -in $csrfile -subject -noout | sed 's/^subject=//' | sed -n l0 | sed 's/$$//')"
   openssl req -nodes -sha256 -new -key $privkey -out $newcsr -subj "${subject}" && cat $newcsr
-elif [[ -f $crtfile && -f $privkey ]]; then
+elif [[ -f $(echo $crtfile) && -f $(echo $privkey) ]]; then
   subject="$(openssl x509 -in $crtfile -subject -noout | sed 's/^subject= //' | sed -n l0 | sed 's/$$//')"
   openssl req -nodes -sha256 -new -key $privkey -out $newcsr -subj "${subject}" && cat $newcsr
 else
