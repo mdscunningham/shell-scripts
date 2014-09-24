@@ -22,7 +22,7 @@
 
     if [[ ! $@ =~ '-d' ]]; then
     echo -e "\n---------- Large Files $(dash 57)";
-    find . -type f -size +100M -group $(getusr) -exec ls -lah {} \;;
+    find . -type f -size +100000k -group $(getusr) -exec ls -lah {} \;;
     fi;
 
     echo -e "\n---------- Large Databases $(dash 53)";
