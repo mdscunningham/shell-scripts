@@ -603,9 +603,11 @@ case $1 in
   m|mysql ) CONFIG='/etc/apf/allow_hosts.rules'; TYPE="(MySQL $2)"; PORT="3306:"; _addrule ;;
   o|other ) CONFIG='/etc/apf/allow_hosts.rules'; TYPE="(port $4 $2)"; PORT="${4}:"; CMNT="$5" ; _addrule ;;
   s|ssh )
-    CONFIG='/etc/hosts.allow'; if [[ "$2" != "in" && "$2" != "out" ]]; then HOST="$2"; CMNT="$3"; fi; TYPE="(SSH/SFTP)"; SRC="sshd"; DST=": "; PORT=""; _addrule
-    echo "Adding whitelist in APF for forward compatability."
-    CONFIG='/etc/apf/allow_hosts.rules'; if [[ "$2" != "in" && "$2" != "out" ]]; then HOST="$2"; CMNT="$3"; fi; TYPE="(SSH/SFTP)"; SRC="d="; DST="s="; PORT="22:"; _addrule
+    if [[ $(grep 'sshd: ALL' /etc/hosts.allow 2> /dev/null) ]]; then CONFIG='/etc/apf/allow_hosts.rules';
+        if [[ "$2" != "in" && "$2" != "out" ]]; then HOST="$2"; CMNT="$3"; fi; TYPE="(SSH/SFTP)"; SRC="d="; DST="s="; PORT="22:"; _addrule
+    else CONFIG='/etc/hosts.allow';
+        if [[ "$2" != "in" && "$2" != "out" ]]; then HOST="$2"; CMNT="$3"; fi; TYPE="(SSH/SFTP)"; SRC="sshd"; DST=": "; PORT=""; _addrule
+    fi
     ;;
   -h|--help|*) echo -e "\n Usage: whitelist [ftp|mysql|ssh|other] [in|out] <ip/host> [port#] [comment]
     Ex: whitelist ssh \"10.0.0.1 10.0.1.1 10.1.1.1\" ABCD-1234
