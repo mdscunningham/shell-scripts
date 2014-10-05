@@ -179,22 +179,30 @@ echo; FMT='%-14s: %s\n'
 printf "$FMT" "OS (Kernel)" "$(cat /etc/redhat-release | awk '{print $1,$3}') ($(uname -r))"
 ssl="$(openssl version | awk '{print $2}')"
 web="$(curl -s -I $(serverName) | awk '/Server:/ {print $2}')";
+if [[ -z $web ]]; then web="$(curl -s -I $(serverName):8080 | awk '/Server:/ {print $2}')"; fi
 if [[ $web =~ Apache ]]; then webver=$(httpd -v | head -1 | awk '{print $3}' | sed 's:/: :');
-elif [[ $web =~ LiteSpeed ]]; then webver=$(/usr/local/lsws/bin/lshttpd -v | sed 's:/: :'); fi;
+elif [[ $web =~ LiteSpeed ]]; then webver=$(/usr/local/lsws/bin/lshttpd -v | sed 's:/: :');
+elif [[ $web =~ nginx ]]; then webver=$(nginx -v 2>&1 | head -1 | awk '{print $3}' | sed 's:/: :'); fi
 printf "$FMT" "Web Server" "$webver; OpenSSL ($ssl)"
-phpv=$(php -v | awk '/^PHP/ {print $2}')
-zend=$(php -v | awk '/Engine/ {print "; "$1,$2" ("$3")"}' | sed 's/v//;s/,//')
-ionc=$(php -v | awk '/ionCube/ {print "; "$3" ("$6")"}' | sed 's/v//;s/,//')
-eacc=$(php -v | awk '/eAcc/ {print "; "$2" ("$3")"}' | sed 's/v//;s/,//')
-guard=$(php -v | awk '/Guard/ {print "; "$2,$3" ("$5")"}' | sed 's/v//;s/,//')
-suhos=$(php -v | awk '/Suhosin/ {print "; "$2" ("$3")"}' | sed 's/v//;s/,//')
-if [[ -d /etc/php-fpm.d/ ]]; then phpt='php-fpm'; else
-phpt=$(awk '/^LoadModule/ {print $2}' /etc/httpd/conf.d/php.conf /etc/httpd/conf.d/suphp.conf | sed 's/php[0-9]_module/mod_php/;s/_module//'); fi
-printf "$FMT" "PHP Version" "${phpt} (${phpv})${zend}${ionc}${guard}${eacc}${suhos}"
+if [[ -f /etc/init.d/varnish ]]; then printf "$FMT" "Varnish" "$(varnishd -V 2>&1 | awk -F- 'NR<2 {print $2}' | tr -d \))"; fi
+_phpversion(){
+    phpv=$($1 -v | awk '/^PHP/ {print $2}');
+    zend=$($1 -v | awk '/Engine/ {print "; "$1,$2" ("$3")"}' | sed 's/v//;s/,//');
+    ionc=$($1 -v | awk '/ionCube/ {print "; "$3" ("$6")"}' | sed 's/v//;s/,//');
+    eacc=$($1 -v | awk '/eAcc/ {print "; "$2" ("$3")"}' | sed 's/v//;s/,//');
+    guard=$($1 -v | awk '/Guard/ {print "; "$2,$3" ("$5")"}' | sed 's/v//;s/,//');
+    suhos=$($1 -v | awk '/Suhosin/ {print "; "$2" ("$3")"}' | sed 's/v//;s/,//');
+    opche=$($1 -v | awk '/OPcache/ {print "; "$2,$3" ("$4")"}' | sed 's/v//;s/,//')
+    if [[ -d /etc/php-fpm.d/ ]]; then phpt='php-fpm'; else
+      phpt=$(awk '/^LoadModule/ {print $2}' /etc/httpd/conf.d/php.conf /etc/httpd/conf.d/suphp.conf | sed 's/php[0-9]_module/mod_php/;s/_module//'); fi;
+    printf "$FMT" "PHP Version" "${phpt} (${phpv})${zend}${ionc}${guard}${opche}${eacc}${suhos}";
+}
+_phpversion /usr/bin/php; if [[ -f /opt/nexcess/php54u/root/usr/bin/php ]]; then for x in /opt/nexcess/*/root/usr/bin/php; do _phpversion $x; done; fi
 modsecv=$(rpm -qi mod_security | awk '/Version/ {print $3}' 2> /dev/null)
 modsecr=$(awk -F\" '/SecComp.*\"$/ {print "("$2")"}' /etc/httpd/modsecurity.d/*_crs_10_*.conf 2> /dev/null)
 printf "$FMT" "ModSecurity" "${modsecv:-No ModSecurity} ${modsecr}"
 printf "$FMT" "MySQL Version" "$(mysql --version | awk '{print $5}' | tr -d ,) $(mysqld --version 2> /dev/null | grep -io 'percona' 2> /dev/null)"
+pstgrs="/usr/*/bin/postgres"; if [[ -f $(echo $pstgrs) ]]; then printf "$FMT" "PostgreSQL" "$($pstgrs -V | awk '{print $NF}')"; fi
 printf "$FMT" "Interworx" "$(grep -A1 'user="iworx"' /home/interworx/iworx.ini | tail -1 | cut -d\" -f2)"
 if [[ $1 =~ -v ]]; then
 printf "$FMT" "Rev. Control" "Git ($(git --version | awk '{print $3}')); SVN ($(svn --version | awk 'NR<2 {print $3}')); $(hg --version | awk 'NR<2 {print $1" ("$NF}')"
