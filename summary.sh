@@ -14,7 +14,7 @@
 # sip4-411.nexcess.net	192.240.164.180	nginx/1.7.5
 # sip4-681.nexcess.net	192.240.184.135	nginx/1.6.2
 
-# Servers no returning server type because of Varnish
+# Servers not returning server type because of Varnish
 # sip4-676.nexcess.net
 # sip4-585.nexcess.net
 
