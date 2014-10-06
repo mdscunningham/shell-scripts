@@ -15,6 +15,7 @@ serverName(){
   else ip addr show | awk '/inet / {print $2}' | cut -d/ -f1 | grep -Ev '^127\.' | head -1; fi
   }
 
+complete -W '-d -e -f -h --list -m -n -p -r -s -x' iworxcredz
 iworxcredz(){
 
 # if password option is given use prefered password method

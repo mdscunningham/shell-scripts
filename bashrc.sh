@@ -1045,6 +1045,7 @@ echo -e "\n---------- Database Usage ----------"; du -sh /var/lib/mysql/$(getusr
 echo; cd $DIR
 }
 
+complete -W '-d -e -f -h --list -m -n -p -r -s -x' iworxcredz
 ## List Users, or Reset passwords for FTP/Siteworx/Reseller/Nodeworx
 iworxcredz(){
 
