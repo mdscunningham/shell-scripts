@@ -48,6 +48,8 @@ printf "$FORMAT" "--Core----" "$(dash 26)" "$(dash 42)";
 # ^^^ Should switch to this if it works right.
 if [[ -f /etc/init.d/lsws ]]; then
 	printf "$FORMAT" " LiteSpeed" " $(pid_start lite)" " LiteSpeed (pid $(echo $(pgrep lite))) is running ..."
+elif [[ -f /etc/init.d/nginx ]]; then
+	printf "$FORMAT" " Nginx" " $(pid_start nginx)" " $(service nginx status)"
 else
 	printf "$FORMAT" " Apache" " $(pid_start httpd)" " $(service httpd status)";
 fi;
