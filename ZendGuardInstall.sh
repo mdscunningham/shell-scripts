@@ -11,13 +11,20 @@ tar -zxvf ZendGuardLoader-php-${ver}-linux-glibc23-x86_64.tar.gz
 
 # Copy driver the correct .so file to the target directory
 if [[ ! -f /usr/lib64/php/modules/ZendGuardLoader.so ]]; then
-cp ~/downloads/ZendGuardLoader-php-${ver}-linux-glibc23-x86_64/php-${ver}.x/ZendGuardLoader.so /usr/lib64/php/modules
-else echo "ZendGuardLoader.so already exists!"; fi
+cp ~/downloads/ZendGuardLoader-php-${ver}-linux-glibc23-x86_64/php-${ver}.x/ZendGuardLoader.so /usr/lib64/php/modules/
+else echo "ZendGuardLoader.so already exists! Backing up current version before continuing.";
+gzip /usr/lib64/php/modules/ZendGuardLoader.so && cp ~/downloads/ZendGuardLoader-php-${ver}-linux-glibc23-x86_64/php-${ver}.x/ZendGuardLoader.so /usr/lib64/php/modules/
+fi
 
 # Create correct config file for the service
-if [[ ! -f /etc/php.d/ZendGuard.ini ]]; then
-echo -e "; Enable Zend Guard extension\nzend_extension=/usr/lib64/php/modules/ZendGuardLoader.so\nzend_loader.enable=1\n" >> /etc/php.d/ZendGuard.ini
-else echo "ZendGuard.ini already exists!"; fi
+if [[ ! -f /etc/php.d/ZendGuard.ini && ! -f /etc/php.d/ioncube.ini && ! -f /etc/php.d/ioncube-loader.ini ]]; then file="/etc/php.d/ZendGuard.ini"
+elif [[ -f /etc/php.d/ioncube-loader.ini ]]; then file="/etc/php.d/ioncube-loader.ini";
+elif [[ -f /etc/php.d/ioncube.ini ]]; then file="/etc/php.d/ioncube.ini"
+elif [[ -f /etc/php.d/ZendGuard.ini ]]; then echo "ZendGuard.ini file already exists!";  file="/dev/null"; fi
+echo "Adding Zend Guard config to $file"
+echo -e "\n; Enable Zend Guard extension\nzend_extension=/usr/lib64/php/modules/ZendGuardLoader.so\nzend_loader.enable=1\n" >> $file
 
 # Check configs and restart php/httpd services
-php -v && (service php-fpm restart; service httpd restart)
+if [[ -d /etc/php-fpm.d/ ]]; then php -v && service php-fpm restart
+else httpd -t && service httpd restart; fi
+

@@ -20,5 +20,5 @@ if [[ -f /etc/php.d/ioncube.ini || -f /etc/php.d/ioncube-loader.ini ]]; then ech
 else echo -e "zend_extension=/usr/lib64/php/modules/ioncube_loader_lin_${ver}.so" >> /etc/php.d/ioncube-loader.ini; fi
 
 # Check configs and restart php/httpd services
-php -v && service php-fpm restart
-httpd -t && service httpd restart
+if [[ -d /etc/php-fpm.d/ ]]; then php -v && service php-fpm restart
+else httpd -t && service httpd restart; fi
