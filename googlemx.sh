@@ -9,10 +9,11 @@
 #!/bin/bash
 
 ## These appear to be old and out of date, ignore these
-# 30 ASPMX2.GOOGLEMAIL.COM.
-# 30 ASPMX3.GOOGLEMAIL.COM.
-# 30 ASPMX4.GOOGLEMAIL.COM.
-# 30 ASPMX5.GOOGLEMAIL.COM.
+# 20 ASPMX.GOOGLEMAIL.COM 3600
+# 30 ASPMX2.GOOGLEMAIL.COM 3600
+# 30 ASPMX3.GOOGLEMAIL.COM 3600
+# 40 ASPMX4.GOOGLEMAIL.COM 3600
+# 40 ASPMX5.GOOGLEMAIL.COM 3600
 
 ## Thinking for completeness should include an SPF record
 # v=spf1 ip4:$(mainIP) include:_spf.google.com ~all
