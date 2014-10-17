@@ -1,3 +1,13 @@
+#							   +----+----+----+----+
+# 							   |    |    |    |    |
+# Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
+# 							   +----+----+----+----+
+# Created: 2014-08-30
+# Updated: 2014-10-09
+#
+#
+#!/bin/bash
+
 if [[ $1 =~ [0-9]\.[0-9] ]]; then ver="$1";
 else read -p "What is the running PHP version: " ver; fi
 
