@@ -647,7 +647,7 @@ else echo -e "\n$(basename $vhost) not found!\n";
 fi
 }
 
-## Enable gzip in user's PHP-FPM pool configuration
+## Enable zlib.output_compression for a user's PHP-FPM config pool
 fpmgzip(){
 file="/etc/php-fpm.d/$(getusr).conf";
 if [[ $(grep zlib.output_compression $file 2> /dev/null) ]]; then echo -e "\nGzip already enabled in FPM pool $file\n";
@@ -656,6 +656,7 @@ else echo -e "\n Could not find $file !\n Try running this from the user's /home
 unset file;
 }
 
+## Enable allow_url_fopen for a users PHP-FPM config pool
 fpmfopen(){
 file="/etc/php-fpm.d/$(getusr).conf";
 if [[ $(grep allow_url_fopen $file 2> /dev/null) ]]; then echo -e "\nallow_url_fopen already enabled in FPM pool $file\n";
@@ -696,6 +697,7 @@ echo; read -p "Copy .htaccess and index.php? [y/n]: " yn; if [[ $yn == "y" ]]; t
 for Y in index.php .htaccess; do sudo -u $U cp /home/$U/$D/html/$Y .; done; fi
 }
 
+## Look up large tables of a given database to see what's taking up space
 tablesize(){
 if [[ -z $1 || $1 == '-h' || $1 = '--help' ]]; then
   echo -e "\n  Usage: tablesize [dbname] [option] [linecount]\n\n  Options:\n    -r ... Sort by most Rows\n    -d ... Sort by largest Data_Size\n    -i ... Sort by largest Index_Size\n"; return 0; fi
