@@ -602,8 +602,8 @@ for x in $HOST;
     sed -i "s|\(^\#.*$(getusr).*$\)|\1\n${SRC}${PORT}${DST}${x}|" $CONFIG
   done;
 sed -i "s|\(^\#.*$(getusr).*$\)|\1\n# ${TYPE} ${CMNT}|" $CONFIG;
+echo -e "\nGreetings,\n\nI have white-listed the requested IP address(es) ( $(for x in $HOST; do printf "$x, "; done)) for $TYPE access on $(hostname).\nYou should be all set. Please let us know if you need any further assistance.\n\nBest Regards,\n"
 if [[ "$SRC" != "sshd" ]]; then echo; service apf restart; fi;
-echo -e "\nHello,\n\nI have white-listed the requested IP address(es) ( $(for x in $HOST; do printf "$x, "; done)) for $TYPE access on $(hostname).\nYou should be all set. Please let us know if you need any further assistance.\n\nSincerely,\n"
 }
 
 case $1 in
