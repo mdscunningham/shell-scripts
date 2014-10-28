@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2013-11-24
-# Updated: 2014-10-02
+# Updated: 2014-10-27
 #
 #
 #!/bin/bash
@@ -48,8 +48,8 @@ for x in $HOST;
 # Add type and ticket ID last so it's at the top of the list area
 sed -i "s|\(^\#.*$(getusr).*$\)|\1\n# ${TYPE} ${CMNT}|" $CONFIG;
 
-echo; if [[ "$SRC" != "sshd" ]]; then service apf restart; echo; fi;
 echo -e "\nHello,\n\nI have white-listed the requested IP address(es) ( $(for x in $HOST; do printf "$x, "; done)) for $TYPE access on $(hostname).\nYou should be all set. Please let us know if you need any further assistance.\n\nSincerely,\n"
+echo; if [[ "$SRC" != "sshd" ]]; then service apf restart; echo; fi;
 }
 
 case $1 in

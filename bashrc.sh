@@ -696,6 +696,24 @@ echo; read -p "Copy .htaccess and index.php? [y/n]: " yn; if [[ $yn == "y" ]]; t
 for Y in index.php .htaccess; do sudo -u $U cp /home/$U/$D/html/$Y .; done; fi
 }
 
+tablesize(){
+if [[ -z $1 || $1 == '-h' || $1 = '--help' ]]; then
+  echo -e "\n  Usage: tablesize [dbname] [option] [linecount]\n\n  Options:\n    -r ... Sort by most Rows\n    -d ... Sort by largest Data_Size\n    -i ... Sort by largest Index_Size\n"; return 0; fi
+if [[ $1 == '.' ]]; then dbname=$(finddb); shift;
+  elif [[ $1 =~ ^[a-z]{1,}_.*$ ]]; then dbname="$1"; shift;
+  else read -p "Database: " dbname; fi
+case $1 in
+ -r ) col='4'; shift;;
+ -d ) col='6'; shift;;
+ -i ) col='8'; shift;;
+  * ) col='6';;
+esac
+if [[ $1 =~ [0-9]{1,} ]]; then top="$1"; else top="20" ; fi
+echo -e "\nDatabase: $dbname\n$(dash 93)"; printf "| %-50s | %8s | %11s | %11s |\n" "Name" "Rows" "Data_Size" "Index_Size"; echo "$(dash 93)";
+echo "show table status" | m $dbname | awk 'NR>1 {printf "| %-50s | %8s | %10.2fM | %10.2fM |\n",$1,$5,($7/1024000),($9/1024000)}' | sort -rnk$col | head -n$top
+echo -e "$(dash 93)\n"
+}
+
 ## Find Magento database connection info, and run common queries
 magdb(){
 echo; runonce=0;
@@ -1235,8 +1253,8 @@ for x in $HOST;
     sed -i "s|\(^\#.*$(getusr).*$\)|\1\n${SRC}${PORT}${DST}${x}|" $CONFIG
   done;
 sed -i "s|\(^\#.*$(getusr).*$\)|\1\n# ${TYPE} ${CMNT}|" $CONFIG;
-if [[ "$SRC" != "sshd" ]]; then echo; service apf restart; fi;
 echo -e "\nHello,\n\nI have white-listed the requested IP address(es) ( $(for x in $HOST; do printf "$x, "; done)) for $TYPE access on $(hostname).\nYou should be all set. Please let us know if you need any further assistance.\n\nSincerely,\n"
+if [[ "$SRC" != "sshd" ]]; then echo; service apf restart; fi;
 }
 
 case $1 in
