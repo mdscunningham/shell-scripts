@@ -1654,8 +1654,8 @@ q(){
 ## Search send log(s) for a domain (look for error messages)
 sendlog(){
 if [[ -n $1 ]]; then D=$1; else read -p "Domain: " D; fi
-if [[ $2 == 'all' ]]; then cat /var/log/send/* | tai64nlocal | egrep -B1 -A8 "from.*$D" | less;
-else cat /var/log/send/current | tai64nlocal | egrep -B1 -A8 "from.*$D" | less; fi
+if [[ $2 == 'all' ]]; then cat /var/log/send/* | tai64nlocal | egrep -C4 "$D" | less;
+else cat /var/log/send/current | tai64nlocal | egrep -C4 "$D" | less; fi
 }
 
 ## Check/Enable/Disable Local Delivery for domain(s)
