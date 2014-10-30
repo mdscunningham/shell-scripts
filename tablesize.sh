@@ -10,7 +10,7 @@
 
 tablesize(){
 if [[ -z $1 || $1 == '-h' || $1 = '--help' ]]; then
-  echo -e "\n  Usage: tablesize [dbname] [option] [linecount]\n"; return 0; fi
+  echo -e "\n  Usage: tablesize [dbname] [option] [linecount]\n\n  Options:\n    -r ... Sort by most Rows\n    -d ... Sort by largest Data_Size\n    -i ... Sort by largest Index_Size\n"; return 0; fi
 
 if [[ $1 == '.' ]]; then dbname=$(finddb); shift;
   elif [[ $1 =~ ^[a-z]{1,}_.*$ ]]; then dbname="$1"; shift;
