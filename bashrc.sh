@@ -106,11 +106,11 @@ alias quotas='checkquota'
 # Iworx DB
 i(){ $(grep -B1 'dsn.orig=' ~iworx/iworx.ini | head -1 | sed 's|.*://\(.*\):\(.*\)@.*\(/usr.*.sock\)..\(.*\)"|mysql -u \1 -p\2 -S \3 \4|') "$@"; }
 
-# ProFTPd
-f(){ $(grep -A1 '\[proftpd\]' ~iworx/iworx.ini | tail -1 | sed 's|.*://\(.*\):\(.*\)@.*\(/usr.*.sock\)..\(.*\)"|mysql -u \1 -p\2 -S \3 \4|') "$@"; }
-
 # Vpopmail
 v(){ $(grep -A1 '\[vpopmail\]' ~iworx/iworx.ini | tail -1 | sed 's|.*://\(.*\):\(.*\)@.*\(/usr.*.sock\)..\(.*\)"|mysql -u \1 -p\2 -S \3 \4|') "$@"; }
+
+# ProFTPd
+f(){ $(grep -A1 '\[proftpd\]' ~iworx/iworx.ini | tail -1 | sed 's|.*://\(.*\):\(.*\)@.*\(/usr.*.sock\)..\(.*\)"|mysql -u \1 -p\2 -S \3 \4|') "$@"; }
 
 ## Lookup mail account password (http://www.qmailwiki.org/Vpopmail#vuserinfo)
 emailpass(){ echo -e "\nUsername: $1\nPassword: $(~vpopmail/bin/vuserinfo -C $1)\n"; }
@@ -148,10 +148,15 @@ lworx(){
   else echo -e "Siteworx:\nLoginURL: https://$(serverName):2443/siteworx/?domain=$1"; fi; echo
   }
 
-## Download and execute nkjoomla info script
-nkjoomla(){
-    wget -q -O ~/nkjoomla.sh nanobots.robotzombies.net/nkjoomla.sh;
-    chmod +x ~/nkjoomla.sh; ~/./nkjoomla.sh "$@"; }
+## Download and execute IonCubeUpdate.sh script
+ioncubeupdate(){
+    wget -q -O ~/IonCubeUpdate.sh nanobots.robotzombies.net/IonCubeUpdate.sh;
+    chmod +x ~/IonCubeUpdate.sh; ~/./IonCubeUpdate.sh "$@"; }
+
+## Download and execute ZendGuardInstal.sh script
+zendguardinstall(){
+    wget -q -O ~/ZendGuardInstal.sh nanobots.robotzombies.net/ZendGuardInstal.sh;
+    chmod +x ~/ZendGuardInstal.sh; ~/./ZendGuardInstal.sh "$@"; }
 
 ## Download and execute global-dns-checker script
 dnscheck(){
@@ -976,8 +981,204 @@ case $opt in
         _wpdbconnect -e "UPDATE ${prefix}users SET user_pass=\"$user_pass\" WHERE user_login = \"$user_login\"";
         echo -e "\nPassword has been reverted." ;;
 -h | --help | * ) _wpdbusage ;;
-esac; echo; dbhost=''; dbuser=''; dbpass=''; dbname=''; prefix='';
-edition=''; version=''; user_login=''; user_pass='';
+esac; echo; dbhost=''; dbuser=''; dbpass=''; dbname=''; prefix=''; edition=''; version=''; user_login=''; user_pass='';
+}
+
+## Find Joomla information and perform some common tasks
+nkjoomla(){
+# Set path to Joomla install
+echo; runonce=0;
+if [[ $1 =~ ^-.*$ ]]; then SITEPATH='.'; opt="$1"; shift; param="$@";
+elif [[ -z $@ ]]; then SITEPATH='.'; else SITEPATH="$1"; opt="$2"; shift; shift; param="$@"; fi;
+
+# Set path to configuration.php file
+CONFIG="$SITEPATH/configuration.php"
+
+# Check if there is a Joomla install here (sanity check)
+if [[ -f "$CONFIG" ]]; then
+
+# Gather DB Connection info
+dbtype=$(grep '$dbtype ' $CONFIG | cut -d\' -f2)
+dbhost=$(grep '$host ' $CONFIG | cut -d\' -f2)
+dbuser=$(grep '$user ' $CONFIG | cut -d\' -f2)
+dbpass=$(grep '$password ' $CONFIG | cut -d\' -f2)
+dbname=$(grep '$db ' $CONFIG | cut -d\' -f2)
+prefix=$(grep '$dbprefix ' $CONFIG | cut -d\' -f2)
+
+# Check location of version file
+if [[ -f "$SITEPATH/libraries/cms/version/version.php" ]]; then VERFILE="$SITEPATH/libraries/cms/version/version.php"; else VERFILE="$SITEPATH/libraries/joomla/version.php"; fi
+
+# Gather version information
+RELEASE="$(grep '$RELEASE' $VERFILE | cut -d\' -f2)";
+DEV_LEVEL="$(grep '$DEV_LEVEL' $VERFILE | cut -d\' -f2)";
+DEV_STATUS="$(grep '$DEV_STATUS' $VERFILE | cut -d\' -f2)";
+BUILD="$(grep '$BUILD' $VERFILE | cut -d\' -f2)";
+RELDATE="$(grep '$RELDATE' $VERFILE | cut -d\' -f2)";
+CODENAME="$(grep '$CODENAME' $VERFILE | cut -d\' -f2)";
+VERSION="$RELEASE.$DEV_LEVEL $DEV_STATUS ($RELDATE) $BUILD";
+
+_joomlausage(){
+echo " Usage: nkjoomla [path] OPTION [query]
+    -B | --backup .... Backup the Joomla database as the user
+    -c | --clear ..... Clear Joomla cache
+    -C | --cache ..... Enable/Disable cache
+    -e | --execute ... Execute a custom query (use '*' and \\\")
+    -g | --gzip ...... Enable/Disable gzip compression
+    -i | --info ...... Display user credentials for database
+    -l | --login ..... Log into database using user credentials
+    -P | --password .. Update or reset password for a user
+    -s | --swap ...... Temporarily swap out user password
+    -u | --users ..... Show users configured within the database
+
+    -h | --help ....... Display this help and quit
+    If run with no options, returns summary information"
+    return 0; }
+
+_joomlainfo(){
+# Output collected information
+FORMAT="%-18s: %s\n"
+printf "$FORMAT" "Base Path" "$(cd $SITEPATH; pwd -P)"
+printf "$FORMAT" "Product Name" "$(grep '$PRODUCT' $VERFILE | cut -d\' -f2) \"$CODENAME\""
+printf "$FORMAT" "Site Title" "$(grep '$sitename ' $CONFIG | cut -d\' -f2)"
+printf "$FORMAT" "Install Date" "$(stat $VERFILE | awk '/Change/ {print $2,$3}' | cut -d. -f1)"
+printf "$FORMAT" "Encryption Key" "$(grep '$secret' $CONFIG | cut -d\' -f2)"
+printf "$FORMAT" "Version (Date)" "$VERSION"
+printf "$FORMAT" "Front End URL" "http://$(cd $SITEPATH; pwd -P | sed 's:^/chroot::' | cut -d/ -f4- | sed 's:/html::')/"
+printf "$FORMAT" "Back End URL" "http://$(cd $SITEPATH; pwd -P | sed 's:^/chroot::' | cut -d/ -f4- | sed 's:/html::')/administrator"
+printf "$FORMAT" "Return-Path Email" "$(grep '$mailfrom' $CONFIG | cut -d\' -f2)"
+printf "$FORMAT" "Gzip Compression" "$(grep '$gzip' $CONFIG | cut -d\' -f2 | sed 's/0/Disabled/;s/1/Enabled/')"
+printf "$FORMAT" "DB Connection" "$dbtype://$dbuser:$dbpass@$dbhost/$dbname$(if [[ -n $prefix ]]; then echo .$prefix*; fi)"
+printf "$FORMAT" "Session Method" "$(grep '$session' $CONFIG | cut -d\' -f2)"
+printf "$FORMAT" "Cache Method" "$(grep '$cache_' $CONFIG | cut -d\' -f2) / $(grep '$caching' $CONFIG | cut -d\' -f2 | sed 's/0/Disabled/;s/1/Enabled/')"
+
+## Show installed: components, modules, plugins, and templates
+# Component Module Plugin Template
+  for x in Plugin; do printf "%-18s: " "Active ${x}s"; mysql -u"$dbuser" -p"$dbpass" -h $dbhost $dbname \
+    -e "select name,type from ${prefix}extensions where type like \"$x\" and enabled = 1;"\
+    | egrep -v 'name.*type|^plg' | sed 's/ /_/g' | sort | uniq | awk '{printf "%s, ",$1}' | sed 's/, $//';
+  echo; done; }
+
+_joomlasum(){ echo -e "${BRIGHT}Joomla! \"$CODENAME\": ${RED}$VERSION ${NORMAL}\n${BRIGHT}Connection: ${RED}$dbuser:$dbname$(if [[ -n $prefix ]]; then echo .$prefix; fi)${NORMAL}\n"; }
+
+_joomlaconnect(){
+  if [[ $runonce -eq 0 ]]; then _joomlasum; runonce=1; fi &&
+  mysql -u $dbuser -p$dbpass -h $dbhost $dbname -e "$@";
+  }
+
+_joomlabackup(){ _joomlasum;
+  if [[ -x /usr/bin/pigz ]]; then COMPRESS="/usr/bin/pigz"; echo "Compressing with pigz"; else COMPRESS="/usr/bin/gzip"; echo "Compressing with gzip"; fi
+  echo "Using: mysqldump --opt --skip-lock-tables -u'$dbuser' -p'$dbpass' -h $dbhost $dbname";
+    if [[ -f /usr/bin/pv ]]; then mysqldump --opt --skip-lock-tables -u"$dbuser" -p"dbpass" -h $dbhost $dbname \
+      | pv -N 'MySQL-Dump' | $COMPRESS --fast | pv -N 'Compression' > ${dbname}-$(date +%Y.%m.%d-%H.%M).sql.gz;
+    else mysqldump --opt --skip-lock-tables -u"$dbuser" -p"$dbpass" -h $dbhost $dbname \
+      | $COMPRESS --fast > ${dbname}-$(date +%Y.%m.%d-%H.%M).sql.gz; fi;
+  }
+
+case $opt in
+ -B|--backup) _joomlabackup ;;
+ -c|--clear) cd $SITEPATH/cache/ && for x in */; do echo "Clearing $x Cache" | sed 's:/::'; find $x -type f -exec rm {} \;; done; cd - &> /dev/null ;;
+ -C|--cache)
+    if [[ $(grep "caching = '0'" $CONFIG 2> /dev/null) ]]; then sed -i "s/caching = '0'/caching = '1'/" $CONFIG; echo "Caching is ${BRIGHT}${GREEN}Enabled${NORMAL}";\
+    else sed -i "s/caching = '1'/caching = '0'/" $CONFIG; echo "Caching is ${BRIGHT}${GREEN}Disabled${NORMAL}"; fi ;;
+ -e|--execute) _joomlaconnect "${param};";;
+ -g|--gzip)
+    if [[ $(grep "gzip = '0'" $CONFIG 2> /dev/null) ]]; then sed -i "s/gzip = '0'/gzip = '1'/" $CONFIG; echo "Gzip is ${BRIGHT}${GREEN}Enabled${NORMAL}";\
+    else sed -i "s/gzip = '1'/gzip = '0'/g" $CONFIG; echo "Gzip is ${BRIGHT}${GREEN}Disabled${NORMAL}"; fi ;;
+ -i|--info) echo "Database Connection Info:";
+    echo -e "\nLoc.Conn: mysql -u'$dbuser' -p'$dbpass' $dbname -h $dbhost \nRem.Conn: mysql -u'$dbuser' -p'$dbpass' $dbname -h $(hostname)\n";
+    echo -e "Username: $dbuser \nPassword: $dbpass \nDatabase: $dbname $(if [[ -n $prefix ]]; then echo \\nPrefix..: $prefix; fi) \nLoc.Host: $dbhost \nRem.Host: $(hostname)" ;;
+ -l|--login) mysql -u $dbuser -p$dbpass -h $dbhost $dbname ;;
+ -P|--password)
+    if [[ -n $param ]]; then
+      username=$(echo $param | awk '{print $1}'); password=$(echo $param | awk '{print $2}'); salt=$(echo $param | awk '{print $3}');
+      _joomlaconnect "UPDATE ${prefix}users SET password = MD5(\"${password}\") WHERE ${prefix}users.username = \"$username\";"
+      echo -e "New Joomla Login Credentials:\nUsername: $username\nPassword: $password"
+    elif [[ -z $param || $param == '-h' || $param == '--help' ]]; then
+      echo -e " Usage: nkjoomla [path] <-P|--password> <username> <password>"
+    fi
+    ;;
+ -s|--swap)
+    username=$(_joomlaconnect "SELECT username FROM ${prefix}users ORDER BY id LIMIT 1;" | tail -1)
+    password=$(_joomlaconnect "SELECT password FROM ${prefix}users ORDER BY id LIMIT 1;" | tail -1 | sed 's/\$/\\\$/g')
+    _joomlaconnect "UPDATE ${prefix}users SET password=MD5('nexpassword') ORDER BY id LIMIT 1";
+    echo -e "You have 20 seconds to login using the following credentials\n"
+    echo -e "LoginURL: http://$(cd $SITEPATH; pwd -P | sed "s:^/chroot::" | cut -d/ -f4- | sed 's:html/::')/administrator"
+    echo -e "Username: $username\nPassword: nexpassword\n"
+    for x in {1..20}; do sleep 1; printf ". "; done; echo
+    _joomlaconnect "UPDATE ${prefix}users SET password=\"$password\" ORDER BY id LIMIT 1";
+    echo -e "\nPassword has been reverted."
+    ;;
+ -u|--user)
+    if [[ -z $param ]]; then _joomlaconnect "select * from ${prefix}users\G";
+    elif [[ $param =~ -s ]]; then _joomlaconnect "select id,username,name,email,password from ${prefix}users ORDER BY id";
+    elif [[ $param == '-h' || $param == '--help' ]]; then echo -e " Usage: nkjoomla [path] <-u|--user> [-s|--short]"; fi
+    ;;
+ -h|--help) _joomlausage ;;
+  * ) _joomlainfo ;;
+esac; echo
+
+else echo -e "Could not find Joomla install at $SITEPATH\n"; fi
+}
+
+## Find basic Drupal information and display it in the nexkit-style
+nkdrupal(){
+if [[ -n $1 ]]; then sitepath="$1"; else sitepath='.'; fi
+config="${sitepath}/sites/default/settings.php"
+
+if [[ -f ${config} ]]; then
+
+# Version Information
+if [[ -n $(grep "define('VERSION'" ${sitepath}/modules/system/system.module) ]]; then
+  verfile="${sitepath}/modules/system/system.module"
+elif [[ -n $(grep "define('VERSION'" ${sitepath}/includes/bootstrap.inc) ]]; then
+  verfile="${sitepath}/includes/bootstrap.inc"
+fi;
+version=$(grep "define('VERSION'" $verfile | cut -d\' -f4)
+installdate=$(stat $verfile | awk '/Change/ {print $2,$3}' | cut -d. -f1)
+
+# Database Config (7.x)
+# Database, Username, Password, Host, Driver, Prefix
+if [[ $version =~ ^7 || $version =~ ^8 ]]; then
+dbname=$(awk '($1 ~ /database/ && $3 !~ /array/) {print $3}' $config | cut -d\' -f2)
+dbuser=$(awk '($1 ~ /username/) {print $3}' $config | cut -d\' -f2)
+dbpass=$(awk '($1 ~ /password/) {print $3}' $config | cut -d\' -f2)
+dbhost=$(awk '($1 ~ /host/) {print $3}' $config | cut -d\' -f2)
+dbdriv=$(awk '($1 ~ /driver/) {print $3}' $config | cut -d\' -f2)
+prefix=$(awk '($1 ~ /prefix/) {print $3}' $config | cut -d\' -f2)
+
+# Database Config (6.x)
+# mysql://username:password@localhost/database
+elif [[ $version =~ ^6 || $version =~ ^5 ]]; then
+dbase=$(awk '($1 ~ /db_url/) {print $3}' $config | cut -d\' -f2)
+dbname=$(echo $dbase | cut -d@ -f2 | cut -d/ -f2)
+dbuser=$(echo $dbase | cut -d: -f2 | cut -d/ -f3)
+dbpass=$(echo $dbase | cut -d: -f3 | cut -d@ -f1)
+dbhost=$(echo $dbase | cut -d@ -f2 | cut -d/ -f1)
+dbdriv=$(echo $dbase | cut -d: -f1)
+prefix=$(awk '($1 ~ /db_prefix/) {print $3}' $config | cut -d\' -f2)
+
+fi
+database="${dbdriv}://${dbuser}:${dbpass}@${dbhost}/${dbname}$(if [[ -n ${prefix} ]]; then echo .${prefix}*; fi)"
+
+base_path=$(cd $sitepath; pwd -P;)
+base_url=$(cd $sitepath; pwd -P | sed 's:/chroot::g;s:/html::g' | cut -d/ -f4-)
+sitename=$(mysql -u $dbuser -p"$dbpass" $dbname -h $dbhost -e "select name,value from ${prefix}variable where name=\"site_name\";" | tail -1 | cut -d\" -f2)
+posts=$(mysql -u $dbuser -p"$dbpass" $dbname -h $dbhost -e "select count(*) from ${prefix}node;" | tail -1)
+
+echo
+FMT="%-18s: %s\n"
+printf "$FMT" "Base Path" "${base_path}"
+printf "$FMT" "Site Title" "${sitename}"
+printf "$FMT" "Install Date" "${installdate}"
+printf "$FMT" "Version" "${version}"
+printf "$FMT" "Front End URL" "http://${base_url}"
+printf "$FMT" "Back End URL" "http://${base_url}/admin"
+printf "$FMT" "Post Count" "${posts}"
+printf "$FMT" "DB Connection" "${database}"
+echo
+unset verfile version config base_url posts database dbname dbpass dbuser base_path installdate dbhost dbdriv prefix
+
+else echo -e "\nCould not find Drupal install at ${sitepath}\n"; fi
 }
 
 ## Find configuration file, and echo configured DB name
@@ -1065,8 +1266,8 @@ echo -e "\nLinks to log directories created in:\n$PWD/logs/\n"; cd $DIR
 ## Find files group owned by username in employee folders or temp directories
 savethequota(){
 find /home/nex* -type f -group $(getusr) -exec ls -lah {} \;
-find /home/tmp -type f -size +100M -group $(getusr) -exec ls -lah {} \;
-find /tmp -type f -size +100M -group $(getusr) -exec ls -lah {} \;
+find /home/tmp -type f -size +100000k -group $(getusr) -exec ls -lah {} \;
+find /tmp -type f -size +100000k -group $(getusr) -exec ls -lah {} \;
 }
 
 ## Give a breakdown of user's large disk objects
