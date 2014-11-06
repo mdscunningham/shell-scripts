@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-08-30
-# Updated: 2014-10-25
+# Updated: 2014-11-02
 #
 #
 #!/bin/bash
@@ -23,7 +23,7 @@ tar -zxf ioncube_loaders_lin_x86-64.tar.gz; echo
 # check for known configuration combinations
 if [[ -f /etc/php.d/ioncube.ini && -f /usr/lib64/php5/ioncube.so ]]; then # CentOS 5
   phpdir="/usr/lib64/php5/"; config="/etc/php.d/ioncube.ini"
-elif [[-d /usr/lib64/php/modules/ ]]; then # CentOS 6
+elif [[ -d /usr/lib64/php/modules/ ]]; then # CentOS 6
   phpdir="/usr/lib64/php/modules/"; config="/etc/php.d/ioncube-loader.ini"
 fi
 
