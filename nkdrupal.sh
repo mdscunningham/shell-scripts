@@ -42,12 +42,12 @@ dbdriv=$(echo $dbase | cut -d: -f1)
 prefix=$(awk '($1 ~ /db_prefix/) {print $3}' $config | cut -d\' -f2)
 
 fi
-database="${dbdriv}://${dbuser}:${dbpass}@${dbhost}/${dbname}.${prefix}*"
+database="${dbdriv}://${dbuser}:${dbpass}@${dbhost}/${dbname}$(if [[ -n ${prefix} ]]; then echo .${prefix}*; fi)"
 
 base_path=$(cd $sitepath; pwd -P;)
 base_url=$(cd $sitepath; pwd -P | sed 's:/chroot::g;s:/html::g' | cut -d/ -f4-)
 sitename=$(mysql -u $dbuser -p"$dbpass" $dbname -h $dbhost -e "select name,value from ${prefix}variable where name=\"site_name\";" | tail -1 | cut -d\" -f2)
-posts=$(mysql -u $dbuser -p"$dbpass" $dbname -h $dbhost -e "select count(*) from node;" | tail -1)
+posts=$(mysql -u $dbuser -p"$dbpass" $dbname -h $dbhost -e "select count(*) from ${prefix}node;" | tail -1)
 
 echo
 FMT="%-18s: %s\n"
