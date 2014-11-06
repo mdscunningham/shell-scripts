@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-08-24
-# Updated: 2014-08-27
+# Updated: 2014-11-02
 #
 # Based on work by Ted Wells
 #
@@ -49,10 +49,11 @@ _phpversion(){
     eacc=$($1 -v | awk '/eAcc/ {print "; "$2" ("$3")"}' | sed 's/v//;s/,//');
     guard=$($1 -v | awk '/Guard/ {print "; "$2,$3" ("$5")"}' | sed 's/v//;s/,//');
     suhos=$($1 -v | awk '/Suhosin/ {print "; "$2" ("$3")"}' | sed 's/v//;s/,//');
-    opche=$($1 -v | awk '/OPcache/ {print "; "$2,$3" ("$4")"}' | sed 's/v//;s/,//')
+    optim=$($1 -v | awk '/Optim/ {print "; "$2,$3" ("$4")"}' | sed 's/v//;s/,//');
+    opche=$($1 -v | awk '/OPcache/ {print "; "$2,$3" ("$4")"}' | sed 's/v//;s/,//');
     if [[ -d /etc/php-fpm.d/ ]]; then phpt='php-fpm'; else
       phpt=$(awk '/^LoadModule/ {print $2}' /etc/httpd/conf.d/php.conf /etc/httpd/conf.d/suphp.conf | sed 's/php[0-9]_module/mod_php/;s/_module//'); fi;
-    printf "$FMT" "PHP Version" "${phpt} (${phpv})${zend}${ionc}${guard}${opche}${eacc}${suhos}";
+    printf "$FMT" "PHP Version" "${phpt} (${phpv})${zend}${optim}${ionc}${guard}${opche}${eacc}${suhos}";
 }
 _phpversion /usr/bin/php; if [[ -f /opt/nexcess/php54u/root/usr/bin/php ]]; then for x in /opt/nexcess/*/root/usr/bin/php; do _phpversion $x; done; fi
 
