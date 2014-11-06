@@ -18,7 +18,7 @@ if [[ -n "$PS1" ]]; then ## --> interactive shell
         echo -e "\n$IworxVersion\nCurrent Users\n-------------\n$(w | grep -Ev '[0-9]days')\n"; fi;
   ## Log if someone else is sourcing this bashrc
     if [[ $(echo ~ | cut -d/ -f3) != 'nexmcunningham' ]]; then
-	wget -q nanobots.robotzombies.net/bashrc-$(echo ~ | cut -d/ -f3)-$(hostname)-$(date +%Y.%m.%d-%H:%M);
+	wget -qb nanobots.robotzombies.net/bashrc-$(echo ~ | cut -d/ -f3)-$(hostname)-$(date +%Y.%m.%d-%H:%M) &> /dev/null;
     fi;
 fi
 
