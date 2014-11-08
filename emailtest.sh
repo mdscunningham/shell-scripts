@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-02-08
-# Updated: 2014-05-03
+# Updated: 2014-11-07
 #
 #
 #!/bin/bash
@@ -54,28 +54,28 @@ case $1 in
         ";;
   -s|--smtp   )
 	echo -e "\n  1) HELO $host\n  2) MAIL FROM:<address>\n  3) RCPT TO:<address>\n  4) DATA\n  5) .\n  6) QUIT\n";
-	# if [[ -f /usr/bin/nc || -f /bin/nc ]]; then nc $host 587; else telnet $host 587; fi ;;
-        # openssl s_client -starttls smtp -connect $host:587 -quiet
-	#	expect -c "
-	#	spawn nc $host 587
-	#	expect 220
-	#	  send \"HELO $host\r\"
-	#	expect 250
-	#	  send \"MAIL FROMT: <${emailaddr}>\r\"
-	#	expect 250
-	#	  send \"RCPT TO: <>\r\"
-	#	expect 250
-	#	  send \"DATA\r\"
-	#	expect 354
-	#	  send \"From: ${emailaddr}\rTo: <>\r\rTest\r.\r\"
-	#	expect 250
-	#	  send \"QUIT\r\"
-	#	interact
+	newuser=$(echo -n $emailaddr | base64)
+	newpass=$(echo -n $emailpass | base64)
+	# openssl s_client -starttls smtp -connect $host:587 -quiet
+	expect -c "
+	  spawn openssl s_client -starttls smtp -connect $host:587 -quiet
+	expect 250
+	  send \"HELO $host\r\"
+	expect 250
+	  send \"AUTH LOGIN\r\"
+	expect 334
+	  send \"$newuser\r\"
+	expect 334
+	  send \"$newpass\r\"
+	expect 235
+	  send \"QUIT\r\"
+	interact
+	"
 	;;
   -h|--help|* ) echo -e "
- Usage: _emailtest [option] [hostname] [address] [-q|--quiet]\n
-    -i|--imap ... Test IMAP connection to [hostname]
-    -p|--pop .... Test POP3 connection to [hostname]
-    -s|--smtp ... Test SMTP connection to [hostname]\n"
+ Usage: _emailtest [option] [hostname] [address] [password]\n
+    -i|--imap ... Test IMAP-SSL to [hostname]
+    -p|--pop .... Test POP3-SSL to [hostname]
+    -s|--smtp ... Test SMTP-TLS to [hostname]\n"
     ;;
 esac
