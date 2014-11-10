@@ -17,6 +17,7 @@ echo " Usage: traffic DOMAIN COMMAND [OPTIONS]
    scr | scripts.... Top empty User Agents (likely scripts) by # of hits
     ip | ipaddress . Top IPs by # of hits
     bw | bandwidth . Top IPs by bandwidth usage
+   bwt | bwtotal ... Total bandwidth used for a given day
    url | file ...... Top URLs/files by # of hits
    ref | referrer .. Top Referrers by # of hits
   type | request ... Summary of request types (GET/HEAD/POST)
@@ -76,6 +77,8 @@ scr|scripts	) $DECOMP "$SEARCH" $LOGFILE | awk -F\" '($6 ~ /^-?$/) {print $1}' |
 ip|ipaddress	) $DECOMP "$SEARCH" $LOGFILE | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP ;;
 
 bw|bandwidth	) $DECOMP "$SEARCH" $LOGFILE | awk '{tx[$1]+=$10} END {for (x in tx) {printf "   %-15s   %8s M\n",x,(tx[x]/1024000)}}' | sort -k 2n | tail -n$TOP | tac ;;
+
+bwt|bwtotal     ) $DECOMP "$SEARCH" $LOGFILE | awk '{tx+=$10} END {print (tx/1024000)"M"}' ;;
 
 sum|summary	) for x in $($DECOMP "$SEARCH" $LOGFILE | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP | awk '{print $2}'); do
 		  echo $x; $DECOMP "$SEARCH" $LOGFILE | grep $x | cut -d' ' -f9,12- | sort | uniq -c | sort -rn | head -n$TOP | tr -d \"; echo; done ;;
