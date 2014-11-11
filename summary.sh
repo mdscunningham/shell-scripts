@@ -9,15 +9,6 @@
 #
 #!/bin/bash
 
-# Servers running nginx instead of Apache
-# sip4-318.nexcess.net	192.64.53.42	nginx
-# sip4-411.nexcess.net	192.240.164.180	nginx/1.7.5
-# sip4-681.nexcess.net	192.240.184.135	nginx/1.6.2
-
-# Servers not returning server type because of Varnish
-# sip4-676.nexcess.net
-# sip4-585.nexcess.net
-
 serverName(){
   if [[ -n $(dig +time=1 +tries=1 +short $(hostname)) ]]; then hostname;
   else ip addr show | awk '/inet / {print $2}' | cut -d/ -f1 | grep -Ev '^127\.' | head -1; fi
