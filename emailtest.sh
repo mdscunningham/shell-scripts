@@ -22,9 +22,8 @@ fi
 case $1 in
   -i|--imap   )
 	echo -e "\n  1) [tag] LOGIN <address> <password>\n  2) [tag] LIST \"\" \"*\"\n  3) [tag] SELECT INBOX\n  4) [tag] FETCH 1 BODY[]\n  5) [tag] LOGOUT\n"
-	# openssl s_client -connect $host:993 -quiet
 	expect -c "
-          spawn openssl s_client -connect $host:993 -quiet
+          spawn openssl s_client -tls1 -connect $host:993 -quiet
 	expect OK
 	  send \"tag LOGIN ${emailaddr} ${emailpass}\r\"
 	expect OK
@@ -37,9 +36,8 @@ case $1 in
         ";;
   -p|--pop    )
 	echo -e "\n  1) USER <address>\n  2) PASS <password>\n  3) STAT\n  4) LIST\n  5) RETR 1\n  6) QUIT\n";
-	# openssl s_client -connect $host:995 -quiet
 	expect -c "
-	  spawn openssl s_client -connect $host:995 -quiet
+	  spawn openssl s_client -tls1 -connect $host:995 -quiet
 	expect OK
 	  send \"USER ${emailaddr}\r\"
 	expect OK
@@ -56,7 +54,6 @@ case $1 in
 	echo -e "\n  1) HELO $host\n  2) MAIL FROM:<address>\n  3) RCPT TO:<address>\n  4) DATA\n  5) .\n  6) QUIT\n";
 	newuser=$(echo -n $emailaddr | base64)
 	newpass=$(echo -n $emailpass | base64)
-	# openssl s_client -starttls smtp -connect $host:587 -quiet
 	expect -c "
 	  spawn openssl s_client -starttls smtp -connect $host:587 -quiet
 	expect 250
