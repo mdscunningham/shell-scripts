@@ -46,9 +46,9 @@ fi
 ;;
 
 -f ) # Listing/Updating FTP Users
-if [[ $2 == '--list' ]]; then
+if [[ -z $2 || $2 == '--list' ]]; then
   echo; (echo "ShortName FullName"; sudo -u $(getusr) -- siteworx -u -n -c Ftp -a list) | column -t; echo
-elif [[ -z $2 || $2 =~ ^- ]]; then
+elif [[ $2 == '.' || $2 =~ ^-[a-z]$ ]]; then
   ftpUser='ftp'; genPass $2 $3
   sudo -u $(getusr) -- siteworx -u --login_domain $primaryDomain -n -c Ftp -a edit --password $newPass --confirm_password $newPass --user $ftpUser
   echo -e "\nFor Testing: \nlftp -e'ls;quit' -u ${ftpUser}@${primaryDomain},'$newPass' $(serverName)"
@@ -62,9 +62,9 @@ fi
 ;;
 
 -s ) # Listing/Updating Siteworx Users
-if [[ $2 = '--list' ]]; then
+if [[ -z $2 || $2 = '--list' ]]; then
   echo; (echo "EmailAddress Name Status"; sudo -u $(getusr) -- siteworx -u -n -c Users -a listUsers | sed 's/ /_/g' | awk '{print $2,$3,$5}') | column -t; echo
-elif [[ -z $2 || $2 =~ ^- ]]; then # Lookup primary domain and primary email address
+elif [[ $2 == '.' || $2 =~ ^-[a-z]$ ]]; then # Lookup primary domain and primary email address
   primaryEmail=$(nodeworx -u -n -c Siteworx -a querySiteworxAccounts --domain $primaryDomain --account_data email)
   genPass $2 $3
   nodeworx -u -n -c Siteworx -a edit --password "$newPass" --confirm_password "$newPass" --domain $primaryDomain
