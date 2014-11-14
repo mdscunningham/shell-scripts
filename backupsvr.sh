@@ -9,12 +9,20 @@
 #!/bin/bash
 
 checkquota;
-NEW_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | tail -1 | tr -d \' | sed 's/10\.17\./178\.17\./g; s/10\.1\./103\.1\./g; s/10\.240\./192\.240\./g');
-ALL_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | sort | uniq | tr -d \' | sed 's/10\.17\./178\.17\./g; s/10\.1\./103\.1\./g; s/10\.240\./192\.240\./g');
-# ^^^
+NEW_IPADDR=$(
+    awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | tail -1 | tr -d \' \
+    | sed 's/10\.17\./178\.17\./g; s/10\.1\./103\.1\./g; s/10\.240\./192\.240\./g; s/10\.249\./192\.240\./g'
+);
+ALL_IPADDR=$(
+    awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | sort | uniq | tr -d \' \
+    | sed 's/10\.17\./178\.17\./g; s/10\.1\./103\.1\./g; s/10\.240\./192\.240\./g; s/10\.249\./192\.240\./g'
+);
+
+# ^^^ Translate internal to external IPs -- These map one to one more or less.
 # 10.17.x.x  --> 178.17.x.x  -- UK Servers
 # 10.1.x.x   --> 103.1.x.x   -- AU Servers
-# 10.240.x.x --> 192.240.x.x -- MIA Servers
+# 10.240.x.x --> 192.240.x.x -- MIA/SJC Servers
+# 10.249.x.x --> 192.240.x.x -- MIA/SJC Servers
 
 if [[ $NEW_IPADDR =~ ^172\. ]]; then INTERNAL=$(curl -s nanobots.robotzombies.net/r1bs-internal); fi
 
