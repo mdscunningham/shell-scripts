@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-07-30
-# Updated: 2014-08-07
+# Updated: 2014-11-17
 #
 #
 #!/bin/bash
@@ -48,8 +48,8 @@ fi
 -f ) # Listing/Updating FTP Users
 if [[ -z $2 || $2 == '--list' ]]; then
   echo; (echo "ShortName FullName"; sudo -u $(getusr) -- siteworx -u -n -c Ftp -a list) | column -t; echo
-elif [[ $2 == '.' || $2 =~ ^-[a-z]$ ]]; then
-  ftpUser='ftp'; genPass $2 $3
+elif [[ $2 == '.' ]]; then
+  ftpUser='ftp'; genPass $3 $4
   sudo -u $(getusr) -- siteworx -u --login_domain $primaryDomain -n -c Ftp -a edit --password $newPass --confirm_password $newPass --user $ftpUser
   echo -e "\nFor Testing: \nlftp -e'ls;quit' -u ${ftpUser}@${primaryDomain},'$newPass' $(serverName)"
   echo -e "\nHostname: $(serverName)\nUsername: ${ftpUser}@${primaryDomain}\nPassword: $newPass\n"
@@ -64,9 +64,9 @@ fi
 -s ) # Listing/Updating Siteworx Users
 if [[ -z $2 || $2 = '--list' ]]; then
   echo; (echo "EmailAddress Name Status"; sudo -u $(getusr) -- siteworx -u -n -c Users -a listUsers | sed 's/ /_/g' | awk '{print $2,$3,$5}') | column -t; echo
-elif [[ $2 == '.' || $2 =~ ^-[a-z]$ ]]; then # Lookup primary domain and primary email address
+elif [[ $2 == '.' ]]; then # Lookup primary domain and primary email address
   primaryEmail=$(nodeworx -u -n -c Siteworx -a querySiteworxAccounts --domain $primaryDomain --account_data email)
-  genPass $2 $3
+  genPass $3 $4
   nodeworx -u -n -c Siteworx -a edit --password "$newPass" --confirm_password "$newPass" --domain $primaryDomain
   echo -e "\nLoginURL: https://$(serverName):2443/siteworx/?domain=$primaryDomain\nUsername: $primaryEmail\nPassword: $newPass\nDomain: $primaryDomain\n"
 else # Update Password for specific user

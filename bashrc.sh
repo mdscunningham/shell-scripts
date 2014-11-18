@@ -636,39 +636,62 @@ else echo -e "\n$(basename $vhost) not found!\n";
 fi
 }
 
-## Enable zlib.output_compression for a user's PHP-FPM config pool
-fpmgzip(){
-if [[ -f $(echo /opt/nexcess/php5*/root/etc/php-fpm.d/$(getusr).conf) ]]; then
-  config="/opt/nexcess/php5*/root/etc/php-fpm.d/$(getusr).conf";
-  srv="$(echo $config | cut -d/ -f4)-php-fpm";
-elif [[ -f /etc/php-fpm.d/$(getusr).conf ]]; then
-  config="/etc/php-fpm.d/$(getusr).conf";
-  srv="php-fpm"; fi;
-if [[ $(grep zlib.output_compression $config 2> /dev/null) ]]; then
-  echo -e "\nGzip already enabled in FPM pool $config\n";
-elif [[ -f $(echo $config) ]]; then
-  echo "php_admin_value[zlib.output_compression] = On" >> $config && service $srv reload && echo -e "\nGzip enabled in FPM pool for $(echo $config)\n";
-else
-  echo -e "\n Could not find $config !\n Try running this from the user's /home/dir/\n"; fi;
-unset config srv;
-}
 
-## Enable allow_url_fopen for a users PHP-FPM config pool
-fpmfopen(){
+## Set common and custom php-fpm configuration options
+fpmconfig(){
+
 if [[ -f $(echo /opt/nexcess/php5*/root/etc/php-fpm.d/$(getusr).conf) ]]; then
   config="/opt/nexcess/php5*/root/etc/php-fpm.d/$(getusr).conf";
   srv="$(echo $config | cut -d/ -f4)-php-fpm";
 elif [[ -f /etc/php-fpm.d/$(getusr).conf ]]; then
   config="/etc/php-fpm.d/$(getusr).conf";
   srv="php-fpm"; fi;
-if [[ $(grep allow_url_fopen $config 2> /dev/null) ]]; then
-  echo -e "\nallow_url_fopen already enabled in FPM pool $config\n";
-elif [[ -f $(echo $config) ]]; then
-  echo "php_admin_value[allow_url_fopen] = On" >> $config && service $srv reload && echo -e "\nallow_url_fopen enabled in FPM pool for $(echo $config)\n";
-else
-  echo -e "\n Could not find $config !\n Try running this from the user's /home/dir/\n"; fi;
+
+_fpmconfig(){
+    if [[ $(grep $1 $config 2> /dev/null) ]]; then
+      echo -e "\n$1 is already configured in the PHP-FPM pool $config\n";
+      awk "/$1/"'{print}' $config; echo
+    elif [[ -f $(echo $config) ]]; then
+      echo "php_admin_value[$1] = $2" >> $config && service $srv reload && echo -e "\n$1 has been set to $2 in the PHP-FPM pool for $config\n";
+    else
+      echo -e "\n Could not find $config !\n Try running this from the user's /home/dir/\n"; fi;
+    }
+
+case $1 in
+-a) _fpmconfig apc.enabled Off ;;
+-b) _fpmconfig open_basedir "$(php -i | awk '/open_basedir/ {print $NF}'):$2" ;;
+-c) _fpmconfig $2 $3 ;;
+-e) _fpmconfig max_execution_time $2 ;;
+-f) _fpmconfig allow_url_fopen On ;;
+-g|-z) _fpmconfig zlib.output_compression On ;;
+-u) _fpmconfig upload_max_filesize $2
+    _fpmconfig post_max_size $2 ;;
+-h) echo -e "\n Usage: fpmconfig [option] [value]
+  Options:
+    -a ... Disable APC
+    -b ... Set open_basedir
+    -c ... Set a custom [parameter] to [value]
+    -e ... Set max_execution_time to [value]
+    -f ... Enable allow_url_fopen
+    -g ... Enable gzip (zlib.output_compression)
+    -u ... Set upload_max_filesize and post_max_size to [value]
+    -z ... Enable gzip (zlib.output_compression)
+
+    -h ... Print this help output and quit
+    Default behavior is to print the contents and location of config file.\n"
+    ;;
+
+ *) echo; ls $config; echo; cat $config; echo;;
+esac;
+
 unset srv config;
 }
+
+## Enable zlib.output_compression for a user's PHP-FPM config pool
+fpmgzip(){ fpmconfig -g; }
+
+## Enable allow_url_fopen for a users PHP-FPM config pool
+fpmfopen(){ fpmconfig -f; }
 
 ## Setup parallel downloads in vhost
 magparallel(){
@@ -1377,7 +1400,7 @@ complete -W '-d -e -f -h --list -m -n -p -r -s -x' iworxcredz
 ## List Users, or Reset passwords for FTP/Siteworx/Reseller/Nodeworx
 iworxcredz(){
 
-## Check method and generate new password
+# Make a password (mkpasswd, xkcd, specify manually)
 genPass(){
   if [[ $1 == '-m' ]]; then newPass=$(mkpasswd -l 15);
   elif [[ $1 == '-x' ]]; then newPass=$(xkcd);
@@ -1385,8 +1408,11 @@ genPass(){
   else newPass=$(xkcd); fi
   }
 
-if [[ $1 == '-d' ]]; then primaryDomain=$2; shift; shift;
-else primaryDomain=$(~iworx/bin/listaccounts.pex | grep $(getusr) | awk '{print $2}'); fi
+if [[ $1 == '-d' ]]; then
+  primaryDomain=$2; shift; shift;
+else
+  primaryDomain=$(~iworx/bin/listaccounts.pex | awk "/$(getusr)/"'{print $2}')
+fi
 
 case $1 in
 -e ) # Listing/Updating Email Passwords
@@ -1400,12 +1426,11 @@ else
 fi
 ;;
 
-
 -f ) # Listing/Updating FTP Users
-if [[ $2 == '--list' ]]; then
+if [[ -z $2 || $2 == '--list' ]]; then
   echo; (echo "ShortName FullName"; sudo -u $(getusr) -- siteworx -u -n -c Ftp -a list) | column -t; echo
-elif [[ -z $2 || $2 =~ ^- ]]; then
-  ftpUser='ftp'; genPass $2 $3
+elif [[ $2 == '.' ]]; then
+  ftpUser='ftp'; genPass $3 $4
   sudo -u $(getusr) -- siteworx -u --login_domain $primaryDomain -n -c Ftp -a edit --password $newPass --confirm_password $newPass --user $ftpUser
   echo -e "\nFor Testing: \nlftp -e'ls;quit' -u ${ftpUser}@${primaryDomain},'$newPass' $(serverName)"
   echo -e "\nHostname: $(serverName)\nUsername: ${ftpUser}@${primaryDomain}\nPassword: $newPass\n"
@@ -1418,14 +1443,14 @@ fi
 ;;
 
 -s ) # Listing/Updating Siteworx Users
-if [[ $2 = '--list' ]]; then
+if [[ -z $2 || $2 = '--list' ]]; then
   echo; (echo "EmailAddress Name Status"; sudo -u $(getusr) -- siteworx -u -n -c Users -a listUsers | sed 's/ /_/g' | awk '{print $2,$3,$5}') | column -t; echo
-elif [[ -z $2 || $2 =~ ^- ]]; then # Lookup primary domain and primary email address
+elif [[ $2 == '.' ]]; then # Lookup primary domain and primary email address
   primaryEmail=$(nodeworx -u -n -c Siteworx -a querySiteworxAccounts --domain $primaryDomain --account_data email)
-  genPass $2 $3
+  genPass $3 $4
   nodeworx -u -n -c Siteworx -a edit --password "$newPass" --confirm_password "$newPass" --domain $primaryDomain
   echo -e "\nLoginURL: https://$(serverName):2443/siteworx/?domain=$primaryDomain\nUsername: $primaryEmail\nPassword: $newPass\nDomain: $primaryDomain\n"
-else # Updaet Password for specific user
+else # Update Password for specific user
   emailAddress=$2; genPass $3 $4
   sudo -u $(getusr) -- siteworx -u -n -c Users -a edit --user $emailAddress --password $newPass --confirm_password $newPass
   echo -e "\nLoginURL: https://$(serverName):2443/siteworx/?domain=$primaryDomain\nUsername: $emailAddress\nPassword: $newPass\nDomain: $primaryDomain\n"
@@ -1443,16 +1468,6 @@ else # Update Password for specific Reseller
 fi
 ;;
 
--n ) # Listing/Updating Nodeworx Users
-if [[ -z $2 || $2 == '--list' ]]; then # List Nodeworx (non-Nexcess) users
-  echo; (echo "Email_Address Name"; nodeworx -u -n -c Users -a list | grep -v nexcess.net | sed 's/ /_/g') | column -t; echo
-elif [[ ! $2 =~ nexcess\.net$ ]]; then # Update Password for specific Nodeworx user
-  emailAddress=$2; genPass $3 $4
-  nodeworx -u -n -c Users -a edit --user $emailAddress --password $newPass --confirm_password $newPass
-  echo -e "\nLoginURL: https://$(serverName):2443/nodeworx/\nUsername: $emailAddress\nPassword: $newPass\n\n"
-fi
-;;
-
 -m ) # Listing/Updating MySQL Users
 if [[ -z $2 || $2 == '--list' ]]; then
   echo; ( echo -e "Username   Databases"
@@ -1462,7 +1477,17 @@ else
   dbs=$(sudo -u $(getusr) -- siteworx -u -n -c Mysqluser -a listMysqlUsers | grep "$2" | awk '{print $3}' | sed 's/,/, /')
   sudo -u $(getusr) -- siteworx -u -n -c MysqlUser -a edit --name $(echo $2 | sed "s/$(getusr)_//") --password $newPass --confirm_password $newPass
   echo -e "\nFor Testing: \nmysql -u'$2' -p'$newPass' $(echo $dbs | cut -d, -f1)"
-  echo -e "\nUsername: $2\nPassword: $newPass\nDatabase: $dbs\n"
+  echo -e "\nUsername: $2\nPassword: $newPass\nDatabases: $dbs\n"
+fi
+;;
+
+-n ) # Listing/Updating Nodeworx Users
+if [[ -z $2 || $2 == '--list' ]]; then # List Nodeworx (non-Nexcess) users
+  echo; (echo "Email_Address Name"; nodeworx -u -n -c Users -a list | grep -v nexcess.net | sed 's/ /_/g') | column -t; echo
+elif [[ ! $2 =~ nexcess\.net$ ]]; then # Update Password for specific Nodeworx user
+  emailAddress=$2; genPass $3 $4
+  nodeworx -u -n -c Users -a edit --user $emailAddress --password $newPass --confirm_password $newPass
+  echo -e "\nLoginURL: https://$(serverName):2443/nodeworx/\nUsername: $emailAddress\nPassword: $newPass\n\n"
 fi
 ;;
 
@@ -1490,7 +1515,8 @@ echo -e "\n  For FTP and Siteworx, run this from within the user's /home/dir/\n
 ;;
 
 esac
-unset primaryDomain primaryEmail emailAddress resellerID dbs dbuser newPass # Cleanup
+
+unset primaryDomain primaryEmail emailAddress resellerID newPass # Cleanup
 }
 
 ## Setup or reset SSH account
@@ -1977,6 +2003,7 @@ case $1 in
 esac
 }
 
+## Setup Google MX records and turn off local delivery
 googlemx(){
 if [[ -z $1 || $1 == '-h' || $1 == '--help' ]]; then
   echo -e "\n Usage: googlemx OPTION DOMAIN
