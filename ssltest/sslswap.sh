@@ -16,24 +16,33 @@
 
 domain=$(pwd -P | sed 's:/chroot::' | cut -d/ -f5)
 
-sudo -u iworx -- nano ${domain}.new.crt ${domain}.new.chain.crt;
+nano ${domain}.new.crt ${domain}.new.chain.crt;
 # ^^^ will update this later to just download the right chain crt given an SSL type
 # For now, and for non-Comodo certs will just paste in the new chain crt.
+# https://support.comodo.com/index.php?/Default/Knowledgebase/Article/View/620/1/
 
 keyhash=$(openssl rsa -noout -modulus -in ${domain}.priv.key | openssl md5 | awk '{print $2}')
 crthash=$(openssl x509 -noout -modulus -in ${domain}.new.crt | openssl md5 | awk '{print $2}')
 
 if [[ $keyhash != $crthash ]]; then
-  echo "${BRIGHT}${RED}SSL does not match Key file.${NORMAL}";
-else
-  rm $domain.crt
-  mv $domain{.new.crt,.crt}
+  rm ${domain}.new.crt ${domain}.new.chain.crt
+  echo -e "\n[${BRIGHT}${RED}FAILED${NORMAL}] .. SSL does not match Priv.Key!\n";
 
-  if [[ -n $(cat $domain.new.chain.crt) ]]; then
-    rm ${domain}.chain.crt
-    mv ${domain}{.new.chain.crt,.chain.crt}
+else
+  echo -e "\n[${BRIGHT}${GREEN}UPDATE${NORMAL}] .. SSL Certificate"
+  rm ${domain}.crt; mv ${domain}{.new.crt,.crt}
+  chmod 600 ${domain}.crt; chown iworx. ${domain}.crt
+
+  # Check if new chain cert exists and is non-zero; then remove and replace the old one
+  if [[ -f ${domain}.new.chain.crt && -n $(cat ${domain}.new.chain.crt 2> /dev/null) ]]; then
+    echo "[${BRIGHT}${GREEN}UPDATE${NORMAL}] .. Chain Certificate"
+    rm ${domain}.chain.crt 2> /dev/null; mv ${domain}{.new.chain.crt,.chain.crt}
+    chmod 600 ${domain}.chain.crt; chown iworx. ${domain}.chain.crt
   fi
 
-  service httpd reload
+  echo -e "[${BRIGHT}${GREEN}RELOAD${NORMAL}] .. SSL update successful\n"
+  # service httpd reload
+  echo -e "\nhttps://www.sslshopper.com/ssl-checker.html#hostname=${domain}\n"
+
 fi
 
