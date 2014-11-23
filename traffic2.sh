@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-08-10
-# Updated: 2014-08-17
+# Updated: 2014-11-21
 #
 #
 #!/bin/bash
@@ -63,7 +63,19 @@ esac;
 shift;
 done
 
-LOGFILE="/home/*/var/${DOMAIN}/logs/transfer.log${DATE}"
+if [[ $(hostname) =~ (.*-node|.*-fs|.*-lb) ]]; then
+  echo -e "\nRunning in Cluster Mode ... on $(hostname):"
+  LOGFILE="/var/log/interworx/${DOMAIN}/logs/transfer.log${DATE}"
+  if [[ ! -f $LOGFILE ]]; then echo "Couldn't find the log file, try running this from one of the nodes."; fi
+else LOGFILE="/home/*/var/${DOMAIN}/logs/transfer.log${DATE}"; fi
+
+# VHOST="/etc/httpd/conf.d/vhost_${DOMAIN}.conf"
+# LOGFILE="$(awk '/CustomLog/ {print $2}' $VHOST | head -n1)${DATE}"
+# if [[ ! -f $VHOST ]]; then
+#    echo "Could not find vhost file for ${DOMAIN}"
+# elif [[ ! -f $LOGFILE ]]; then
+#    echo "Could not find log file for ${DOMAIN}"
+# fi
 
 echo
 case $opt in
@@ -104,7 +116,7 @@ ref|referrer	) $DECOMP "$SEARCH" $LOGFILE | awk '{freq[$11]++} END {for (x in fr
 
 esac
 
-if [[ $VERBOSE == '1' ]]; then echo; echo -e "DECOMP: $DECOMP\nSEARCH: $SEARCH\nTIME: $TIME\nDATE: $DATE\nTOP: $TOP\nLOGFILE: $LOGFILE\n" | column -t; fi # Debugging
+if [[ $VERBOSE == '1' ]]; then echo; echo -e "DECOMP: $DECOMP\nSEARCH: $SEARCH\nDATE: $DATE\nTOP: $TOP\nLOGFILE: $LOGFILE\n" | column -t; fi # Debugging
 
 echo;
-unset DOMAIN SEARCH DATE TOP TIME LOGFILE DECOMP VERBOSE # Variable Cleanup
+unset DOMAIN SEARCH DATE TOP LOGFILE DECOMP VERBOSE # Variable Cleanup
