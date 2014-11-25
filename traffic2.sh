@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-08-10
-# Updated: 2014-11-21
+# Updated: 2014-11-24
 #
 #
 #!/bin/bash
@@ -47,14 +47,21 @@ if [[ $1 == '.' ]]; then DOMAIN=$(pwd | sed 's:^/chroot::' | cut -d/ -f4); shift
   else DOMAIN=$(echo $1 | sed 's:/$::'); shift; fi
 
 opt=$1; shift; # Set option variable using command parameter
-SEARCH=''; DATE=''; TOP='20'; TIME=''; DECOMP='egrep'; VERBOSE=0; # Initialize variables
+
+# Determin Log File Location
+VHOST="/etc/httpd/conf.d/vhost_${DOMAIN}.conf"
+if [[ $(hostname) =~ .*-lb ]]; then LOGFILE="/var/log/interworx/*/${DOMAIN}/logs/transfer.log";
+else LOGFILE="$(awk '/CustomLog/ {print $2}' $VHOST | head -n1)${DATE}"; fi
+
+SEARCH=''; DATE=''; TOP='20'; DECOMP='egrep -h'; VERBOSE=0; # Initialize variables
 OPTIONS=$(getopt -o "s:d:n:hv" --long "search:,days:,lines:,help,verbose" -- "$@") # Execute getopt
 eval set -- "$OPTIONS" # Magic
 
 while true; do # Evaluate the options for their options
 case $1 in
   -s|--search ) SEARCH="$2"; shift ;; # search string (regex)
-  -d|--days   ) DATE="-$(date --date="-$((${2}-1)) day" +%m%d%Y).zip"; DECOMP='zegrep'; shift ;; # days back
+  -d|--days   ) DATE="-$(date --date="-$((${2}-1)) day" +%m%d%Y).zip"; DECOMP='zegrep';
+		LOGFILE="/home/*/var/${DOMAIN}/logs/transfer.log${DATE}"; shift ;; # days back
   -n|--lines  ) TOP=$2; shift ;; # results
   -v|--verbose) VERBOSE=1 ;; # Debugging Output
   --          ) shift; break ;; # More Magic
@@ -62,20 +69,6 @@ case $1 in
 esac;
 shift;
 done
-
-#if [[ $(hostname) =~ (.*-node|.*-fs|.*-lb) ]]; then
-#  echo -e "\nRunning in Cluster Mode ... on $(hostname):"
-#  LOGFILE="/var/log/interworx/${DOMAIN}/logs/transfer.log${DATE}"
-#  if [[ ! -f $LOGFILE ]]; then echo "Couldn't find the log file, try running this from one of the nodes."; fi
-#else LOGFILE="/home/*/var/${DOMAIN}/logs/transfer.log${DATE}"; fi
-
-VHOST="/etc/httpd/conf.d/vhost_${DOMAIN}.conf"
-LOGFILE="$(awk '/CustomLog/ {print $2}' $VHOST | head -n1)${DATE}"
-if [[ ! -f $VHOST ]]; then
-   echo "Could not find vhost file for ${DOMAIN}"
-elif [[ ! -f $LOGFILE ]]; then
-   echo "Could not find log file for ${DOMAIN}"
-fi
 
 echo
 case $opt in
