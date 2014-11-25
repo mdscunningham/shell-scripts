@@ -872,7 +872,7 @@ case $opt in
         password=$(_magdbconnect -e "SELECT password FROM ${prefix}admin_user WHERE is_active = 1 LIMIT 1;" | tail -1 | sed 's/\$/\\\$/g')
         _magdbconnect -e "UPDATE ${prefix}admin_user SET password=MD5('nexpassword') WHERE is_active = 1 LIMIT 1";
         echo -e "You have 20 seconds to login using the following credentials\n"
-        echo -n "LoginURL: "; _magdbconnect -e "SELECT value FROM core_config_data WHERE path LIKE \"web/unsecure/base_url\" LIMIT 1;" | tail -1 | sed "s/\/$/\/$adminurl/"
+        echo -n "LoginURL: "; _magdbconnect -e "SELECT value FROM ${prefix}core_config_data WHERE path LIKE \"web/unsecure/base_url\" LIMIT 1;" | tail -1 | sed "s/\/$/\/$adminurl/"
         echo -e "Username: $username\nPassword: nexpassword\n"
         for x in {1..20}; do sleep 1; printf ". "; done; echo
         _magdbconnect -e "UPDATE ${prefix}admin_user SET password=\"$password\" WHERE is_active = 1 LIMIT 1";
