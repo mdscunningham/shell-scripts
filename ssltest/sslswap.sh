@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-11-21
-# Updated: 2014-11-21
+# Updated: 2014-11-25
 #
 #
 #!/bin/bash
@@ -26,7 +26,7 @@ crthash=$(openssl x509 -noout -modulus -in ${domain}.new.crt | openssl md5 | awk
 
 if [[ $keyhash != $crthash ]]; then
   rm ${domain}.new.crt ${domain}.new.chain.crt
-  echo -e "\n[${BRIGHT}${RED}FAILED${NORMAL}] .. SSL does not match Priv.Key!\n";
+  echo -e "\n[${BRIGHT}${RED}FAILED${NORMAL}] .. SSL does not match Priv.Key!\n\nPriv.Key [${YELLOW}$keyhash${NORMAL}]\nSSL.Cert [${YELLOW}$crthash${NORMAL}]\n";
 
 else
   echo -e "\n[${BRIGHT}${GREEN}UPDATE${NORMAL}] .. SSL Certificate"
