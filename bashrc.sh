@@ -1361,6 +1361,53 @@ else
 fi
 }
 
+## Generate DCV file from the hash of the CSR for a Domain
+dcvfile(){
+if [[ -z $1 ]]; then read -p "Domain: " domain;
+elif [[ $1 == '.' ]]; then domain=$(pwd -P | sed 's:/chroot::' | cut -d/ -f4);
+else domain=$1; fi;
+
+crtfile="/home/*/var/${domain}/ssl/${domain}.csr"
+
+if [[ -f $(echo $crtfile) ]]; then
+  mod="$(openssl req -noout -modulus -in $crtfile)";
+  md5=$(echo $mod | openssl md5 | awk '{print $2}' | sed 's/\(.*\)/\U\1/g');
+  sha1=$(echo $mod | openssl sha1 | awk '{print $2}' | sed 's/\(.*\)/\U\1/g');
+  sudo -u $(getusr) -- echo -e "${sha1}\ncomodoca.com" > ${md5}.txt
+else echo "Could not find csr for ${domain}!"; fi
+}
+
+## Swap new SSL into place of old SSL and reload Apache
+sslswap(){
+domain=$(pwd -P | sed 's:/chroot::' | cut -d/ -f5)
+nano ${domain}.new.crt ${domain}.new.chain.crt;
+
+keyhash=$(openssl rsa -noout -modulus -in ${domain}.priv.key | openssl md5 | awk '{print $2}')
+crthash=$(openssl x509 -noout -modulus -in ${domain}.new.crt | openssl md5 | awk '{print $2}')
+
+if [[ $keyhash != $crthash ]]; then
+  rm ${domain}.new.crt ${domain}.new.chain.crt
+  echo -e "\n[${BRIGHT}${RED}FAILED${NORMAL}] .. SSL does not match Priv.Key!\n\nPriv.Key .. [${YELLOW}${keyhash}${NORMAL}]\nSSL.Cert .. [${YELLOW}${crthash}${NORMAL}]\n";
+
+else
+  echo -e "\n[${BRIGHT}${GREEN}UPDATE${NORMAL}] .. SSL Certificate"
+  rm ${domain}.crt; mv ${domain}{.new.crt,.crt}
+  chmod 600 ${domain}.crt; chown iworx. ${domain}.crt
+
+  # Check if new chain cert exists and is non-zero; then remove and replace the old one
+  if [[ -f ${domain}.new.chain.crt && -n $(cat ${domain}.new.chain.crt 2> /dev/null) ]]; then
+    echo "[${BRIGHT}${GREEN}UPDATE${NORMAL}] .. Chain Certificate"
+    rm ${domain}.chain.crt 2> /dev/null; mv ${domain}{.new.chain.crt,.chain.crt}
+    chmod 600 ${domain}.chain.crt; chown iworx. ${domain}.chain.crt
+  fi
+
+  echo -e "[${BRIGHT}${GREEN}RELOAD${NORMAL}] .. SSL update successful\n"
+  service httpd reload
+  echo -e "\nhttps://www.sslshopper.com/ssl-checker.html#hostname=${domain}\n"
+
+fi
+}
+
 ## Create symlinks to log directories for user
 linklogs(){
 DIR=$PWD; U=$(getusr); cd /home/$U/; sudo -u $U mkdir logs
@@ -1371,9 +1418,9 @@ echo -e "\nLinks to log directories created in:\n$PWD/logs/\n"; cd $DIR
 
 ## Find files group owned by username in employee folders or temp directories
 savethequota(){
-find /home/nex* -type f -group $(getusr) -exec ls -lah {} \;
 find /home/tmp -type f -size +100000k -group $(getusr) -exec ls -lah {} \;
 find /tmp -type f -size +100000k -group $(getusr) -exec ls -lah {} \;
+find /home/nex* -type f -group $(getusr) -exec ls -lah {} \;
 }
 
 ## Give a breakdown of user's large disk objects
