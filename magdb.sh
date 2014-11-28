@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-06-28
-# Updated: 2014-07-25
+# Updated: 2014-11-27
 #
 #
 #!/bin/bash
@@ -23,8 +23,10 @@ tables="core_cache core_cache_option core_cache_tag core_session dataflow_batch_
     log_url log_url_info log_visitor log_visitor_info log_visitor_online\
     report_viewed_product_index report_compared_product_index report_event catalog_compare_item"
 
-prefix=$(grep -i 'table_prefix' $SITEPATH/app/etc/local.xml 2> /dev/null | sed 's/.*A\[\(.*\)]].*/\1/');
-adminurl=$(grep -i 'frontname' $SITEPATH/app/etc/local.xml 2> /dev/null | sed 's/.*A\[\(.*\)]].*/\1/');
+# prefix=$(grep -i 'table_prefix' $SITEPATH/app/etc/local.xml 2> /dev/null | sed 's/.*A\[\(.*\)]].*/\1/');
+# adminurl=$(grep -i 'frontname' $SITEPATH/app/etc/local.xml 2> /dev/null | sed 's/.*A\[\(.*\)]].*/\1/');
+prefix="$(echo 'cat /config/global/resources/db/table_prefix/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
+adminurl="$(echo 'cat /config/admin/routers/adminhtml/args/frontName/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
 
 _magdbusage(){ echo " Usage: magdb [<path>] <option> [<query>]
     -a | --amazon .... Show Amazon errors from the exception log
@@ -54,8 +56,13 @@ _magdbusage(){ echo " Usage: magdb [<path>] <option> [<query>]
     return 0; }
 
 _magdbinfo(){ if [[ -f $SITEPATH/app/etc/local.xml ]]; then #Magento
-    dbconnect=($(grep -B3 dbname $SITEPATH/app/etc/local.xml | sed 's/.*A\[\(.*\)]].*/\1/'));
-    dbhost="${dbconnect[0]}"; dbuser="${dbconnect[1]}"; dbpass="${dbconnect[2]}"; dbname="${dbconnect[3]}";
+    # dbconnect=($(grep -B3 dbname $SITEPATH/app/etc/local.xml | sed 's/.*A\[\(.*\)]].*/\1/'));
+    # dbhost="${dbconnect[0]}"; dbuser="${dbconnect[1]}"; dbpass="${dbconnect[2]}"; dbname="${dbconnect[3]}";
+
+    dbhost="$(echo 'cat /config/global/resources/default_setup/connection/host/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
+    dbuser="$(echo 'cat /config/global/resources/default_setup/connection/username/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
+    dbpass="$(echo 'cat /config/global/resources/default_setup/connection/password/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
+    dbname="$(echo 'cat /config/global/resources/default_setup/connection/dbname/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
     ver=($(grep 'function getVersionInfo' -A8 $SITEPATH/app/Mage.php | grep major -A4 | cut -d\' -f4)); version="${ver[0]}.${ver[1]}.${ver[2]}.${ver[3]}"
     if grep 'Enterprise Edition' $SITEPATH/app/Mage.php > /dev/null; then edition="Enterprise Edition"; else edition="Community Edition"; fi
     else echo "${RED}Could not find configuration file!${NORMAL}"; return 1; fi; }
@@ -68,9 +75,9 @@ _magdbbackup(){ _magdbinfo;
 	if [[ -x /usr/bin/pigz ]]; then COMPRESS="/usr/bin/pigz"; echo "Compressing with pigz";
 		else COMPRESS="/usr/bin/gzip"; echo "Compressing with gzip"; fi
 	echo "Using: mysqldump --opt --skip-lock-tables -u'$dbuser' -p'$dbpass' -h $dbhost $dbname";
-	if [[ -f /usr/bin/pv ]]; then sudo -u $(getusr) mysqldump --opt --skip-lock-tables -u"$dbuser" -p"$dbpass" -h $dbhost $dbname \
+	if [[ -f /usr/bin/pv ]]; then sudo -u $(getusr) -- mysqldump --opt --skip-lock-tables -u"$dbuser" -p"$dbpass" -h $dbhost $dbname \
 		| pv -N 'MySQL-Dump' | $COMPRESS --fast | pv -N 'Compression' > ${dbname}-$(date +%Y.%m.%d-%H.%M).sql.gz;
-	else sudo -u $(getusr) mysqldump --opt --skip-lock-tables -u"$dbuser" -p"$dbpass" -h $dbhost $dbname \
+	else sudo -u $(getusr) -- mysqldump --opt --skip-lock-tables -u"$dbuser" -p"$dbpass" -h $dbhost $dbname \
 		| $COMPRESS --fast > ${dbname}-$(date +%Y.%m.%d-%H.%M).sql.gz; fi;
 	}
 
@@ -129,7 +136,9 @@ case $opt in
         if [[ -n $param ]]; then
           username=$(echo $param | awk '{print $1}'); password=$(echo $param | awk '{print $2}');
           _magdbconnect -e "UPDATE ${prefix}admin_user SET password = MD5(\"$password\") WHERE ${prefix}admin_user.username = \"$username\";"
-          echo -e "New Magento Login Credentials:\nUsername: $username\nPassword: $password"
+          echo -ne "New Magento Login Credentials\nLoginURL: ";
+          _magdbconnect -e "SELECT value FROM ${prefix}core_config_data WHERE path LIKE \"web/unsecure/base_url\" LIMIT 1;" | tail -1 | sed "s/\/$/\/$adminurl/"
+          echo -e "Username: $username\nPassword: $password"
         elif [[ -z $param || $param == '-h' || $param == '--help' ]]; then
           echo -e " Usage: magdb [<path>] <-P|--password> <username> <password>"
         fi ;;
