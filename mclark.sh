@@ -122,8 +122,113 @@ dnscheck(){
 
 ## Check the Usual Suspects when things aren't working right
 usual_suspects(){
-    wget -q -O ~/usual_suspects.sh nanobots.robotzombies.net/usual_suspects.sh;
-    chmod +x ~/usual_suspects.sh; ~/./usual_suspects.sh "$@"; }
+## shortcut for looking up pid start times/dates
+pid_start(){ ps -o lstart --pid=$(pgrep $1 | head -1) 2> /dev/null | tail -1; }
+
+if [[ $@ =~ -h ]]; then
+  echo -e "\n  Usage: usual_suspects [linecount] [option]\n\n Options:
+    -q|--quiet .... Skip sar and Magento log output
+    -v|--verbose .. Also display users at or near disk quota
+    -h|--help ..... Show this help output and exit\n";
+  return 0;
+fi
+
+if [[ $1 =~ [0-9].*$ ]]; then linecount=$1; else linecount=10; fi
+
+## Simple Service Check (web, php, mysql, dns)
+echo
+FORMAT="%-10s %-26s %s\n";
+printf "$FORMAT" " Service" " Started" " Status";
+printf "$FORMAT" "--Core----" "$(dash 26)" "$(dash 42)";
+
+# If the server is LiteSpeed
+if [[ -f /etc/init.d/lsws ]]; then
+	printf "$FORMAT" " LiteSpeed" " $(pid_start lite)" " LiteSpeed (pid $(echo $(pgrep lite))) is running ..."
+# If the server is nginx
+elif [[ -f /etc/init.d/nginx ]]; then
+	printf "$FORMAT" " Nginx" " $(pid_start nginx)" " $(service nginx status)"
+else # Apache
+	printf "$FORMAT" " Apache" " $(pid_start httpd)" " $(service httpd status)";
+fi;
+
+if [[ -f /etc/init.d/php-fpm ]]; then
+	printf "$FORMAT" " PHP-FPM" " $(pid_start php-fpm)" " $(service php-fpm status)";
+fi;
+
+printf "$FORMAT" " MySQL" " $(pid_start mysqld)" " $(service mysqld status | sed s/' SUCCESS! '//g)";
+printf "$FORMAT" " Memcache" " $(pid_start memcached)" " $(service memcached-multi status | head -1)";
+printf "$FORMAT" " DJBDNS" " $(pid_start tinydns)" " TinyDNS is$(service djbdns status | head -n1 | awk -F: '{print $2}')";
+printf "$FORMAT" " ProFTP" " $(pid_start proftpd)" " $(service proftpd status)";
+
+printf "$FORMAT" "--Mail----" "$(dash 26)" "$(dash 42)";
+printf "$FORMAT" " ClamAV" " $(pid_start clamd)" " $(service clamd status)";
+printf "$FORMAT" " SMTP" " $(pid_start send)" " SMTP is$(service smtp status | head -n1 | awk -F: '{print $2}')";
+printf "$FORMAT" " POP3" " $(ps -o lstart --pid=$(service pop3-ssl status | grep -Eo '[0-9]{2,}\)' | tr -d \) ) | tail -1)" " pop3-ssl$(service pop3-ssl status | awk -F: '{print $2}')";
+printf "$FORMAT" " IMAP4" " $(ps -o lstart --pid=$(service imap4-ssl status | grep -Eo '[0-9]{2,}\)' | tr -d \) ) | tail -1)" " imap4-ssl$(service imap4-ssl status | awk -F: '{print $2}')";
+
+printf "$FORMAT" "--Other---" "$(dash 26)" "$(dash 42)";
+printf "$FORMAT" " SNMP" " $(pid_start snmpd)" " $(service snmpd status)";
+printf "$FORMAT" " Iworx" " $(pid_start iworx)" " $(service iworx status)";
+
+## Check if /var /tmp /chroot are full
+echo -e "\nDisk Space and Inode Usage:"; dash 80; echo;
+for ((i=1 ; i<=$(df | wc -l) ; i++)); do
+	DF="$(df -h | head -n$i | tail -n1 | awk '{printf "%-12s %-6s %-6s %-6s %-5s",$1,$2,$3,$4,$5}')";
+	DI="$(df -i | head -n$i | tail -n1 | sed 's/ounted on/ounted_on/g' | awk '{printf "%-9s %-9s %-9s %-6s %s",$2,$3,$4,$5,$6}')";
+	if [[ $DF =~ [8,9][0-9]\% || $DF =~ 1[0-9]{2}\% || $DI =~ [8,9][0-9]\% || $DI =~ 1[0-9]{2}\% ]]; then color="${BRIGHT}${RED}"; else color=''; fi
+	echo -n "${color}${DF} | "; echo "${color}${DI}${NORMAL}"
+done
+
+## Check if the server hit Apache MaxClients or PHP-FPM max_children
+# Look for Apache MaxClients errors
+if grep -qi maxclients /var/log/httpd/error_log 2> /dev/null; then
+	echo -e "\nLast $linecount times httpd hit MaxClients"; dash 80; echo;
+	grep -i maxclients /var/log/httpd/error_log | tail -n$linecount;
+
+	echo -e "\nCount per day httpd hit MaxClients"; dash 80; echo;
+	grep -i maxclients /var/log/httpd/error_log | cut -d' ' -f1,2,3,5- | sort | uniq -c;
+fi
+
+# Look for PHP-FPM max_children errors
+if [[ -f /var/log/php-fpm/error.log ]]; then
+   if grep -qi max_children /var/log/php-fpm/error.log 2> /dev/null; then
+	echo -e "\nMax_Kids: Last ($linecount) Errors"; dash 80; echo;
+	grep -i max_children /var/log/php-fpm/error.log | tail -n$linecount;
+
+	echo -e "\nMax_Kids: Count/User/Day"; dash 80; echo;
+	grep -i max_children /var/log/php-fpm/error.log | cut -d' ' -f1,5- | sort | uniq -c;
+  fi;
+fi
+
+if [[ ! $@ =~ -q ]]; then
+## Check sar for high ram or cpu usage
+    echo -e "\nRecent processer load"; dash 80; echo;
+	sar -p | pee "head -n3 | tail -n1" "tail -n$linecount";
+    echo -e "\nRecent ram usage"; dash 80; echo;
+	sar -r | pee "head -n3 | tail -n1" "tail -n$linecount";
+
+## If you're in a html directory then check the Magento logs
+    if [[ -f app/etc/local.xml ]]; then
+	echo -e "\nRunning crons from this user:"; dash 80; echo;
+	ps aux | head -1; ps aux | awk "(\$1 ~ /$(pwd | sed 's:^/chroot::' | cut -d/ -f3)/) && /cron/"'{print}'; echo
+    fi;
+    if [[ -f var/log/system.log ]]; then
+	echo -e "\nMagento System.log"; dash 80; echo;
+	tail -n$linecount var/log/system.log 2> /dev/null; echo;
+    fi;
+    if [[ -f var/log/exception.log ]]; then
+	echo -e "\nMagento Exception.log"; dash 80; echo;
+	tail -n$linecount var/log/exception.log 2> /dev/null; echo;
+    fi;
+fi;
+
+## If using verbose to check user quotas
+if [[ $@ =~ -v ]]; then
+## Check if any user is having a quota issue
+checkquota -l
+fi;
+echo;
+}
 
 ## Function to print a number of dashes to the screen
 dash(){ for ((i=1;i<=$1;i++)); do printf "-"; done; }
@@ -404,8 +509,8 @@ echo -e "\nLinks to log directories created in:\n$PWD/logs/\n"; cd $DIR
 
 ## Find files group owned by username in employee folders or temp directories
 savethequota(){
-find /home/nex* -type f -group $(getusr) -exec ls -lah {} \;
 find /home/tmp -type f -size +100M -group $(getusr) -exec ls -lah {} \;
+find /home/nex* -type f -group $(getusr) -exec ls -lah {} \;
 find /tmp -type f -size +100M -group $(getusr) -exec ls -lah {} \;
 }
 
@@ -455,12 +560,11 @@ else
 fi
 ;;
 
-
 -f ) # Listing/Updating FTP Users
-if [[ $2 == '--list' ]]; then
+if [[ -z $2 || $2 == '--list' ]]; then
   echo; (echo "ShortName FullName"; sudo -u $(getusr) -- siteworx -u -n -c Ftp -a list) | column -t; echo
-elif [[ -z $2 || $2 =~ ^- ]]; then
-  ftpUser='ftp'; genPass $2 $3
+elif [[ $2 == '.' ]]; then
+  ftpUser='ftp'; genPass $3 $4
   sudo -u $(getusr) -- siteworx -u --login_domain $primaryDomain -n -c Ftp -a edit --password $newPass --confirm_password $newPass --user $ftpUser
   echo -e "\nFor Testing: \nlftp -e'ls;quit' -u ${ftpUser}@${primaryDomain},'$newPass' $(serverName)"
   echo -e "\nHostname: $(serverName)\nUsername: ${ftpUser}@${primaryDomain}\nPassword: $newPass\n"
@@ -473,14 +577,14 @@ fi
 ;;
 
 -s ) # Listing/Updating Siteworx Users
-if [[ $2 = '--list' ]]; then
+if [[ -z $2 || $2 = '--list' ]]; then
   echo; (echo "EmailAddress Name Status"; sudo -u $(getusr) -- siteworx -u -n -c Users -a listUsers | sed 's/ /_/g' | awk '{print $2,$3,$5}') | column -t; echo
-elif [[ -z $2 || $2 =~ ^- ]]; then # Lookup primary domain and primary email address
+elif [[ $2 == '.' ]]; then # Lookup primary domain and primary email address
   primaryEmail=$(nodeworx -u -n -c Siteworx -a querySiteworxAccounts --domain $primaryDomain --account_data email)
-  genPass $2 $3
+  genPass $3 $4
   nodeworx -u -n -c Siteworx -a edit --password "$newPass" --confirm_password "$newPass" --domain $primaryDomain
   echo -e "\nLoginURL: https://$(serverName):2443/siteworx/?domain=$primaryDomain\nUsername: $primaryEmail\nPassword: $newPass\nDomain: $primaryDomain\n"
-else # Updaet Password for specific user
+else # Update Password for specific user
   emailAddress=$2; genPass $3 $4
   sudo -u $(getusr) -- siteworx -u -n -c Users -a edit --user $emailAddress --password $newPass --confirm_password $newPass
   echo -e "\nLoginURL: https://$(serverName):2443/siteworx/?domain=$primaryDomain\nUsername: $emailAddress\nPassword: $newPass\nDomain: $primaryDomain\n"
@@ -597,7 +701,7 @@ if [[ "$2" == "in" ]]; then SRC="d="; DST="s=";
 
 _addrule(){
 echo; if ! grep -q "^\#.*$(getusr)" $CONFIG; then echo -e "\n# $(getusr)" >> $CONFIG; fi
-for x in $HOST; 
+for x in $HOST;
     do echo "${SRC}${PORT}${DST}${x} .. added to $CONFIG";
     sed -i "s|\(^\#.*$(getusr).*$\)|\1\n${SRC}${PORT}${DST}${x}|" $CONFIG
   done;
@@ -715,6 +819,7 @@ echo " Usage: traffic DOMAIN COMMAND [OPTIONS]
    scr | scripts.... Top empty User Agents (likely scripts) by # of hits
     ip | ipaddress . Top IPs by # of hits
     bw | bandwidth . Top IPs by bandwidth usage
+   bwt | bwtotal ... Total bandwidth used for a given day
    url | file ...... Top URLs/files by # of hits
    ref | referrer .. Top Referrers by # of hits
   type | request ... Summary of request types (GET/HEAD/POST)
@@ -744,14 +849,21 @@ if [[ $1 == '.' ]]; then DOMAIN=$(pwd | sed 's:^/chroot::' | cut -d/ -f4); shift
   else DOMAIN=$(echo $1 | sed 's:/$::'); shift; fi
 
 opt=$1; shift; # Set option variable using command parameter
-SEARCH=''; DATE=''; TOP='20'; TIME=''; DECOMP='egrep'; VERBOSE=0; # Initialize variables
+
+# Determin Log File Location
+VHOST="/etc/httpd/conf.d/vhost_${DOMAIN}.conf"
+if [[ $(hostname) =~ .*-lb ]]; then LOGFILE="/var/log/interworx/*/${DOMAIN}/logs/transfer.log";
+else LOGFILE="$(awk '/CustomLog/ {print $2}' $VHOST | head -n1)${DATE}"; fi
+
+SEARCH=''; DATE=''; TOP='20'; DECOMP='egrep -h'; VERBOSE=0; # Initialize variables
 OPTIONS=$(getopt -o "s:d:n:hv" --long "search:,days:,lines:,help,verbose" -- "$@") # Execute getopt
 eval set -- "$OPTIONS" # Magic
 
 while true; do # Evaluate the options for their options
 case $1 in
   -s|--search ) SEARCH="$2"; shift ;; # search string (regex)
-  -d|--days   ) DATE="-$(date --date="-$((${2}-1)) day" +%m%d%Y).zip"; DECOMP='zegrep'; shift ;; # days back
+  -d|--days   ) DATE="-$(date --date="-$((${2}-1)) day" +%m%d%Y).zip"; DECOMP='zegrep';
+                LOGFILE="/home/*/var/${DOMAIN}/logs/transfer.log${DATE}"; shift ;; # days back
   -n|--lines  ) TOP=$2; shift ;; # results
   -v|--verbose) VERBOSE=1 ;; # Debugging Output
   --          ) shift; break ;; # More Magic
@@ -759,8 +871,6 @@ case $1 in
 esac;
 shift;
 done
-
-LOGFILE="/home/*/var/${DOMAIN}/logs/transfer.log${DATE}"
 
 echo
 case $opt in
@@ -774,6 +884,8 @@ scr|scripts	) $DECOMP "$SEARCH" $LOGFILE | awk -F\" '($6 ~ /^-?$/) {print $1}' |
 ip|ipaddress	) $DECOMP "$SEARCH" $LOGFILE | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP ;;
 
 bw|bandwidth	) $DECOMP "$SEARCH" $LOGFILE | awk '{tx[$1]+=$10} END {for (x in tx) {printf "   %-15s   %8s M\n",x,(tx[x]/1024000)}}' | sort -k 2n | tail -n$TOP | tac ;;
+
+bwt|bwtotal     ) $DECOMP "$SEARCH" $LOGFILE | awk '{tx+=$10} END {print (tx/1024000)"M"}' ;;
 
 sum|summary	) for x in $($DECOMP "$SEARCH" $LOGFILE | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP | awk '{print $2}'); do
 		  echo $x; $DECOMP "$SEARCH" $LOGFILE | grep $x | cut -d' ' -f9,12- | sort | uniq -c | sort -rn | head -n$TOP | tr -d \"; echo; done ;;
