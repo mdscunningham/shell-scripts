@@ -755,8 +755,8 @@ tables="core_cache core_cache_option core_cache_tag core_session dataflow_batch_
     log_url log_url_info log_visitor log_visitor_info log_visitor_online\
     report_viewed_product_index report_compared_product_index report_event catalog_compare_item"
 
-prefix=$(grep -E 'table_prefix.*CDATA' $SITEPATH/app/etc/local.xml 2> /dev/null | sed 's/.*A\[\(.*\)]].*/\1/');
-adminurl=$(grep -E 'frontName.*CDATA' $SITEPATH/app/etc/local.xml 2> /dev/null | sed 's/.*A\[\(.*\)]].*/\1/')
+prefix="$(echo 'cat /config/global/resources/db/table_prefix/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
+adminurl="$(echo 'cat /config/admin/routers/adminhtml/args/frontName/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
 
 # if [[ -f $SITEPATH/app/etc/local.xml ]]; then continue=1; else echo -e "\n ${RED}Could not find Magento configuration file!${NORMAL}\n"; return 0; fi
 
@@ -787,8 +787,10 @@ _magdbusage(){ echo " Usage: magdb [<path>] <option> [<query>]
     return 0; }
 
 _magdbinfo(){ if [[ -f $SITEPATH/app/etc/local.xml ]]; then #Magento
-    dbconnect=($(grep -B3 dbname $SITEPATH/app/etc/local.xml | sed 's/.*A\[\(.*\)]].*/\1/'));
-    dbhost="${dbconnect[0]}"; dbuser="${dbconnect[1]}"; dbpass="${dbconnect[2]}"; dbname="${dbconnect[3]}";
+    dbhost="$(echo 'cat /config/global/resources/default_setup/connection/host/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
+    dbuser="$(echo 'cat /config/global/resources/default_setup/connection/username/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
+    dbpass="$(echo 'cat /config/global/resources/default_setup/connection/password/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
+    dbname="$(echo 'cat /config/global/resources/default_setup/connection/dbname/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
     ver=($(grep 'function getVersionInfo' -A8 $SITEPATH/app/Mage.php | grep major -A4 | cut -d\' -f4)); version="${ver[0]}.${ver[1]}.${ver[2]}.${ver[3]}"
     if grep 'Enterprise Edition' $SITEPATH/app/Mage.php > /dev/null; then edition="Enterprise Edition"; else edition="Community Edition"; fi
     else echo "${RED}Could not find configuration file!${NORMAL}"; return 1; fi; }
