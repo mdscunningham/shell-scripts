@@ -8,7 +8,7 @@ echo; nodeworx -unc DnsRecord --zone_id $zoneid -a queryRecords | awk '($4 ~ /SR
 
 # Autodiscover CNAME
 # autodiscover.$domain -> autodiscover.outlook.com
-nodeworx -unc DnsRecord -a addCNAME --zone_id $zoneid --host "autodiscover.$domain" --ttl "3600" --alias "autodiscover.outlook.com"
+nodeworx -unc DnsRecord -a addCNAME --zone_id $zoneid --host autodiscover.$domain --ttl 3600 --alias autodiscover.outlook.com
 
 # SPF Record:
 # v=spf1 include:spf.protection.outlook.com –all
