@@ -1,0 +1,41 @@
+#!/usr/bin/expect
+
+set host [lindex $argv 0]
+set domain [lindex $argv 1]
+
+## Edit this line to use the correct username
+spawn ssh -i ~/.ssh/nex[username].id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o PasswordAuthentication=no nex[username]@$host
+
+## Uncomment these lines to switch to root
+## if your .bashrc doesn't do this already
+# expect {
+#   ~ {send "r\r"}
+# }
+
+expect {
+  root {send "clear\r"}
+}
+
+if { $domain == "" } {
+  interact
+} else {
+  send "cd /home/*/$domain/html\r"
+
+  ## Uncomment the lines below to clear the directory before install
+  # send "ls | wc -l\r"
+  # expect {
+  # 3 {send "rm -r ./cgi-bin index.html\r"}
+  # }
+}
+
+expect {
+  html {send "hostname\r"}
+}
+
+## Add a \r before the last " in these commands, in order to have these autorun
+expect {
+  obp* {send "nkwordpress install -a -y -b http://\$(pwd | sed 's:^/chroot::' | cut -d/ -f3).nextmp.net ."}
+  -re "sip(.*)1-*" {send "nkmagento install -a -y -b http://\$(pwd | sed 's:^/chroot::' | cut -d/ -f3).nextmp.net/ ."}
+  -re "sip(.*)\[2-5\]" {send "nkmagento install -a -y -m -b http://\$(pwd | sed 's:^/chroot::' | cut -d/ -f3).nextmp.net/ ."}
+}
+interact
