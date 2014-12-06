@@ -40,8 +40,8 @@ else
     chmod 600 ${domain}.chain.crt; chown iworx. ${domain}.chain.crt
   fi
 
+  sudo -u $(getusr) siteworx -unc Ssl -a install --domain $domain --chain 1
   echo -e "[${BRIGHT}${GREEN}RELOAD${NORMAL}] .. SSL update successful\n"
-  # service httpd reload
   echo -e "\nhttps://www.sslshopper.com/ssl-checker.html#hostname=${domain}\n"
 
 fi
