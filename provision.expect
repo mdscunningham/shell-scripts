@@ -19,7 +19,7 @@ expect {
 if { $domain == "" } {
   interact
 } else {
-  send "cd /home/*/$domain/html\r"
+  send "cd /home/*/$domain/html; pwd\r"
 
   ## Uncomment the lines below to clear the directory before install
   # send "ls | wc -l\r"
