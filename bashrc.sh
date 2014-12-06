@@ -1316,17 +1316,25 @@ if [[ -z "$1" ]]; then SITEPATH="."; else SITEPATH="$1"; fi;
 ## Look up what domain is covered by the SSL loading at the requested domain
 findssl(){
 if [[ $2 == '-p' ]]; then P=$3; else P=443; fi
-if [[ $@ == *-v* ]]; then type="subject issuer"; else type="subject"; fi
+if [[ $@ =~ -v ]]; then type="subject issuer"; else type="subject"; fi
 
 D=$(echo $1 | sed 's/\///g')
-echo; echo "SSL loading on $D:$P"; dash 80; echo;
+echo; echo "$D:$P"; dash 80; echo;
+
+if [[ $(cat /etc/redhat-release) =~ 6\.[0-9] ]]; then SNI="-servername $D"; fi;
 
 for x in $type; do
-    echo "$x: "
-    echo | openssl s_client -connect $D:$P -nbio 2> /dev/null\
-     | grep $x | sed 's/ /_/g' | sed 's/\/\([A-Ze]\)/\n\1/g' | sed 's/=/: /g' | grep ^[A-Ze] | column -t | sed 's/_/ /g';
+    echo | openssl s_client -nbio -connect $D:$P $SNI 2> /dev/null\
+     | grep $x | sed 's/ /_/g;s/\/\([A-Ze]\)/\n\1/g;s/=/: /g' | grep ^[A-Ze] | column -t | sed 's/_/ /g';
     echo;
 done
+
+echo "SSL Return Code"; dash 80; echo
+rcode=$(echo | openssl s_client -nbio -connect $D:$P $SNI 2>/dev/null | grep Verify.*)
+echo $rcode
+if [[ $(echo $rcode | awk '{print $4}') =~ [0-9]{2} ]]; then
+  curl -s https://www.openssl.org/docs/apps/verify.html | grep -A4 $(echo $rcode | awk '{print $4}') | sed 's:<.*>: :g' | tr '\n' ' '; echo;
+fi; echo
 }
 
 ## Use CSR or CRT, generate a new key and CSR (SHA-256).
@@ -1403,8 +1411,8 @@ else
     chmod 600 ${domain}.chain.crt; chown iworx. ${domain}.chain.crt
   fi
 
+  sudo -u $(getusr) siteworx -unc Ssl -a install --domain $domain --chain 1
   echo -e "[${BRIGHT}${GREEN}RELOAD${NORMAL}] .. SSL update successful\n"
-  service httpd reload
   echo -e "\nhttps://www.sslshopper.com/ssl-checker.html#hostname=${domain}\n"
 
 fi
