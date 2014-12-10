@@ -11,6 +11,9 @@
 # Check for site's being brute forced (can search for a particular request)
 
 echo; if [[ -n $1 ]]; then SEARCH="$1"; echo "Search: $SEARCH"; else read -p 'Search: ' SEARCH; fi; echo
+for x in $(grep -Ec "POST.*${SEARCH}" /home/*/var/*/logs/transfer.log | grep -E [0-9]{4} | cut -d/ -f5); do
+  echo $x; traffic $x ip -s POST.*${SEARCH} | grep -E [0-9]{4}; echo;
+done
 
 # Determin Log File Location
 #VHOST="/etc/httpd/conf.d/vhost_*.conf"
@@ -22,9 +25,9 @@ echo; if [[ -n $1 ]]; then SEARCH="$1"; echo "Search: $SEARCH"; else read -p 'Se
 #  DOMAINS="$(echo $LOGFILE | cut -d/ -f5)";
 #fi
 
-for x in $(grep -Ec "POST.*${SEARCH}" /home/*/var/*/logs/transfer.log | grep -E [0-9]{4} | cut -d/ -f5); do
-  echo $x;
-  grep -E "POST.*${SEARCH}" /home/*/var/$x/logs/transfer.log\
-   | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
-   | sort -rn | grep -E [0-9]{4};
-done; echo
+#for x in $(grep -Ec "POST.*${SEARCH}" /home/*/var/*/logs/transfer.log | grep -E [0-9]{4} | cut -d/ -f5); do
+#  echo $x;
+#  grep -E "POST.*${SEARCH}" /home/*/var/$x/logs/transfer.log\
+#   | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
+#   | sort -rn | grep -E [0-9]{4}; echo
+#done;
