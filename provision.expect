@@ -1,4 +1,4 @@
-#!/usr/bin/expect
+h#!/usr/bin/expect
 
 set host [lindex $argv 0]
 set domain [lindex $argv 1]
@@ -20,6 +20,7 @@ if { $domain == "" } {
   interact
 } else {
   send "cd /home/*/$domain/html; pwd\r"
+  sleep 0.5
 
   ## Uncomment the lines below to clear the directory before install
   # send "ls | wc -l\r"
@@ -31,11 +32,12 @@ if { $domain == "" } {
 expect {
   html {send "hostname\r"}
 }
+sleep 0.5
 
 ## Add a \r before the last " in these commands, in order to have these autorun
 expect {
   obp* {send "nkwordpress install -a -y -b http://\$(pwd | sed 's:^/chroot::' | cut -d/ -f3).nextmp.net ."}
-  -re "sip(.*)1-*" {send "nkmagento install -a -y -b http://\$(pwd | sed 's:^/chroot::' | cut -d/ -f3).nextmp.net/ ."}
-  -re "sip(.*)\[2-5\]" {send "nkmagento install -a -y -m -b http://\$(pwd | sed 's:^/chroot::' | cut -d/ -f3).nextmp.net/ ."}
+  -re "sip\[a-z\]*1-\[0-9\]*" {send "nkmagento install -a -y -b http://\$(pwd | sed 's:^/chroot::' | cut -d/ -f3).nextmp.net/ ."}
+  -re "sip\[a-z\]*\[2-5\]-\[0-9\]*" {send "nkmagento install -a -y -m -b http://\$(pwd | sed 's:^/chroot::' | cut -d/ -f3).nextmp.net/ ."}
 }
 interact
