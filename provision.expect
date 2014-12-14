@@ -2,9 +2,10 @@
 
 set host [lindex $argv 0]
 set domain [lindex $argv 1]
+set username [lindex $argv 2]
 
 ## Edit this line to use the correct username
-spawn ssh -i ~/.ssh/nex[username].id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o PasswordAuthentication=no nex[username]@$host
+spawn ssh -i ~/.ssh/nex$username.id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -o PasswordAuthentication=no nex$username@$host
 
 ## Uncomment these lines to switch to root
 ## if your .bashrc doesn't do this already
