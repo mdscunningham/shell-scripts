@@ -8,7 +8,7 @@
 #
 #!/bin/bash
 
-## http://www.tutorialspoint.com/mysql/mysql-using-sequences.htmindex_process_event
+## http://www.tutorialspoint.com/mysql/mysql-using-sequences.htm
 ## ^^^ great reference for command examples
 
 ## https://dev.mysql.com/doc/refman/5.6/en/show-table-status.html
@@ -64,7 +64,7 @@ _magdbinfo(){ if [[ -f $SITEPATH/app/etc/local.xml ]]; then #Magento
     dbpass="$(echo 'cat /config/global/resources/default_setup/connection/password/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
     dbname="$(echo 'cat /config/global/resources/default_setup/connection/dbname/text()' | xmllint --nocdata --shell $SITEPATH/app/etc/local.xml | sed '1d;$d')"
     ver=($(grep 'function getVersionInfo' -A8 $SITEPATH/app/Mage.php | grep major -A4 | cut -d\' -f4)); version="${ver[0]}.${ver[1]}.${ver[2]}.${ver[3]}"
-    if grep 'Enterprise Edition' $SITEPATH/app/Mage.php > /dev/null; then edition="Enterprise Edition"; else edition="Community Edition"; fi
+    if grep -E 'Enterprise Edition|Commercial Edition' $SITEPATH/app/Mage.php > /dev/null; then edition="Enterprise Edition"; else edition="Community Edition"; fi
     else echo "${RED}Could not find configuration file!${NORMAL}"; return 1; fi; }
 
 _magdbsum(){ echo -e "${BRIGHT}$edition: ${RED}$version ${NORMAL}\n${BRIGHT}Connection Summary: ${RED}$dbuser:$dbname$(if [[ -n $prefix ]]; then echo .$prefix; fi)${NORMAL}\n"; }
