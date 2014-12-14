@@ -1,4 +1,4 @@
-h#!/usr/bin/expect
+#!/usr/bin/expect
 
 set host [lindex $argv 0]
 set domain [lindex $argv 1]
