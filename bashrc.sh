@@ -433,7 +433,7 @@ backupsvr(){
 checkquota;
 NEW_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | tail -1 | tr -d \' | sed 's/10\.17\./178\.17\./g; s/10\.1\./103\.1\./g; s/10\.240\./192\.240\./g');
 ALL_IPADDR=$(awk -F/ '/server.allow/ {print $NF}' /usr/sbin/r1soft/log/cdp.log | sort | uniq | tr -d \' | sed 's/10\.17\./178\.17\./g; s/10\.1\./103\.1\./g; s/10\.240\./192\.240\./g');
-if [[ $NEW_IPADDR =~ ^172\. ]]; then INTERNAL=$(curl -s nanobots.robotzombies.net/r1bs-internal); fi
+if [[ $NEW_IPADDR =~ ^172\. ]]; then INTERNAL=$(curl -s http://mdsc.info/r1bs-internal); fi
 
 _printbackupsvr(){
   if [[ $1 =~ ^172\. ]]; then

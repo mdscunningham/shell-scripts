@@ -24,7 +24,7 @@ ALL_IPADDR=$(
 # 10.240.x.x --> 192.240.x.x -- MIA/SJC Servers
 # 10.249.x.x --> 192.240.x.x -- MIA/SJC Servers
 
-if [[ $NEW_IPADDR =~ ^172\. ]]; then INTERNAL=$(curl -s nanobots.robotzombies.net/r1bs-internal); fi
+if [[ $NEW_IPADDR =~ ^172\. ]]; then INTERNAL=$(curl -s http://mdsc.info/r1bs-internal); fi
 
 # ^^^ US servers using internal IPs -- Lookup r1bs in lookup table above
 # 172.x.x.x  --> Internal IP for US servers
