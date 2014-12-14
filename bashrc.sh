@@ -1953,6 +1953,7 @@ while true; do # Evaluate the options for their options
 case $1 in
   -s|--search ) SEARCH="$2"; shift ;; # search string (regex)
   -d|--days   ) DATE="-$(date --date="-$((${2}-1)) day" +%m%d%Y).zip"; DECOMP='zegrep';
+		echo; date --date="-${2} day" +"%A, %B %d, %Y -- %Y.%m.%d";
                 LOGFILE="/home/*/var/${DOMAIN}/logs/transfer.log${DATE}"; shift ;; # days back
   -n|--lines  ) TOP=$2; shift ;; # results
   -v|--verbose) VERBOSE=1 ;; # Debugging Output
