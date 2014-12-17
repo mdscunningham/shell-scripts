@@ -485,38 +485,41 @@ done; echo
 
 ## Find IPs in use by account by finding secondary domains, and searching the vhost files
 accountips(){
-echo; DIR=$PWD; cd /home/$(getusr);
-FORMAT=" %-15s  %-15s  %-3s  %-3s  %s\n";
-HIGHLIGHT="${BRIGHT}${RED} %-15s  %-15s  %-3s  %-3s  %s${NORMAL}\n";
-printf "$FORMAT" " ServerIP" " LiveIP" "SSL" "FPM" " DomainName";
-printf "$FORMAT" "$(dash 15)" "$(dash 15)" "---" "---" "$(dash 39)";
-for x in */html; do
-  D=$(echo $x | cut -d/ -f1);
-  L=$(dig +tries=1 +time=3 +short $1$D | grep -v \; | head -n1);
-  I=$(grep -i virtualhost /etc/httpd/conf.d/vhost_$D.conf 2> /dev/null | head -n1 | awk '{print $2}' | cut -d: -f1);
-  S=$(if grep -q ':443' /etc/httpd/conf.d/vhost_$D.conf &> /dev/null; then echo SSL; fi);
-  F=$(if grep -q 'MAGE_RUN' /etc/httpd/conf.d/vhost_$D.conf &> /dev/null; then echo FIX; fi);
-  if [[ $I != $L ]]; then printf "$HIGHLIGHT" "$I" "$L" "${S:- - }" "${F:- - }" "$1$D";
-  else printf "$FORMAT" "$I" "$L" "${S:- - }" "${F:- - }" "$1$D"; fi;
-done; echo; cd $DIR
+    echo; DIR=$PWD; cd /home/$(getusr);
+    FORMAT=" %-15s  %-15s  %3s  %3s  %s\n";
+    HIGHLIGHT="${BRIGHT}${RED} %-15s  %-15s  %3s  %3s  %s${NORMAL}\n";
+    printf "$FORMAT" " ServerIP" " LiveIP" "SSL" "FPM" " DomainName";
+    printf "$FORMAT" "$(dash 15)" "$(dash 15)" "---" "---" "$(dash 39)";
+    for x in */html; do
+        D=$(echo $x | cut -d/ -f1);
+	vhost="/etc/httpd/conf.d/vhost_$D.conf"
+        L=$(dig +tries=1 +time=3 +short $D | grep -E '^[0-9]{1,3}\.' | head -n1);
+        I=$(awk '/.irtual.ost/ {print $2}' $vhost 2> /dev/null | head -n1 | cut -d: -f1);
+        S=$(if grep -q ':443' $vhost &> /dev/null; then echo SSL; fi)
+	F=$(if grep -q 'MAGE_RUN' $vhost &> /dev/null; then echo FIX; fi)
+        if [[ $I != $L ]];
+	  then printf "$HIGHLIGHT" "$I" "$L" "${S:- - }" "${F:- - }" "$1$D";
+          else printf "$FORMAT" "$I" "$L" "${S:- - }" "${F:- - }" "$1$D"; fi;
+    done;
+    echo; cd $DIR
 }
 
 ## Match secondary domains to IPs on the server using vhost files
 domaincheck(){
-echo; FORMAT=" %-15s  %-15s  %-3s  %-3s  %s\n";
-HIGHLIGHT="${BRIGHT}${RED} %-15s  %-15s  %-3s  %-3s  %s${NORMAL}\n"
-printf "$FORMAT" " ServerIP" " LiveIP" "SSL" "FPM" " DomainName";
-printf "$FORMAT" "$(dash 15)" "$(dash 15)" "---" "---"  "$(dash 39)";
-
-for x in /etc/httpd/conf.d/vhost_[^000_]*.conf; do
-  D=$(echo $x | cut -d_ -f2 | sed s/".conf"//g); L=$(dig +time=3 +tries=1 +short $D | grep -v \; | head -n1);
-  I=$(grep -i virtualhost /etc/httpd/conf.d/vhost_$D.conf 2> /dev/null | head -n1 | awk '{print $2}' | cut -d: -f1);
-  S=$(if grep -q ':443' /etc/httpd/conf.d/vhost_$D.conf 2> /dev/null; then echo "SSL"; fi);
-  F=$(if grep -q 'MAGE_RUN' /etc/httpd/conf.d/vhost_$D.conf 2> /dev/null; then echo "FIX"; fi);
-  if [[ $I != $L ]];
-    then printf "$HIGHLIGHT" "$I" "$L" "${S:- - }" "${F:- - }" "$D";
-    else printf "$FORMAT" "$I" "$L" "${S:- - }" "${F:- - }" "$D"; fi;
-done; echo
+ echo; FMT=" %-15s  %-15s  %3s  %3s  %s\n"
+ HLT="${BRIGHT}${RED} %-15s  %-15s  %3s  %3s  %s${NORMAL}\n"
+ printf "$FMT" " Server IP" " Live IP" "SSL" "FPM" " Domain"
+ printf "$FMT" "$(dash 15)" "$(dash 15)" "---" "---" "$(dash 44)"
+ for x in /etc/httpd/conf.d/vhost_[^000]*.conf; do
+   D=$(basename $x .conf | cut -d_ -f2);
+   V=$(awk '/.irtual.ost/ {print $2}' $x | head -1 | cut -d: -f1);
+   I=$(dig +short +time=1 +tries=1 $D | grep -E '^[0-9]{1,3}\.' | head -1);
+   S=$(if grep :443 $x &> /dev/null; then echo SSL; fi);
+   F=$(if grep MAGE_RUN $x &> /dev/null; then echo FIX; fi);
+   if [[ "$I" != "$V" ]];
+   then printf "$HLT" "$V" "$I" "${S:- - }" "${F:- - }" "$D";
+   else printf "$FMT" "$V" "$I" "${S:- - }" "${F:- - }" "$D"; fi
+ done; echo
 }
 
 ## Find IPs that are not configured in any vhost files
