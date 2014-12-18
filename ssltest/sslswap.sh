@@ -3,12 +3,12 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-11-21
-# Updated: 2014-11-25
+# Updated: 2014-12-17
 #
 #
 #!/bin/bash
 
-# Development suggested by Lawrence Leverette
+# Development suggested by Lawrence Leverett
 # Copy paste a new SSL and Chain Cert in temp files, then swap them in place and
 # reload Apache, if the hashes are the same. The assumption is that you run this
 # from the SSL directory for the domain in questions, so the script will get the
@@ -30,7 +30,7 @@ if [[ $keyhash != $crthash ]]; then
 
 else
   echo -e "\n[${BRIGHT}${GREEN}UPDATE${NORMAL}] .. SSL Certificate"
-  rm ${domain}.crt; mv ${domain}{.new.crt,.crt}
+  rm ${domain}.crt 2> /dev/null; mv ${domain}{.new.crt,.crt}
   chmod 600 ${domain}.crt; chown iworx. ${domain}.crt
 
   # Check if new chain cert exists and is non-zero; then remove and replace the old one
@@ -40,7 +40,12 @@ else
     chmod 600 ${domain}.chain.crt; chown iworx. ${domain}.chain.crt
   fi
 
-  sudo -u $(getusr) siteworx -unc Ssl -a install --domain $domain --chain 1
+  # Check if new chain cert exists and is non-zero; then install new SSL with Chain, else exclude chain
+  if [[ -f ${domain}.new.chain.crt && -n $(cat ${domain}.new.chain.crt 2> /dev/null) ]]; then
+    sudo -u $(getusr) siteworx -unc Ssl -a install --domain $domain --chain 1
+  else
+    sudo -u $(getusr) siteworx -unc Ssl -a install --domain $domain --chain 0
+  fi
   echo -e "[${BRIGHT}${GREEN}RELOAD${NORMAL}] .. SSL update successful\n"
   echo -e "\nhttps://www.sslshopper.com/ssl-checker.html#hostname=${domain}\n"
 
