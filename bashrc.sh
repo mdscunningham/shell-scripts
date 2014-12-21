@@ -493,7 +493,7 @@ accountips(){
     for x in */html; do
         D=$(echo $x | cut -d/ -f1);
 	vhost="/etc/httpd/conf.d/vhost_$D.conf"
-        L=$(dig +tries=1 +time=3 +short $D | grep -E '^[0-9]{1,3}\.' | head -n1);
+        L=$(dig +tries=1 +time=3 +short $1$D | grep -E '^[0-9]{1,3}\.' | head -n1);
         I=$(awk '/.irtual.ost/ {print $2}' $vhost 2> /dev/null | head -n1 | cut -d: -f1);
         S=$(if grep -q ':443' $vhost &> /dev/null; then echo SSL; fi)
 	F=$(if grep -q 'MAGE_RUN' $vhost &> /dev/null; then echo FIX; fi)
