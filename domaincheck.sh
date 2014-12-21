@@ -60,3 +60,6 @@ dash(){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
    else printf "$FMT" "$V" "$I" "${S:- - }" "${F:- - }" "$D"; fi
  done; echo
 #
+
+# do for a reseller's accounts
+# for x in $(lreseller | awk '($1 ~ /4/) && !($2 ~ /0/) {print $3}'); do echo -n $(dig +short $x); echo " -> $x"; done | column -t
