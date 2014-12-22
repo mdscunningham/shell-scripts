@@ -496,14 +496,14 @@ vhost="$(echo /etc/httpd/conf.d/vhost_[^000]*.conf)"; sub='';
 case $1 in
   -a) if [[ -n $2 ]]; then sub=$2; else sub=''; fi
       vhost="$(grep -l $(getusr) /etc/httpd/conf.d/vhost_[^000]*.conf)" ;;
-  -r) if [[ -z $2 ]]; then read -p "ResellerID: " r_id; else r_id=$2; fi; echo;
+  -r) if [[ -z $2 ]]; then read -p "ResellerID: " r_id; else r_id=$2; fi;
       vhost=$(for r_user in $(nodeworx -unc Siteworx -a listAccounts | awk "(\$5 ~ /^$r_id$/)"'{print $2}'); do grep -l $r_user /etc/httpd/conf.d/vhost_[^000]*.conf; done | sort | uniq) ;;
   -v) FMT=" %-15s  %-15s  %3s  %3s  %3s  %s\n"
       HLT="${BRIGHT}${RED} %-15s  %-15s  %3s  %3s  %3s  %s${NORMAL}\n"
       #printf "$FMT" " Server IP" " Live IP" "SSL" "FPM" "TMP" " Domain"
       #printf "$FMT" "$(dash 15)" "$(dash 15)" "---" "---" "---" "$(dash 44)"
       ;;
-esac
+esac; echo
 
 FMT=" %-15s  %-15s  %3s  %3s  %s\n"
 HLT="${BRIGHT}${RED} %-15s  %-15s  %3s  %3s  %s${NORMAL}\n"
