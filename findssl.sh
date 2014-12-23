@@ -26,7 +26,7 @@ echo "SSL Return Code"; dash 80; echo
 rcode=$(echo | openssl s_client -nbio -connect $D:$P $SNI 2>/dev/null | grep Verify.*)
 echo $rcode
 if [[ $(echo $rcode | awk '{print $4}') =~ [0-9]{2} ]]; then
-  curl -s https://www.openssl.org/docs/apps/verify.html | grep -A4 $(echo $rcode | awk '{print $4}') | sed 's:<.*>: :g' | tr '\n' ' '; echo;
+  curl -s https://www.openssl.org/docs/apps/verify.html | grep -A4 "$(echo $rcode | awk '{print $4}') X509" | grep -v X509 | sed 's/<[^>]*>//g' | tr '\n' ' '; echo;
 fi; echo
 
 # Try to find any additional domains that the certificate is good for (multidomain)
