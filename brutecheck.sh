@@ -11,7 +11,7 @@
 # Check for site's being brute forced (can search for a particular request)
 
 echo; if [[ -n $1 ]]; then SEARCH="$1"; echo "Search: $SEARCH"; else read -p 'Search: ' SEARCH; fi; echo
-for x in $(grep -Ec "POST.*${SEARCH}" /home/*/var/*/logs/transfer.log | grep -E [0-9]{4}$ | cut -d/ -f5); do
+for x in $(grep -Ec "POST.*${SEARCH}" /home/*/var/*/logs/transfer.log /var/log/interworx/*/*/logs/transfer.log /var/log/interworx/*/logs/transfer.log 2> /dev/null | grep -E [0-9]{4}$ | cut -d/ -f5); do
   echo $x; traffic $x ip -s POST.*${SEARCH} | grep -E [0-9]{4}; echo;
 done
 
