@@ -526,7 +526,7 @@ for x in $vhost; do
 freeips(){
 echo; for x in $(ip addr show | awk '/inet / {print $2}' | cut -d/ -f1 | grep -Ev '^127\.|^10\.|^172\.'); do
   printf "\n%-15s " "$x"; grep -l $x /etc/httpd/conf.d/vhost_[^000_]*.conf;
-done | grep -v [a-z] | column -t; echo
+done | grep -v \.conf$ | column -t; echo
 }
 
 ## Check if gzip is working for domain(s)

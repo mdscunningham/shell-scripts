@@ -15,7 +15,7 @@ _freeips ()
     do
         printf "\n%-15s " "$x";
         grep -l $x /etc/httpd/conf.d/vhost_[^000_]*.conf;
-    done | grep -v [a-z] | column -t;
+    done | grep -v .conf$ | column -t;
     echo
 }
 _freeips
