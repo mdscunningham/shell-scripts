@@ -29,10 +29,10 @@ done; echo
 
 if [[ $LIVE != '1' && -n $TARGET ]]; then
   echo -e "PERFORMING DRY-RUN OF RSYNC\n"
-  sudo -u $USERNAME rsync -p --dry-run -v -e ssh -a -u -z ./ $USERNAME@$TARGET:/home/$USERNAME
+  sudo -u $USERNAME rsync -p --dry-run -v -e ssh -a -u -z ./ ${USERNAME}@${TARGET}:/home/$USERNAME
 elif [[ $LIVE == '1' && -n $TARGET ]]; then
   echo -e "PERFORMING LIVE RSYNC\n"
-  sudo -u $USERNAME rsync --exclude ./var --exclude iworx-backup -p -v -e ssh -a -u -z ./ $USERNAME@$TARGET:/home/$USERNAME
+  sudo -u $USERNAME rsync --exclude ./var --exclude iworx-backup -p -v -e ssh -a -u -z ./ ${USERNAME}@${TARGET}:/home/$USERNAME
   echo -e "Cleaning up var and db backups ...\n"; rm -r nex-db-backups var.tar.gz 2> /dev/null; echo -e "Done!\n"
 fi
 
