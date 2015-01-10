@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-06-28
-# Updated: 2014-11-27
+# Updated: 2015-01-10
 #
 #
 #!/bin/bash
@@ -30,6 +30,7 @@ adminurl="$(echo 'cat /config/admin/routers/adminhtml/args/frontName/text()' | x
 
 _magdbusage(){ echo " Usage: magdb [<path>] <option> [<query>]
     -a | --amazon .... Show Amazon errors from the exception log
+    -A | --admin ..... Add a new admin user into the database ${CYAN}(New)${NORMAL}
     -b | --base ...... Show all configured Base Urls
     -B | --backup .... Backup the Magento database as the user
     -c | --cron ...... Show Cron Jobs and Their Statuses
@@ -42,7 +43,7 @@ _magdbusage(){ echo " Usage: magdb [<path>] <option> [<query>]
     -o | --logclean .. Clean out (truncate) log tables
     -O | --optimize .. Truncate and optimize log tables
     -p | --parallel .. Show all parallel download base_urls
-    -P | --password .. Update or reset password for user ${CYAN}(New)${NORMAL}
+    -P | --password .. Update or reset password for user
     -r | --rewrite ... Show the count of Url Rewrites
     -s | --swap ...... Temporarily swap out admin password ${RED}${BRIGHT}(BETA!)${NORMAL}
     -S | --ssl ....... Check/Set secure frontEnd or Admin
@@ -83,6 +84,11 @@ _magdbbackup(){ _magdbinfo;
 
 case $opt in
  -a|--amazon) _magdbconnect -e "SELECT * FROM ${prefix}amazon_log_exception ORDER BY log_id DESC LIMIT 1;" ;;
+
+ -A|--admin) read -p "Firstname: " firstname; read -p "Lastname: " lastname; read -p "Email: " emailaddr; read -p "Username: " username; password=$(xkcd);
+	_magdbconnect -e "INSERT INTO ${prefix}admin_user SELECT NULL \`user_id\`, \"$firstname\" \`firstname\`, \"$lastname\" \`lastname\`, \"$emailaddr\" \`email\`, \"$username\" \`username\`, MD5(\"$password\") \`password\`, NOW() \`created\`, NULL \`modified\`, NULL \`logdate\`, 0 \`lognum\`, 0 \`reload_acl_flag\`, 1 \`is_active\`, NULL \`extra\`, NULL \`rp_token\`, NOW() \`rp_token_created_at\`";
+        _magdbconnect -e "INSERT INTO ${prefix}admin_role SELECT NULL \`role_id\`, (SELECT \`role_id\` FROM ${prefix}admin_role WHERE \`role_name\` = 'Administrators') \`parent_id\`, 2 \`tree_level\`, 0 \`sort_order\`, 'U' \`role_type\`, (SELECT \`user_id\` FROM ${prefix}admin_user WHERE \`username\` = \"$username\") \`user_id\`, 'admin' \`role_name\`;";
+	echo -e "Username: $username\nPassword: $password\n" ;;
 
  -b|--base) _magdbconnect -e "SELECT * FROM ${prefix}core_config_data WHERE path RLIKE \"base_url\";" ;;
 
