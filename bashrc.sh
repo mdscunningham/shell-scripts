@@ -1619,8 +1619,7 @@ echo -e "\nHostname: $(serverName)\nUsername: $(getusr)\nPassword: $newPass\n";
 givemessh(){
 echo; PASS=$(xkcd) && nksshd userControl -Csr $SUDO_USER -p $PASS
 if [[ -z "$1" ]]; then echo; read -p "Hostname: " HOST; else HOST="$1"; fi
-echo -e "\n# $HOST for file transfer\nsshd: $(dig +short $HOST)\n" >> /etc/hosts.allow
-echo "Whitelist added for $HOST in /etc/hosts.allow"; echo
+whitelist ssh $(dig +short $HOST) "# $HOST for file transfer"
 }
 
 ## Bash completion for Whitelist
