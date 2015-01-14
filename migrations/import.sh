@@ -15,9 +15,10 @@ fi
 if [[ -d nex-db-backups ]]; then
   cd nex-db-backups
   for x in *.sql.gz; do
+    size="$(gunzip -l $x | awk 'END{print $2}')"
     dbname="$(echo $x | cut -d. -f1)"
     m -e"drop database $dbname; create database $dbname;"
-    zcat $x | pv -l "Importing $x" | m $dbname
-    chown -R ${USERNAME}. "/var/lib/mysql/${USERNAME}_*"
+    zcat $x | pv -s $size -l "Importing $x" | m $dbname
+    chown -R ${USERNAME}. "/var/lib/mysql/$dbname"
   done && cd ../ && echo "Cleaning up nex-db-backups" && rm -r nex-db-backups
 fi
