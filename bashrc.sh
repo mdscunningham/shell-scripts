@@ -778,7 +778,7 @@ adminurl="$(echo 'cat /config/admin/routers/adminhtml/args/frontName/text()' | x
 
 _magdbusage(){ echo " Usage: magdb [<path>] <option> [<query>]
     -a | --amazon .... Show Amazon errors from the exception log
-    -A | --admin ..... Add a new admin user into the database
+    -A | --admin ..... Add a new admin user into the database ${CYAN}(New)${NORMAL}
     -b | --base ...... Show all configured Base Urls
     -B | --backup .... Backup the Magento database as the user
     -c | --cron ...... Show Cron Jobs and Their Statuses
@@ -791,7 +791,7 @@ _magdbusage(){ echo " Usage: magdb [<path>] <option> [<query>]
     -o | --logclean .. Clean out (truncate) log tables
     -O | --optimize .. Truncate and optimize log tables
     -p | --parallel .. Show all parallel download base_urls
-    -P | --password .. Update or reset password for user ${CYAN}(New)${NORMAL}
+    -P | --password .. Update or reset password for user
     -r | --rewrite ... Show the count of Url Rewrites
     -s | --swap ...... Temporarily swap out admin password ${RED}${BRIGHT}(BETA!)${NORMAL}
     -u | --users ..... Show all Admin Users' information

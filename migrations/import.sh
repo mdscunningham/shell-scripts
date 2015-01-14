@@ -19,6 +19,6 @@ if [[ -d nex-db-backups ]]; then
     dbname="$(echo $x | cut -d. -f1)"
     m -e"drop database $dbname; create database $dbname;"
     zcat $x | pv -s $size -l "Importing $x" | m $dbname
-    chown -R ${USERNAME}. "/var/lib/mysql/$dbname"
+    chown -R mysql:${USERNAME} "/var/lib/mysql/$dbname"
   done && cd ../ && echo "Cleaning up nex-db-backups" && rm -r nex-db-backups
 fi
