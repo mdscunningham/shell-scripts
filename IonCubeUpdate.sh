@@ -28,21 +28,20 @@ elif [[ -d /usr/lib64/php/modules/ ]]; then # CentOS 6
 fi
 
 # Copy the correct .so driver file to the target directory
-if [[ ! -f ${phpdir}ioncube_loader_lin_${ver}.so ]]; then
+if [[ -f ${phpdir}ioncube.so ]]; then
+  echo -e "\n${phpdir}ioncube.so driver file exist, backing up before continuing\n"
   cp ~/downloads/ioncube/ioncube_loader_lin_${ver}* ${phpdir}
-else echo -e "driver file already exists backing up before continuing.\n"
-  gzip ${phpdir}ioncube_loader_lin_${ver}*;
-  cp ~/downloads/ioncube/ioncube_loader_lin_${ver}* ${phpdir}
+  gzip ${phpdir}ioncube.so && mv ${phpdir}ioncube_loader_lin_${ver}.so ${phpdir}ioncube.so
+elif [[ -f ${phpdir}ioncube_loader_lin_${ver}.so ]]; then
+  echo -e "\n${phpdir}ioncube_loader_lin_${ver}.so driver file exists, backing up before updating.\n"
+  gzip ${phpdir}ioncube_loader_lin_${ver}* && cp ~/downloads/ioncube/ioncube_loader_lin_${ver}* ${phpdir}
 fi
 
-# Create correct config file for the service
-if [[ -f /etc/php.d/ioncube-loader.ini ]]; then
-  echo -e "ioncube-loader.ini file already exists!\n";
-elif [[ -f /etc/php.d/ioncube.ini ]]; then
-  echo -e "ioncube.ini file exists, replacing with ioncube-loader.ini\n"; gzip /etc/php.d/ioncube.ini;
-  echo -e "zend_extension=${phpdir}ioncube_loader_lin_${ver}.so" >> /etc/php.d/ioncube-loader.ini;
+# Create correct config file for the service if necessary
+if [[ -f ${config} ]]; then
+  echo -e "${config} file already exists!\n";
 else
-  echo -e "Setting up new ioncube-loader.ini file\n"
+  echo -e "Setting up new /etc/php.d/ioncube-loader.ini file\n"
   echo -e "zend_extension=${phpdir}ioncube_loader_lin_${ver}.so" >> /etc/php.d/ioncube-loader.ini;
 fi
 
@@ -50,5 +49,5 @@ fi
 if [[ -d /etc/php-fpm.d/ ]]; then
   php -v && service php-fpm restart
 else
-  httpd -t && service httpd restart;
+  php -v && httpd -t && service httpd restart;
 fi
