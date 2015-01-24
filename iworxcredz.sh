@@ -51,16 +51,17 @@ if [[ -z $2 || $2 == '--list' ]]; then
 elif [[ $2 == '.' ]]; then
   ftpUser='ftp'; genPass $3 $4
   sudo -u $(getusr) siteworx -u --login_domain $primaryDomain -n -c Ftp -a edit --password $newPass --confirm_password $newPass --user $ftpUser
-  echo -e "\nFor Testing: \nlftp -e'ls;quit' -u ${ftpUser}@${primaryDomain},'$newPass' $(serverName)"
+  echo -e "\nFor Testing:\nlftp -e'ls;quit' -u ${ftpUser}@${primaryDomain},'$newPass' $(serverName)"
   echo -e "\nHostname: $(serverName)\nUsername: ${ftpUser}@${primaryDomain}\nPassword: $newPass\n"
 else
   ftpUser=$2; genPass $3 $4;
   sudo -u $(getusr) siteworx -u --login_domain $primaryDomain -n -c Ftp -a edit --password $newPass --confirm_password $newPass --user $ftpUser
-  echo -e "\nFor Testing: \nlftp -e'ls;quit' -u ${ftpUser}@${primaryDomain},'$newPass' $(serverName)"
+  echo -e "\nFor Testing:\nlftp -e'ls;quit' -u ${ftpUser}@${primaryDomain},'$newPass' $(serverName)"
   echo -e "\nHostname: $(serverName)\nUsername: ${ftpUser}@${primaryDomain}\nPassword: $newPass\n"
 fi
 ;;
 
+# siteworx --non-interactive --login_email #emailAddress --login_password $newPass --login_domain $primaryDomain
 -s ) # Listing/Updating Siteworx Users
 if [[ -z $2 || $2 = '--list' ]]; then
   echo; (echo "EmailAddress Name Status"; sudo -u $(getusr) siteworx -unc Users -a listUsers | sed 's/ /_/g' | awk '{print $2,$3,$5}') | column -t; echo
@@ -72,10 +73,12 @@ elif [[ $2 == '.' ]]; then # Lookup primary domain and primary email address
 else # Update Password for specific user
   emailAddress=$2; genPass $3 $4
   sudo -u $(getusr) siteworx -unc Users -a edit --user $emailAddress --password $newPass --confirm_password $newPass
+  echo -e "\nFor Testing:\nsiteworx --login_email $emailAddress --login_password $newPass --login_domain $primaryDomain"
   echo -e "\nLoginURL: https://$(serverName):2443/siteworx/?domain=$primaryDomain\nUsername: $emailAddress\nPassword: $newPass\nDomain: $primaryDomain\n"
 fi
 ;;
 
+# nodeworx --non-interactive --login_email $emailAddress --login_password $newPass
 -r ) # Listing/Updating Reseller Users
 if [[ -z $2 || $2 == '--list' ]]; then # List out Resellers nicely
   echo; (echo "ID Reseller_Email Name"; nodeworx -unc Reseller -a listResellers | sed 's/ /_/g' | awk '{print $1,$2,$3}') | column -t; echo
@@ -83,6 +86,7 @@ else # Update Password for specific Reseller
   resellerID=$2; genPass $3 $4
   nodeworx -unc Reseller -a edit --reseller_id $resellerID --password $newPass --confirm_password $newPass
   emailAddress=$(nodeworx -unc Reseller -a listResellers | grep ^$resellerID | awk '{print $2}')
+  echo -e "\nFor Testing:\nnodeworx --login_email $emailAddress --login_password $newPass"
   echo -e "\nLoginURL: https://$(serverName):2443/nodeworx/\nUsername: $emailAddress\nPassword: $newPass\n\n"
 fi
 ;;
@@ -95,17 +99,19 @@ else
   genPass $3 $4
   dbs=$(sudo -u $(getusr) siteworx -unc Mysqluser -a listMysqlUsers | grep "$2" | awk '{print $3}' | sed 's/,/, /')
   sudo -u $(getusr) siteworx -unc MysqlUser -a edit --name $(echo $2 | sed "s/$(getusr)_//") --password $newPass --confirm_password $newPass
-  echo -e "\nFor Testing: \nmysql -u'$2' -p'$newPass' $(echo $dbs | cut -d, -f1)"
+  echo -e "\nFor Testing:\nmysql -u'$2' -p'$newPass' $(echo $dbs | cut -d, -f1)"
   echo -e "\nUsername: $2\nPassword: $newPass\nDatabases: $dbs\n"
 fi
 ;;
 
+# nodeworx --non-interactive --login_email $emailAddress --login_password $newPass
 -n ) # Listing/Updating Nodeworx Users
 if [[ -z $2 || $2 == '--list' ]]; then # List Nodeworx (non-Nexcess) users
   echo; (echo "Email_Address Name"; nodeworx -unc Users -a list | grep -v nexcess.net | sed 's/ /_/g') | column -t; echo
 elif [[ ! $2 =~ nexcess\.net$ ]]; then # Update Password for specific Nodeworx user
   emailAddress=$2; genPass $3 $4
   nodeworx -unc Users -a edit --user $emailAddress --password $newPass --confirm_password $newPass
+  echo -e "\nFor Testing:\nnodeworx --login_email $emailAddress --login_password $newPass"
   echo -e "\nLoginURL: https://$(serverName):2443/nodeworx/\nUsername: $emailAddress\nPassword: $newPass\n\n"
 fi
 ;;
