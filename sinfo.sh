@@ -17,6 +17,9 @@ serverName(){
 echo
 FMT='%-14s: %s\n'
 
+# Hostname
+printf "$FMT" "Hostname" "$(serverName)"
+
 # CentOS and Kernel Versions
 printf "$FMT" "OS (Kernel)" "$(cat /etc/redhat-release | awk '{print $1,$3}') ($(uname -r))"
 
@@ -76,6 +79,9 @@ printf "$FMT" "Script Langs" "${perlv}; ${pythv}; ${rubyv}; ${railv:-No Rails}"
 # FTP/SFTP/SSH
 printf "$FMT" "FTP/sFTP/SSH" "ProFTPD ($(proftpd --version | awk '{print $3}')); OpenSSH ($(ssh -V 2>&1 | cut -d, -f1 | awk -F_ '{print $2}'))"
 fi
+
+# Cores / CPU Types
+printf "\n$FMT" "CPUs (Type)" "$(awk '/model name/{print $4,$5,$7,$9,$10}' /proc/cpuinfo | uniq -c | awk '{print $1,"- "$2,$3" - "$4,$5,$6}')"
 
 # Installed Memory
 printf "$FMT" "Memory (RAM)" "$(free -m | awk '/Mem/ {print ($2/1000)"G / "($4/1000)"G ("($4/$2*100)"% Free)"}')"
