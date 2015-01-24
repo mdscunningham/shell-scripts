@@ -181,6 +181,7 @@ srvnotes(){
 ## Rewrite of Ted Wells sinfo
 sinfo(){
 echo; FMT='%-14s: %s\n'
+printf "$FMT" "Hostname" "$(serverName)"
 printf "$FMT" "OS (Kernel)" "$(cat /etc/redhat-release | awk '{print $1,$3}') ($(uname -r))"
 ssl="$(openssl version | awk '{print $2}')"
 web="$(curl -s -I $(serverName) | awk '/Server:/ {print $2}')";
@@ -217,6 +218,7 @@ rubyv=$(ruby -v | awk '{print "Ruby ("$2")"}')
 railv=$(if [[ ! $(which rails 2>&1) =~ /which ]]; then rails -v | awk '{print $1" ("$2")"}'; fi)
 printf "$FMT" "Script Langs" "${perlv}; ${pythv}; ${rubyv}; ${railv:-No Rails}"
 printf "$FMT" "FTP/sFTP/SSH" "ProFTPD ($(proftpd --version | awk '{print $3}')); OpenSSH ($(ssh -V 2>&1 | cut -d, -f1 | awk -F_ '{print $2}'))"; fi
+printf "\n$FMT" "CPUs (Type)" "$(awk '/model name/{print $4,$5,$7,$9,$10}' /proc/cpuinfo | uniq -c | awk '{print $1,"- "$2,$3" - "$4,$5,$6}')"
 printf "$FMT" "Memory (RAM)" "$(free -m | awk '/Mem/ {print ($2/1000)"G / "($4/1000)"G ("($4/$2*100)"% Free)"}')"
 printf "$FMT" "Memory (Swap)" "$(if [[ $(free -m | awk '/Swap/ {print $2}') != 0 ]]; then free -m | awk '/Swap/ {print ($2/1000)"G / "($4/1000)"G ("($4/$2*100)"% Free)"}'; else echo 'No Swap'; fi)"
 printf "$FMT" "HDD (/home)" "$(df -h /home | tail -1 | awk '{print $2" / "$4" ("($4/$2*100)"% Free)"}')"
@@ -525,7 +527,7 @@ for x in $vhost; do
 ## Find IPs that are not configured in any vhost files
 freeips(){
 echo; for x in $(ip addr show | awk '/inet / {print $2}' | cut -d/ -f1 | grep -Ev '^127\.|^10\.|^172\.'); do
-  printf "\n%-15s " "$x"; grep -l $x /etc/httpd/conf.d/vhost_[^000_]*.conf;
+  printf "\n%-15s " "$x"; grep -l $x /etc/httpd/conf.d/vhost_[^000_]*.conf 2> /dev/null;
 done | grep -v \.conf$ | column -t; echo
 }
 
@@ -1530,6 +1532,7 @@ elif [[ $2 == '.' ]]; then # Lookup primary domain and primary email address
 else # Update Password for specific user
   emailAddress=$2; genPass $3 $4
   sudo -u $(getusr) siteworx -unc Users -a edit --user $emailAddress --password $newPass --confirm_password $newPass
+  echo -e "\nFor Testing:\nsiteworx --login_email $emailAddress --login_password $newPass --login_domain $primaryDomain"
   echo -e "\nLoginURL: https://$(serverName):2443/siteworx/?domain=$primaryDomain\nUsername: $emailAddress\nPassword: $newPass\nDomain: $primaryDomain\n"
 fi
 ;;
@@ -1541,6 +1544,7 @@ else # Update Password for specific Reseller
   resellerID=$2; genPass $3 $4
   nodeworx -unc Reseller -a edit --reseller_id $resellerID --password $newPass --confirm_password $newPass
   emailAddress=$(nodeworx -unc Reseller -a listResellers | grep ^$resellerID | awk '{print $2}')
+  echo -e "\nFor Testing:\nnodeworx --login_email $emailAddress --login_password $newPass"
   echo -e "\nLoginURL: https://$(serverName):2443/nodeworx/\nUsername: $emailAddress\nPassword: $newPass\n\n"
 fi
 ;;
@@ -1564,6 +1568,7 @@ if [[ -z $2 || $2 == '--list' ]]; then # List Nodeworx (non-Nexcess) users
 elif [[ ! $2 =~ nexcess\.net$ ]]; then # Update Password for specific Nodeworx user
   emailAddress=$2; genPass $3 $4
   nodeworx -unc Users -a edit --user $emailAddress --password $newPass --confirm_password $newPass
+  echo -e "\nFor Testing:\nnodeworx --login_email $emailAddress --login_password $newPass"
   echo -e "\nLoginURL: https://$(serverName):2443/nodeworx/\nUsername: $emailAddress\nPassword: $newPass\n\n"
 fi
 ;;
