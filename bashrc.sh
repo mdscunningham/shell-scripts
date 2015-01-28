@@ -1432,7 +1432,7 @@ else
   fi
 
   # Check if new chain cert exists and is non-zero; then install new SSL with Chain, else exclude chain
-  if [[ -f ${domain}.new.chain.crt && -n $(cat ${domain}.new.chain.crt 2> /dev/null) ]]; then
+  if [[ -f ${domain}.chain.crt && -n $(cat ${domain}.chain.crt 2> /dev/null) ]]; then
     sudo -u $(getusr) siteworx -unc Ssl -a install --domain $domain --chain 1
   else
     sudo -u $(getusr) siteworx -unc Ssl -a install --domain $domain --chain 0
