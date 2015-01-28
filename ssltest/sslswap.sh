@@ -19,6 +19,7 @@ domain=$(pwd -P | sed 's:/chroot::' | cut -d/ -f5)
 nano ${domain}.new.crt ${domain}.new.chain.crt;
 # ^^^ will update this later to just download the right chain crt given an SSL type
 # For now, and for non-Comodo certs will just paste in the new chain crt.
+# http://download.rensuchan.com/sslchains/
 # https://support.comodo.com/index.php?/Default/Knowledgebase/Article/View/620/1/
 
 keyhash=$(openssl rsa -noout -modulus -in ${domain}.priv.key | openssl md5 | awk '{print $2}')
