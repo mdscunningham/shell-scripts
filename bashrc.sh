@@ -749,19 +749,24 @@ case $1 in
 -a) _fpmconfig apc.enabled Off ;;
 -b) _fpmconfig open_basedir "$(php -i | awk '/open_basedir/ {print $NF}'):$2" ;;
 -c) _fpmconfig $2 $3 ;;
+-d) _fpmconfig display_errors On ;;
 -e) _fpmconfig max_execution_time $2 ;;
 -f) _fpmconfig allow_url_fopen On ;;
 -g|-z) _fpmconfig zlib.output_compression On ;;
--u) _fpmconfig upload_max_filesize $2
-    _fpmconfig post_max_size $2 ;;
+-m) _fpmconfig memory_limit $2 ;;
+-s) _fpmconfig session.cookie_lifetime $2; _fpmconfig session.gc_maxlifetime $2 ;;
+-u) _fpmconfig upload_max_filesize $2; _fpmconfig post_max_size $2 ;;
 -h) echo -e "\n Usage: fpmconfig [option] [value]
   Options:
     -a ... Disable APC
     -b ... Set open_basedir
     -c ... Set a custom [parameter] to [value]
+    -d ... Enable display_errors
     -e ... Set max_execution_time to [value]
     -f ... Enable allow_url_fopen
     -g ... Enable gzip (zlib.output_compression)
+    -m ... Set memory_limit to [value]
+    -s ... Set session timeouts (session.gc_maxlifetime, session.cookie_lifetime)
     -u ... Set upload_max_filesize and post_max_size to [value]
     -z ... Enable gzip (zlib.output_compression)
 
