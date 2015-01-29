@@ -148,16 +148,6 @@ lworx(){
   else echo -e "Siteworx:\nLoginURL: https://$(serverName):2443/siteworx/?domain=$1"; fi; echo
   }
 
-## Download and execute IonCubeUpdate.sh script
-ioncubeupdate(){
-    wget -q -O ~/IonCubeUpdate.sh nanobots.robotzombies.net/IonCubeUpdate.sh;
-    chmod +x ~/IonCubeUpdate.sh; ~/./IonCubeUpdate.sh "$@"; }
-
-## Download and execute ZendGuardInstal.sh script
-zendguardinstall(){
-    wget -q -O ~/ZendGuardInstall.sh nanobots.robotzombies.net/ZendGuardInstall.sh;
-    chmod +x ~/ZendGuardInstall.sh; ~/./ZendGuardInstall.sh "$@"; }
-
 ## Download and execute global-dns-checker script
 dnscheck(){
     wget -q -O ~/dns-check.sh nanobots.robotzombies.net/dns-check.sh;
@@ -177,6 +167,86 @@ fullstatus(){
 srvnotes(){
     echo -e "\n#$(date) - $(echo $SUDO_USER | sed 's/nex//g')" >> /etc/nexcess/server_notes.txt;
     nano /etc/nexcess/server_notes.txt; }
+
+## Update IonCube for CentOS 5/6
+ioncubeupdate(){
+if [[ $1 =~ [0-9]\.[0-9] ]]; then ver="$1";
+else read -p "What is the running PHP version: " ver; fi
+
+# Create Download Directory
+if [[ ! -d ~/downloads ]]; then mkdir ~/downloads;
+else rm -r ~/downloads; mkdir ~/downloads; fi
+
+# Download archive into directory and unpack
+cd ~/downloads/
+wget -O ioncube_loaders_lin_x86-64.tar.gz http://downloads3.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
+tar -zxf ioncube_loaders_lin_x86-64.tar.gz; echo
+
+# check for known configuration combinations
+if [[ -f /etc/php.d/ioncube.ini && -f /usr/lib64/php5/ioncube.so ]]; then # CentOS 5
+  phpdir="/usr/lib64/php5/"; config="/etc/php.d/ioncube.ini"
+elif [[ -d /usr/lib64/php/modules/ ]]; then # CentOS 6
+  phpdir="/usr/lib64/php/modules/"; config="/etc/php.d/ioncube-loader.ini"
+fi
+
+# Copy the correct .so driver file to the target directory
+if [[ -f ${phpdir}ioncube.so ]]; then
+  echo -e "\n${phpdir}ioncube.so driver file exist, backing up before continuing\n"
+  cp ~/downloads/ioncube/ioncube_loader_lin_${ver}* ${phpdir}
+  gzip ${phpdir}ioncube.so && mv ${phpdir}ioncube_loader_lin_${ver}.so ${phpdir}ioncube.so
+elif [[ -f ${phpdir}ioncube_loader_lin_${ver}.so ]]; then
+  echo -e "\n${phpdir}ioncube_loader_lin_${ver}.so driver file exists, backing up before updating.\n"
+  gzip ${phpdir}ioncube_loader_lin_${ver}* && cp ~/downloads/ioncube/ioncube_loader_lin_${ver}* ${phpdir}
+fi
+
+# Create correct config file for the service if necessary
+if [[ -f ${config} ]]; then
+  echo -e "${config} file already exists!\n";
+else
+  echo -e "Setting up new /etc/php.d/ioncube-loader.ini file\n"
+  echo -e "zend_extension=${phpdir}ioncube_loader_lin_${ver}.so" >> /etc/php.d/ioncube-loader.ini;
+fi
+
+# Check configs and restart php/httpd services
+if [[ -d /etc/php-fpm.d/ ]]; then
+  php -v && service php-fpm restart
+else
+  php -v && httpd -t && service httpd restart;
+fi
+}
+
+## Install ZendGuard for CentOS 5/6
+zendguardinstall(){
+if [[ $1 =~ [0-9]\.[0-9] ]]; then ver="$1";
+else read -p "What is the running PHP version: " ver; fi
+
+# Create Download Directory
+if [[ ! -d ~/downloads ]]; then mkdir ~/downloads; fi
+
+# Download archive into directory and unpack
+cd ~/downloads/
+wget http://downloads.zend.com/guard/5.5.0/ZendGuardLoader-php-${ver}-linux-glibc23-x86_64.tar.gz
+tar -zxvf ZendGuardLoader-php-${ver}-linux-glibc23-x86_64.tar.gz
+
+# Copy driver the correct .so file to the target directory
+if [[ ! -f /usr/lib64/php/modules/ZendGuardLoader.so ]]; then
+cp ~/downloads/ZendGuardLoader-php-${ver}-linux-glibc23-x86_64/php-${ver}.x/ZendGuardLoader.so /usr/lib64/php/modules/
+else echo "ZendGuardLoader.so already exists! Backing up current version before continuing.";
+gzip /usr/lib64/php/modules/ZendGuardLoader.so && cp ~/downloads/ZendGuardLoader-php-${ver}-linux-glibc23-x86_64/php-${ver}.x/ZendGuardLoader.so /usr/lib64/php/modules/
+fi
+
+# Create correct config file for the service
+if [[ ! -f /etc/php.d/ZendGuard.ini && ! -f /etc/php.d/ioncube.ini && ! -f /etc/php.d/ioncube-loader.ini ]]; then file="/etc/php.d/ZendGuard.ini"
+elif [[ -f /etc/php.d/ioncube-loader.ini ]]; then file="/etc/php.d/ioncube-loader.ini";
+elif [[ -f /etc/php.d/ioncube.ini ]]; then file="/etc/php.d/ioncube.ini"
+elif [[ -f /etc/php.d/ZendGuard.ini ]]; then echo "ZendGuard.ini file already exists!";  file="/dev/null"; fi
+echo "Adding Zend Guard config to $file"
+echo -e "\n; Enable Zend Guard extension\nzend_extension=/usr/lib64/php/modules/ZendGuardLoader.so\nzend_loader.enable=1\n" >> $file
+
+# Check configs and restart php/httpd services
+if [[ -d /etc/php-fpm.d/ ]]; then php -v && service php-fpm restart
+else httpd -t && service httpd restart; fi
+}
 
 ## Rewrite of Ted Wells sinfo
 sinfo(){
