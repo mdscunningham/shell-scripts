@@ -1,3 +1,7 @@
+# This code asside from external tools and programs are covered under:
+# Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0)
+# https://creativecommons.org/licenses/by-sa/3.0/
+
 ## Block viewing motd
 if [[ ! -f ~/.hushlogin ]]; then touch ~/.hushlogin; fi
 
