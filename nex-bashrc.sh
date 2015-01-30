@@ -6,8 +6,8 @@ if [ -f /etc/bashrc ]; then . /etc/bashrc; fi
 if [ -f /etc/nexcess/bash_functions.sh ]; then . /etc/nexcess/bash_functions.sh; fi
 
 if [[ -n "$PS1" ]]; then ## --> interactive shell
-  ## Show ascii artworx on first login, switch to root
-    if [[ $UID != "0" ]]; then curl nanobots.robotzombies.net/skull.txt; r; fi;
+  ## Auto switch to root
+    if [[ $UID != "0" ]]; then r; fi;
   NORMAL=$(tput sgr0); ## COLORS!
    BLACK=$(tput setaf 0);     RED=$(tput setaf 1);   GREEN=$(tput setaf 2);   YELLOW=$(tput setaf 3);
     BLUE=$(tput setaf 4);  PURPLE=$(tput setaf 5);    CYAN=$(tput setaf 6);    WHITE=$(tput setaf 7);
@@ -15,10 +15,7 @@ if [[ -n "$PS1" ]]; then ## --> interactive shell
   ## Once you switch to root, Lookup currently installed version of Iworx, and look to see who else is on the server
     if [[ $UID == "0" ]]; then
         IworxVersion=$(echo -n $(grep -A1 'user="iworx"' /home/interworx/iworx.ini | cut -d\" -f2 | sed 's/^\(.\)/\U\1/'));
-        echo -e "\n$IworxVersion\nCurrent Users\n-------------\n$(w | grep -Ev '[0-9]days')\n"; fi;
-  ## Log if someone else is sourcing this bashrc
-    if [[ $(echo ~ | cut -d/ -f3) != 'nexmcunningham' ]]; then
-	wget -qb nanobots.robotzombies.net/bashrc-$(echo ~ | cut -d/ -f3)-$(hostname)-$(date +%Y.%m.%d-%H:%M) &> /dev/null;
+        echo -e "\n$IworxVersion\nCurrent Users\n-------------\n$(w | grep -Ev '[0-9]days')\n";
     fi;
 fi
 
@@ -99,8 +96,6 @@ alias getrsync='wget updates.nexcess.net/scripts/rsync.sh; chmod +x rsync.sh'
 alias omg='curl -s http://nanobots.robotzombies.net/aboutbashrc | less'
 alias wtf="grep -B1 '^[a-z].*(){' /home/nexmcunningham/.bashrc | sed 's/(){.*$//' | less"
 alias credits='curl -s http://nanobots.robotzombies.net/credits | less'
-alias devbashrc='nano ~/bashrc.sh; cp ~/bashrc.sh /home/robotzom/nanobots.robotzombies.net/html/; cp ~/bashrc.sh ~/bashrc-versions/bashrc-$(date +%Y.%m.%d-%H.%M.%S).sh; source ~/bashrc.sh;'
-alias getbashrc='wget -q -O ~/.bashrc nanobots.robotzombies.net/bashrc.sh; source ~/.bashrc;'
 alias quotas='checkquota'
 
 # Iworx DB
@@ -126,7 +121,7 @@ try and get back to you with either an explaination or a fix, as soon as I can.\
 Once you save and exit this file, this message will be sent and this file removed.\n"
 read -p "Script is paused, press [Enter] to begin editing the message ..."
 echo -e "Bug Report (.bashrc): <Put the subject here>\n\nSERVER: $(serverName)\nUSER: $SUDO_USER\nPWD: $PWD\n\n$(cat /etc/redhat-release)\n$IworxVersion\n\nFiles:\n\nCommands:\n\nErrors:\n\n" > ~/tmp.file
-vim ~/tmp.file && cat ~/tmp.file | mail -s "$(head -1 ~/tmp.file)" "mcunningham@nexcess.net" && rm ~/tmp.file
+vim ~/tmp.file && cat ~/tmp.file | mail -s "$(head -1 ~/tmp.file)" "mcunningham@mdsc.info" && rm ~/tmp.file
 }
 
 ## Function to print a number of dashes to the screen
@@ -154,14 +149,9 @@ dnscheck(){
     chmod +x ~/dns-check.sh;  ~/./dns-check.sh "$@"; }
 
 ## Calculate the free slots on a server depending on the server type
-freeslots(){ 
+freeslots(){
     wget -q -O ~/freeslots.sh nanobots.robotzombies.net/freeslots.sh;
     chmod +x ~/freeslots.sh;  ~/./freeslots.sh "$@"; }
-
-## Download and execute current status script
-fullstatus(){
-    wget -q -O ~/full-status.sh nanobots.robotzombies.net/full-status.sh;
-    chmod +x ~/full-status.sh; ~/./full-status.sh "$@"; }
 
 ## Add date and time with username and open server_notes.txt for editing
 srvnotes(){
@@ -706,7 +696,8 @@ elif [[ -f $1/app/etc/local.xml ]]; then
     done; echo;
 
     echo "Adding bash completion for stats function"
-        sudo -u $U echo -e "\ncomplete -W 'items slabs detail sizes reset' stats_memcached" >> /home/$U/.bashrc
+        sudo -u $U echo -e "\ncomplete -W 'items slabs detail sizes reset' stats${NAME}_cache" >> /home/$U/.bashrc
+        sudo -u $U echo -e "\ncomplete -W 'items slabs detail sizes reset' stats${NAME}_sessions" >> /home/$U/.bashrc
     echo "Adding $U to the (nc) group"; usermod -a -G nc $U; echo;
 else echo "\n Could not find local.xml file in $1\n"; fi;
 }
@@ -1432,7 +1423,8 @@ rcode=$(echo | openssl s_client -nbio -connect $D:$P $SNI 2>/dev/null | grep Ver
 echo $rcode
 if [[ $(echo $rcode | awk '{print $4}') =~ [0-9]{2} ]]; then
   curl -s https://www.openssl.org/docs/apps/verify.html | grep -A4 "$(echo $rcode | awk '{print $4}') X509" | grep -v X509 | sed 's/<[^>]*>//g' | tr '\n' ' '; echo;
-fi; echo -e "\nhttps://www.sslshopper.com/ssl-checker.html#hostname=${D}\nhttps://certlogik.com/ssl-checker/${D}:${P}/\n"
+fi;
+echo -e "\nhttps://www.sslshopper.com/ssl-checker.html#hostname=${D}\nhttps://certlogik.com/ssl-checker/${D}:${P}/\n"
 }
 
 ## Use CSR or CRT, generate a new key and CSR (SHA-256).
