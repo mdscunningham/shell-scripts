@@ -18,7 +18,7 @@
 
 echo -e "\nList of RSS Feeds:\n"
 RSS=(
-http://adamcarolla.com/feed/
+http://theadamcarollashow.libsyn.com/rss
 http://alisonrosen.com/category/podcast/feed/
 http://files.libertyfund.org/econtalk/EconTalk.xml
 http://feeds.feedburner.com/PennSundaySchool
@@ -43,7 +43,7 @@ if [[ $x != q* ]]; then
 
 # If feed is Adam Carolla Show
   if [[ ${RSS[$x]} =~ "carolla" ]]; then
-    URL=($(wget -q -O - ${RSS[$x]} | egrep -io 'href=.*\.mp3' | head -15 | cut -d\" -f2 ));
+    URL=($(wget -q -O - ${RSS[$x]} | egrep -io 'url=.*\.mp3' | head -15 | cut -d\" -f2 ));
     PUB=($(wget -q -O - ${RSS[$x]} | egrep -io 'pubDate.*pubDate' | head -15 | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
     NAM=($(wget -q -O - ${RSS[$x]} | egrep -io 'title.*/title' | head -17 | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))
 
