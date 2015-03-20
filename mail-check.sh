@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-03-09
-# Updated: 2015-03-09
+# Updated: 2015-03-18
 #
 #
 #!/bin/bash
@@ -14,29 +14,47 @@
 #
 ###
 
-dash (){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
+# Taste the rainbow
+      BLACK=$(tput setaf 0);        RED=$(tput setaf 1)
+      GREEN=$(tput setaf 2);     YELLOW=$(tput setaf 3)
+       BLUE=$(tput setaf 4);    MAGENTA=$(tput setaf 5)
+       CYAN=$(tput setaf 6);	  WHITE=$(tput setaf 7)
 
-clear
+     BRIGHT=$(tput bold);        NORMAL=$(tput sgr0)
+      BLINK=$(tput blink);	REVERSE=$(tput smso)
+  UNDERLINE=$(tput smul)
 
-if [[ -n $1 ]]; then
-    ipaddr="$1";
+dash (){ for ((i=1; i<=$1; i++)); do printf "$2"; done; }
+
+if [[ -z "$@" ]]; then
+  ip_list="$(ip addr show | awk '/inet / && ($2 !~ /^127\./) {print $2}' | cut -d/ -f1 | head -1)";
+elif [[ $1 == 'all' ]]; then
+  ip_list="$(ip addr show | awk '/inet / && ($2 !~ /^127\./) {print $2}' | cut -d/ -f1)";
 else
-    ipaddr="$(ip addr show | awk '/inet / && ($2 !~ /^127\./) {print $2}' | cut -d/ -f1 | head -1)";
+  ip_list="$@"
 fi
 
-echo -e "\n$(dash 80)\n  Web Based Checks \n$(dash 80)\n"
+for ipaddr in $ip_list; do
+echo -e "\n$(dash 80 =)\n${WHITE}  Web Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
 
-rdns="$(dig +short -x $ipaddr)"
-echo "rDNS/PTR: ${rdns:-Is not setup ...}"
+  rdns="$(dig +short -x $ipaddr)"
+  echo "rDNS/PTR: ${GREEN}${rdns:-${RED}Is not setup ...}${NORMAL}"
 
-echo "http://multirbl.valli.org/lookup/${ipaddr}.html"
-echo "http://www.senderbase.org/lookup/?search_string=${ipaddr}"
-echo "http://mxtoolbox.com/SuperTool.aspx?action=blacklist%3a${ipaddr}&run=toolpage"
+  echo "http://multirbl.valli.org/lookup/${YELLOW}${ipaddr}${NORMAL}.html"
+  echo "http://www.senderbase.org/lookup/?search_string=${YELLOW}${ipaddr}${NORMAL}"
+  echo "http://mxtoolbox.com/SuperTool.aspx?action=blacklist%3a${YELLOW}${ipaddr}${NORMAL}&run=toolpage"
 
-echo -e "\n$(dash 80)\n  Swaks Based Checks \n$(dash 80)"
+  echo -e "\n$(dash 80 =)\n${WHITE}  Swaks Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
 
-for x in live.com att.net earthlink.com gmail.com yahoo.com; do
-    echo -e "\n=> $x <=\n$(dash 80)"; swaks -4 -t postmaster@${x} -q RCPT -li $ipaddr 2>&1 | egrep '421|521|450|550|554|571';
-done; echo
+  for x in live.com att.net earthlink.com gmail.com yahoo.com comcast.net; do
+    result=$(swaks -4 -t postmaster@${x} -q RCPT -li $ipaddr 2>&1 | egrep ' 421| 521| 450| 550| 554| 571';)
+    if [[ -n $result ]]; then
+      echo -e "\n=> $x <=\n$(dash 80 -)\n${result}";
+    fi
+  done; echo
 
-unset ipaddr
+done
+echo -e "$(dash 80 =)\n"
+
+unset ipaddr rdns result
+
