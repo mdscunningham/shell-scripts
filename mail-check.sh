@@ -26,6 +26,12 @@
 
 dash (){ for ((i=1; i<=$1; i++)); do printf "$2"; done; }
 
+mailcheck(){
+
+if [[ $1 =~ -h ]]; then echo -e "\n  Usage: mailcheck [options] [<ip1> <ip2> ... | ALL]\n    -v ... Verbose\n    -h ... Print this help\n   all ... check all IPs\n"; return 1; fi
+
+if [[ $1 =~ -v ]]; then verb=1; shift; else verb=0; fi
+
 if [[ -z "$@" ]]; then
   ip_list="$(ip addr show | awk '/inet / && ($2 !~ /^127\./) {print $2}' | cut -d/ -f1 | head -1)";
 elif [[ $1 == 'all' ]]; then
@@ -48,7 +54,7 @@ echo -e "\n$(dash 80 =)\n${WHITE}  Web Based Checks -- ${ipaddr} ${NORMAL}\n$(da
 
   for x in live.com att.net earthlink.com gmail.com yahoo.com comcast.net; do
     result=$(swaks -4 -t postmaster@${x} -q RCPT -li $ipaddr 2>&1 | egrep ' 421| 521| 450| 550| 554| 571';)
-    if [[ -n $result ]]; then
+    if [[ $verb == "1" || -n $result ]]; then
       echo -e "\n=> $x <=\n$(dash 80 -)\n${result}";
     fi
   done; echo
@@ -56,5 +62,7 @@ echo -e "\n$(dash 80 =)\n${WHITE}  Web Based Checks -- ${ipaddr} ${NORMAL}\n$(da
 done
 echo -e "$(dash 80 =)\n"
 
-unset ipaddr rdns result
+unset ipaddr rdns result verb
+}
 
+mailcheck "$@"
