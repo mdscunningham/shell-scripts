@@ -23,7 +23,6 @@ do
         dig +time=2 +tries=2 +short $y $x +noshort;
         if [[ $y == 'ns' ]]; then dig +time=2 +tries=2 +short $(dig +short ns $x) +noshort | grep -v root; fi
     done;
-    if [[ $() ]]
     dig +short -x $(dig +time=2 +tries=2 +short $x) +noshort;
     echo;
 done
