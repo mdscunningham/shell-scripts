@@ -18,7 +18,7 @@ fi;
 for x in $(echo $D | sed 's/\// /g');
 do
     echo -e "\nDNS Summary: $x\n$(dash 79)";
-    for y in a aaaa ns mx txt soa;
+    for y in a aaaa ns mx srv txt soa;
     do
         dig +time=2 +tries=2 +short $y $x +noshort;
         if [[ $y == 'ns' ]]; then dig +time=2 +tries=2 +short $(dig +short ns $x) +noshort | grep -v root; fi

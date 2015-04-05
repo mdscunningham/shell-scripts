@@ -1,3 +1,4 @@
+.ftpquota
 .ftpaccess
 .htaccess
 .htpasswd
@@ -21,3 +22,8 @@ readme.html
 scheduler
 skull.txt
 favicon.ico
+info.php
+random.txt
+traffic2.sh
+sum_traffic2.sh
+killingstroke/

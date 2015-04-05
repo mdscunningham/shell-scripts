@@ -19,7 +19,7 @@ echo -e "\n Usage: _htpasswd [-u|--user username] [-p|--pass password] [-l lengt
 
 if [[ -z $1 ]]; then echo; read -p "Username: " U; elif [[ $1 == '-u' || $1 == '--user' ]]; then U="$2"; fi;
 if [[ -z $3 ]]; then P=$(mkpasswd -l 12); elif [[ $3 == '-p' || $3 == '--pass' ]]; then P="$4"; elif [[ $3 == '-l' ]]; then P=$(mkpasswd -l $4); fi
-if [[ -f .htpasswd ]]; then sudo -u $(_getusr) htpasswd -mb .htpasswd $U $P; else sudo -u $(_getusr) htpasswd -cmb .htpasswd $U $P; fi;
+if [[ -f .htpasswd ]]; then htpasswd -mb .htpasswd $U $P; else htpasswd -cmb .htpasswd $U $P; fi;
 echo -e "\nUsername: $U\nPassword: $P\n";
 }
 _htpasswd "$@"

@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2013-11-10
-# Updated: 2014-08-28
+# Updated: 2015-03-19
 #
 #
 #!/bin/bash
@@ -77,8 +77,8 @@ printf "$FORMAT" "Site Title" "$(grep '$sitename ' $CONFIG | cut -d\' -f2)"
 printf "$FORMAT" "Install Date" "$(stat $VERFILE | awk '/Change/ {print $2,$3}' | cut -d. -f1)"
 printf "$FORMAT" "Encryption Key" "$(grep '$secret' $CONFIG | cut -d\' -f2)"
 printf "$FORMAT" "Version (Date)" "$VERSION"
-printf "$FORMAT" "Front End URL" "http://$(cd $SITEPATH; pwd -P | sed 's:^/chroot::' | cut -d/ -f4- | sed 's:/html::')/"
-printf "$FORMAT" "Back End URL" "http://$(cd $SITEPATH; pwd -P | sed 's:^/chroot::' | cut -d/ -f4- | sed 's:/html::')/administrator"
+printf "$FORMAT" "Front End URL" "http://$(cd $SITEPATH; grep -C5 $PWD /usr/local/apache/conf/httpd.conf | awk '/ServerName/ {print $2}')/"
+printf "$FORMAT" "Back End URL" "http://$(cd $SITEPATH; grep -C5 $PWD /usr/local/apache/conf/httpd.conf | awk '/ServerName/ {print $2}')/administrator"
 printf "$FORMAT" "Return-Path Email" "$(grep '$mailfrom' $CONFIG | cut -d\' -f2)"
 printf "$FORMAT" "Gzip Compression" "$(grep '$gzip' $CONFIG | cut -d\' -f2 | sed 's/0/Disabled/;s/1/Enabled/')"
 printf "$FORMAT" "DB Connection" "$dbtype://$dbuser:$dbpass@$dbhost/$dbname$(if [[ -n $prefix ]]; then echo .$prefix*; fi)"

@@ -2,163 +2,113 @@
 # 							   |    |    |    |    |
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
-# Created: 2014-03-15
-# Updated: 2014-05-04
+# Created: 2014-08-10
+# Updated: 2014-12-14
 #
 #
 #!/bin/bash
 
-## Traffic stats / information (collection of Apache one-liners)
-# http://www.the-art-of-web.com/system/logs/
-
 _trafficUsage(){
-echo " Usage: traffic <DOMAIN> [option] [top#] [-d <day>]
-    ua .... Top User Agents by # of hits
-    bot ... Top User Agents identifying as bots by # of hits
-    scr ... Top empty User Agents (likely scripts) by # of hits
-    ip[h] . Top IPs or [h]osts by # of hits
-    bw[h] . Top IPs or [h]osts by bandwidth usage
-    ref ... Top Referrers by # of hits
-    sum ... Summary of response codes and user agents for top ips
-    url ... Top URLs by # of hits
-    hr .... # of hits per hour
-    gr .... # of hits per hour with visual graph
+echo " Usage: traffic DOMAIN COMMAND [OPTIONS]
 
-    Top# can be ommitted. If ommitted assumes 20 results
-    When specifying day with the -d, do not use leading zero
+ Commands:
+    ua | useragent . Top User Agents by # of hits
+   bot | robots .... Top User Agents identifying as bots by # of hits
+   scr | scripts.... Top empty User Agents (likely scripts) by # of hits
+    ip | ipaddress . Top IPs by # of hits
+    bw | bandwidth . Top IPs by bandwidth usage
+   bwt | bwtotal ... Total bandwidth used for a given day
+   url | file ...... Top URLs/files by # of hits
+   ref | referrer .. Top Referrers by # of hits
+  type | request ... Summary of request types (GET/HEAD/POST)
+   sum | summary ... Summary of response codes and user agents for top ips
+    hr | hour ...... # of hits per hour
+    gr | graph ..... # of hits per hour with visual graph
+   min | minute .... Hits per min during some range
+  code | response .. Response Codes (per Day/Hour/Min)
+     s | search .... Only search the log for -s 'search string'
+                     This does not have a line limit (ignores -n)
 
- Usage: traffic <DOMAIN> [option] <day> <hour>
-    min ... Hits per min during some range
-    code .. Response Codes (per Day/Hour/Min)
+ Options:
+    -s | --search .. Search \"string\" (executed before analysis)
+                     For a timeframe use 'YYYY:HH:MM:SS' or 'regex'
+    -d | --days .... Days before today (1..7) (historical logs)
+    -n | --lines ... Number of results to print to the screen
+    -h | --help .... Print this help and exit
 
-    Day and Hour fields can be '##' 'regex' or 'all'
-    Domain field can be . to find the domain from the PWD"
-    return 0;
+ Notes:
+    DOMAIN can be '.' to find the domain from the PWD"; return 0;
 }
 
-DAY=''; SUFFIX=''; opt=$2; DECOMP='cat';
+_trafficDash(){ for ((i=1;i<=$1;i++));do printf '#'; done; }
 
-if [[ $1 == "." ]]; then D="$(pwd | sed 's:^/chroot::' | cut -d/ -f4)"; else D="$1"; fi
+# Check how the domain is specified.
+if [[ $1 == '.' ]]; then DOMAIN=$(grep -B5 "DocumentRoot $PWD$" /usr/local/apache/conf/httpd.conf | awk '/ServerName/ {print $2}' | head -1); shift;
+  else DOMAIN=$(echo $1 | sed 's:/$::'); shift; fi
 
-DIR=$PWD; echo;
-cd /home/*/$D 2> /dev/null && cd ../;
+opt=$1; shift; # Set option variable using command parameter
 
-if [[ -z "$3" || $3 == '-d' ]]; then TOP="20"; else TOP="$3"; fi
+# Determin Log File Location
+LOGFILE="/usr/local/apache/domlogs/*/${DOMAIN}"
 
-if [[ -z "$4" ]]; then
-	DECOMP='cat'; HEADER=0; DAY=$(date +%d)
-elif [[ $3 == '-d' ]]; then
-	DAY=$4; DECOMP='zcat -f'; SUFFIX="-*[${DAY},$(($DAY+1))]20*.zip"; HEADER=1;
-elif [[ $4 == '-d' ]]; then
-	DAY=$5; DECOMP='zcat -f'; SUFFIX="-*[${DAY},$(($DAY+1))]20*.zip"; HEADER=1;
-fi;
+SEARCH=''; DATE=''; TOP='20'; DECOMP='egrep -h'; VERBOSE=0; # Initialize variables
+OPTIONS=$(getopt -o "s:d:n:hv" --long "search:,days:,lines:,help,verbose" -- "$@") # Execute getopt
+eval set -- "$OPTIONS" # Magic
 
-if [[ -n $SUFFIX ]]; then LOGFILE="var/$D/logs/transfer.log${SUFFIX}"; else LOGFILE=''; fi
-CRNTLOG="var/$D/logs/transfer.log"
+while true; do # Evaluate the options for their options
+case $1 in
+  -s|--search ) SEARCH="$2"; shift ;; # search string (regex)
+  -d|--days   ) DATE="-$(date --date="-$((${2}-1)) day" +%m%d%Y).zip"; DECOMP='zegrep';
+		echo; date --date="-${2} day" +"%A, %B %d, %Y -- %Y.%m.%d";
+		LOGFILE="/home/*/var/${DOMAIN}/logs/transfer.log${DATE}"; shift ;; # days back
+  -n|--lines  ) TOP=$2; shift ;; # results
+  -v|--verbose) VERBOSE=1 ;; # Debugging Output
+  --          ) shift; break ;; # More Magic
+  -h|--help|* ) _trafficUsage; return 0 ;; # print help info
+esac;
+shift;
+done
 
-if [[ $HEADER == 1 ]]; then echo -e "$(ls /home/*/$LOGFILE)\n$(ls /home/*/$CRNTLOG)\n"; fi
-
+echo
 case $opt in
 
-ua|agent )
-	$DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}"\
-	 | awk -F\" '{freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
-	 | sort -rn | head -n$TOP
-;;
+ua|useragent	) $DECOMP "$SEARCH" $LOGFILE | awk -F\" '{freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP ;;
 
-bot|bots )
-	$DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}"\
-	 | awk -F\" '($6 ~ /bot|crawler|spider/) {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
-	 | sort -rn | head -n$TOP
-;;
+bot|robots	) $DECOMP "$SEARCH" $LOGFILE | awk -F\" '($6 ~ /[Bb]ot|[Cc]rawler|[Ss]pider/) {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP ;;
 
-scr|scripts )
-	$DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}"\
-	 | awk -F\" '($6 ~ /^-?$/) {print $1}' | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
-	 | sort -rn | head -n$TOP
-;;
+scr|scripts	) $DECOMP "$SEARCH" $LOGFILE | awk -F\" '($6 ~ /^-?$/) {print $1}' | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP ;;
 
-ip|ips )
-	$DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}"\
-	 | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
-	 | sort -rn | head -n$TOP
-;;
+ip|ipaddress	) $DECOMP "$SEARCH" $LOGFILE | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP ;;
 
-iph )
-	$DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}"\
-	 | logresolve | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
-	 | sort -rn | head -n$TOP
-;;
+bw|bandwidth	) $DECOMP "$SEARCH" $LOGFILE | awk '{tx[$1]+=$10} END {for (x in tx) {printf "   %-15s   %8s M\n",x,(tx[x]/1024000)}}' | sort -k 2n | tail -n$TOP | tac ;;
 
-bw|bandwidth )
-	$DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}"\
-	 | awk '{tx[$1]+=$10} END {for (x in tx) {printf "   %-15s   %8s M\n",x,(tx[x]/1024000)}}'\
-	 | sort -k 2n | tail -n$TOP | tac
-;;
+bwt|bwtotal     ) $DECOMP "$SEARCH" $LOGFILE | awk '{tx+=$10} END {print (tx/1024000)"M"}' ;;
 
-bwh )
-	$DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}"\
-	 | logresolve | awk '{tx[$1]+=$10} END {for (x in tx) {printf "   %-15s   %8s M\n",x,(tx[x]/1024000M)}}'\
-	 | sort -k 2n | tail -n$TOP | tac
-;;
+sum|summary	) for x in $($DECOMP "$SEARCH" $LOGFILE | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP | awk '{print $2}'); do
+		  echo $x; $DECOMP "$SEARCH" $LOGFILE | grep $x | cut -d' ' -f9,12- | sort | uniq -c | sort -rn | head -n$TOP | tr -d \"; echo; done ;;
 
-hr|hour )
-	for x in $(seq -w 0 23); do echo -n "${x}:00  ";
-		$DECOMP $LOGFILE $CRNTLOG | grep -Ec "${DAY}/.*/[0-9]{4}:$x:";
-	done
-;;
+s|search	) $DECOMP "$SEARCH" $LOGFILE ;;
 
-gr|graph )
-	for x in $(seq -w 0 23); do echo -n "${x}:00  ";
-		count=$($DECOMP $LOGFILE $CRNTLOG | grep -Ec "${DAY}/.*/[0-9]{4}:$x:");
-		printf "%7s %s\n" "$count" "$(dash $(($count/1000)))";
-	done
-;;
+hr|hour 	) for x in $(seq -w 0 23); do echo -n "${x}:00 "; $DECOMP "$SEARCH" $LOGFILE | egrep -c "/[0-9]{4}:$x:"; done ;;
 
-ref|refs )
-	$DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}"\
-	 | awk '{freq[$11]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
-	 | tr -d \" | sort -rn | head -n$TOP
-;;
+gr|graph	) for x in $(seq -w 0 23); do echo -n "${x}:00"; count=$($DECOMP "$SEARCH" $LOGFILE | egrep -c "/[0-9]{4}:$x:");
+		  printf "%8s |%s\n" "$count" "$(_trafficDash $(($count/500)))"; done;;
 
-url|urls )
-	$DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}"\
-	 | awk '{freq[$7]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
-	 | sort -rn | head -n$TOP
-;;
+min|minute	) $DECOMP "$SEARCH" $LOGFILE | awk '{print $4}' | awk -F: '{print $1" "$2":"$3}' | sort | uniq -c | tr -d \[ ;;
 
-sum|summary )
-	for x in $($DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}" | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP | awk '{print $2}'); do
-		echo $x; $DECOMP $LOGFILE $CRNTLOG | grep -E "$DAY/.*/[0-9]{4}" | grep $x | cut -d' ' -f9,12- | sort | uniq -c | sort -nr | head -n$TOP | tr -d \"; echo;
-	done
-;;
+type|request	) $DECOMP "$SEARCH" $LOGFILE | awk '{freq[$6]++} END {for (x in freq) {print x,freq[x]}}' | tr -d \" | sed 's/-/TIMEOUT/' | column -t ;;
 
-code|res )
-	DAY="$3"; HOUR="$4";
-	if [[ $3 == "all" ]]; then DAY='[0-9]{2}'; fi;
-	if [[ $4 == "all" ]]; then HOUR='[0-9]{2}'; fi;
-	if [[ -z $DAY ]]; then
-		zgrep -Eh "$DAY/.*/[0-9]{4}:$HOUR" var/$D/logs/transfer.log*\
-		| awk '{print $4":"$9}' | awk -F: '{print $1,$5}' | sort | uniq -c | tr -d \[;
-	elif [[ -n $DAY && -z $HOUR ]]; then
-		zgrep -E -h "$DAY/.*/[0-9]{4}:$HOUR" var/$D/logs/transfer.log*\
-		| awk '{print $4":"$9}' | awk -F: '{print $1,$2":00",$5}' | sort | uniq -c | tr -d \[;
-	else
-		zgrep -Eh "$DAY/.*/[0-9]{4}:$HOUR" var/$D/logs/transfer.log*\
-		| awk '{print $4":"$9}' | awk -F: '{print $1,$2":"$3,$5}' | sort | uniq -c | tr -d \[;
-	fi
-;;
+code|response	) $DECOMP "$SEARCH" $LOGFILE | awk '{print $4":"$9}' | awk -F: '{print $1,$5}' | sort | uniq -c | tr -d \[ ;;
 
-m|min )
-	DAY="$3"; HOUR="$4";
-	if [[ $3 == "all" ]]; then DAY='[0-9]{2}'; fi;
-	if [[ $4 == "all" ]]; then HOUR='[0-9]{2}'; fi;
-      	zgrep -Eh "$DAY/.*/[0-9]{4}:$HOUR" var/$D/logs/transfer.log*\
-	| awk '{print $4}' | awk -F: '{print $1" "$2":"$3}' | sort | uniq -c | tr -d \[
-;;
+url|file	) $DECOMP "$SEARCH" $LOGFILE | awk '{freq[$7]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP ;;
 
--h|--help|* ) _trafficUsage ;;
+ref|referrer	) $DECOMP "$SEARCH" $LOGFILE | awk '{freq[$11]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | tr -d \" | sort -rn | head -n$TOP ;;
+
+-h|--help|*) _trafficUsage ;;
 
 esac
 
-echo; cd $DIR
+if [[ $VERBOSE == '1' ]]; then echo; echo -e "DECOMP: $DECOMP\nSEARCH: $SEARCH\nDATE: $DATE\nTOP: $TOP\nLOGFILE: $LOGFILE\n" | column -t; fi # Debugging
+
+echo;
+unset DOMAIN SEARCH DATE TOP LOGFILE DECOMP VERBOSE # Variable Cleanup

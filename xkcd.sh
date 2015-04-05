@@ -19,11 +19,11 @@ fi
 if [[ -x /usr/bin/shuf ]]; then
 # Set verbose flag, in this case vulgar flag, since the regular dictionary hasn't been sanitized
 # ^^^ regex should match -v | --verbose | --vulgar ...
-if [[ $@ =~ -v ]]; then
+# if [[ $@ =~ -v ]]; then
   wordList='/usr/share/dict/words';
-else
-  wordList='/usr/local/interworx/lib/dict/words';
-fi
+# else
+#   wordList='/usr/local/interworx/lib/dict/words';
+# fi
 
 # Set length flag to determine size of words to use
 # ^^^ regex should match -l | --length

@@ -3,13 +3,13 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2013-12-12
-# Updated: 2014-09-17
+# Updated: 2015-04-02
 #
 #
 #!/bin/bash
 
-#watch -n0.1 "netstat -tn | grep -E ':80.*EST|:http.*EST' | awk -F: '{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn";
-#else  watch -n0.1 "ss | grep -E 'EST.*:http' | awk -F: '{print \$1,\$2}' | awk '{print \$4,\"<--\",\$6}' | column -t | sort | uniq -c | sort -rn"; fi
+# watch -n0.1 "netstat -tn | grep -E ':80.*EST|:http.*EST' | awk -F: '{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn";
+# else  watch -n0.1 "ss | grep -E 'EST.*:http' | awk -F: '{print \$1,\$2}' | awk '{print \$4,\"<--\",\$6}' | column -t | sort | uniq -c | sort -rn"; fi
 
 # if [[ -n $(ss | grep -o '::ffff:.*:http ') ]]; then
 #    watch -n0.1 "ss | grep -E 'EST.*:http' | awk -F: '{print \$4,\"<--\",\$8}' | column -t | sort | uniq -c | sort -rn";
@@ -35,9 +35,9 @@ else # Not CentOS 4
     fi
   else # IPv4
     if [[ $1 =~ -q ]]; then # Established Connections
-      watch -n0.1 "ss -ant | awk '/EST/ && (\$4 ~ /:80/) && !/\*/ {print \$4,\"<--\",\$5}' | sed 's/:80//g; s/:.*$//g' | column -t | sort | uniq -c | sort -rn"
+      watch -n0.1 "ss -ant | awk '/EST/ && (\$4 ~ /:80/) {print \$4,\"<--\",\$5}' | sed 's/:80//g; s/:.*$//g' | column -t | sort | uniq -c | sort -rn"
     else # Verbose (EST and WAIT Connections)
-      watch -n0.1 "ss -ant | awk '(\$4 ~ /:80/) && !/\*/ {print \$4,\"<--\",\$5}' | sed 's/:80//g; s/:.*$//g' | column -t | sort | uniq -c | sort -rn"
+      watch -n0.1 "ss -ant | awk '(\$4 ~ /:80/) {print \$4,\"<--\",\$5}' | sed 's/:80//g; s/:.*$//g' | column -t | sort | uniq -c | sort -rn"
     fi
   fi
 fi

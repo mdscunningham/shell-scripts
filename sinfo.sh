@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-08-24
-# Updated: 2014-11-02
+# Updated: 2015-02-07
 #
 # Based on work by Ted Wells
 #
@@ -18,7 +18,7 @@ echo
 FMT='%-14s: %s\n'
 
 # Hostname
-printf "$FMT" "Hostname" "$(serverName)"
+printf "$FMT" "Hostname (IP)" "$(serverName) ($(ip addr show | awk '/inet / {print $2}' | cut -d/ -f1 | grep -Ev '^127\.' | head -1))"
 
 # CentOS and Kernel Versions
 printf "$FMT" "OS (Kernel)" "$(cat /etc/redhat-release | awk '{print $1,$3}') ($(uname -r))"
@@ -46,10 +46,11 @@ _phpversion(){
     optim=$($1 -v | awk '/Optim/ {print "; "$2,$3" ("$4")"}' | sed 's/v//;s/,//');
     opche=$($1 -v | awk '/OPcache/ {print "; "$2,$3" ("$4")"}' | sed 's/v//;s/,//');
     if [[ -d /etc/php-fpm.d/ ]]; then phpt='php-fpm'; else
-      phpt=$(awk '/^LoadModule/ {print $2}' /etc/httpd/conf.d/php.conf /etc/httpd/conf.d/suphp.conf | sed 's/php[0-9]_module/mod_php/;s/_module//'); fi;
+      phpt=$(awk '/^LoadModule/ {print $2}' /usr/local/apache/conf/php.conf /opt/suphp/etc/suphp.conf | sed 's/php[0-9]_module/mod_php/;s/_module//'); fi;
     printf "$FMT" "PHP Version" "${phpt} (${phpv})${zend}${optim}${ionc}${guard}${opche}${eacc}${suhos}";
 }
-_phpversion /usr/bin/php; if [[ -f /opt/nexcess/php54u/root/usr/bin/php ]]; then for x in /opt/nexcess/*/root/usr/bin/php; do _phpversion $x; done; fi
+_phpversion /usr/bin/php; 
+# if [[ -f /opt/nexcess/php54u/root/usr/bin/php ]]; then for x in /opt/nexcess/*/root/usr/bin/php; do _phpversion $x; done; fi
 
 # Modsec Version and Ruleset
 modsecv=$(rpm -qi mod_security | awk '/Version/ {print $3}' 2> /dev/null)
@@ -62,12 +63,19 @@ printf "$FMT" "MySQL Version" "$(mysql --version | awk '{print $5}' | tr -d ,) $
 # Postgres Version
 pstgrs="/usr/*/bin/postgres"; if [[ -f $(echo $pstgrs) ]]; then printf "$FMT" "PostgreSQL" "$($pstgrs -V | awk '{print $NF}')"; fi
 
-# Interworx Version
-printf "$FMT" "Interworx" "$(grep -A1 'user="iworx"' /home/interworx/iworx.ini | tail -1 | cut -d\" -f2)"
+# Control Panel Version
+if [[ -f /home/interworx/iworx.ini ]]; then printf "$FMT" "Control Panel" "Interworx $(grep -A1 'user="iworx"' /home/interworx/iworx.ini | tail -1 | cut -d\" -f2)"; fi
+if [[ -f /usr/local/cpanel/cpanel ]]; then printf "$FMT" "Control Panel" "cPanel $(/usr/local/cpanel/cpanel -V)"; fi
+if [[ -f /usr/local/psa/version ]]; then printf "$FMT" "Control Panel" "Plesk $(awk 'NR<2 {print $1}' /usr/local/psa/version)"; fi
 
-if [[ $1 =~ -v ]]; then
+
+if [[ $1 =~ -v ]]; then #START VERBOSE
+
 # Version Control
-printf "$FMT" "Rev. Control" "Git ($(git --version | awk '{print $3}')); SVN ($(svn --version | awk 'NR<2 {print $3}')); $(hg --version | awk 'NR<2 {print $1" ("$NF}')"
+if [[ -f /usr/bin/git ]]; then git_ver="Git ($(git --version | awk '{print $3}'));"; fi
+if [[ -f /usr/bin/svn ]]; then svn_ver="SVN ($(svn --version | awk 'NR<2 {print $3}'));"; fi
+if [[ -f /usr/bin/hg ]]; then hg_ver="$(hg --version | awk 'NR<2 {print $1\" (\"$NF}')"; fi
+printf "$FMT" "Rev. Control" "$git_ver $svn_ver $hg_ver"
 
 # Scripting Languages
 perlv=$(perl -v | awk '/v[0-9]/ {print "Perl ("$4")"}' | sed 's/v//')
@@ -77,8 +85,13 @@ railv=$(if [[ ! $(which rails 2>&1) =~ /which ]]; then rails -v | awk '{print $1
 printf "$FMT" "Script Langs" "${perlv}; ${pythv}; ${rubyv}; ${railv:-No Rails}"
 
 # FTP/SFTP/SSH
-printf "$FMT" "FTP/sFTP/SSH" "ProFTPD ($(proftpd --version | awk '{print $3}')); OpenSSH ($(ssh -V 2>&1 | cut -d, -f1 | awk -F_ '{print $2}'))"
-fi
+ssh_ver="OpenSSH ($(ssh -V 2>&1 | cut -d, -f1 | awk -F_ '{print $2}'))"
+if [[ -f /usr/sbin/pure-ftpd ]]; then ftp_ver="Pure-FTPD ($(pure-ftpd --help | awk 'NR<2 {print $2}' | tr -d v))"; fi
+if [[ -f /usr/sbin/proftpd ]]; then ftp_ver="ProFTPD ($(proftpd --version | awk '{print $3}'))"; fi
+if [[ -f /usr/sbin/vsftpd ]]; then ftp_ver="vsFTPD ($(vsftpd -v))"; fi
+printf "$FMT" "FTP/sFTP/SSH" "${ftp_ver}; ${ssh_ver}"
+
+fi #END VERBOSE
 
 # Cores / CPU Types
 printf "\n$FMT" "CPUs (Type)" "$(awk '/model name/{print $4,$5,$7,$9,$10}' /proc/cpuinfo | uniq -c | awk '{print $1,"- "$2,$3" - "$4,$5,$6}')"

@@ -19,7 +19,6 @@
 echo -e "\nList of RSS Feeds:\n"
 RSS=(
 http://theadamcarollashow.libsyn.com/rss
-http://www.pc1.io/playlist/carolla-miller.rss
 http://alisonrosen.com/category/podcast/feed/
 http://files.libertyfund.org/econtalk/EconTalk.xml
 http://feeds.feedburner.com/PennSundaySchool
@@ -43,13 +42,13 @@ if [[ $x != q* ]]; then
   clear;
 
 # If feed is Adam Carolla Show
-  if [[ ${RSS[$x]} =~ "adamcarolla" ]]; then
+  if [[ ${RSS[$x]} =~ "carolla" ]]; then
     URL=($(wget -q -O - ${RSS[$x]} | egrep -io 'url=.*\.mp3' | head -15 | cut -d\" -f2 ));
     PUB=($(wget -q -O - ${RSS[$x]} | egrep -io 'pubDate.*pubDate' | head -15 | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
     NAM=($(wget -q -O - ${RSS[$x]} | egrep -io 'title.*/title' | head -17 | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))
 
 # If feed is minified feedburner
-  elif [[ ${RSS[$x]} =~ (feedburner|pc1.io)  ]]; then
+  elif [[ ${RSS[$x]} =~ "feedburner"  ]]; then
     URL=($(wget -q -O - ${RSS[$x]} | sed 's/></>\n</g' | egrep -io 'url.*http.*\.mp3' | head -15 | cut -d\" -f2 ));
     PUB=($(wget -q -O - ${RSS[$x]} | sed 's/></>\n</g' | egrep -io 'pubDate.*pubDate' | head -15 | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
     NAM=($(wget -q -O - ${RSS[$x]} | sed 's/></>\n</g' | egrep -io 'title.*/title' | head -17 | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))

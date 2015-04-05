@@ -1,22 +1,23 @@
-#                                                          +----+----+----+----+
-#                                                          |    |    |    |    |
-# Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
-#                                                          +----+----+----+----+
-# Created: 2014-08-02
-# Updated: 2014-08-19
+#							   +----+----+----+----+
+# 							   |    |    |    |    |
+# Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
+# 							   +----+----+----+----+
+# Created: 2015-02-28
+# Updated: 2015-04-03
 #
 #
 #!/bin/bash
 
 cdomain(){
-if [[ -z "$@" ]]; then echo -e "\n  Usage: cdomain <domain.tld>\n"; return 0; fi
+doc=$(grep -C5 " $1" /usr/local/apache/conf/httpd.conf | awk '/DocumentRoot/ {print $2}')
 
-# convert input to lowercase (better input handling)
-vhost=$(grep -l " $(echo $1 | sed 's/\(.*\)/\L\1/g')" /etc/httpd/conf.d/vhost_*)
-if [[ -n $vhost ]]; then
-  cd $(awk '/DocumentRoot/ {print $2}' $vhost | head -1); pwd
+if [[ -z $1 ]]; then
+  echo -e "\nUsage: cdomain <domain.tld|ipaddress>\n"
+elif [[ -n $doc ]]; then
+  cd $doc; pwd
 else
-  echo -e "\nCould not find $1 in the vhost files!\n"
+  echo -e "\nCould not find $1 in httpd.conf\n"
 fi
 }
-cdomain "$@"
+
+cdomain $1

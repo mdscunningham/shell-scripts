@@ -9,7 +9,7 @@
 #!/bin/bash
 
 _fixowner(){
-U=$(getusr)
+U=$(pwd | sed 's:^/chroot::' | cut -d/ -f3)
 if [[ -z $2 ]]; then P='.'; else P=$2; fi
 case $1 in
     -u|--user) owner="$U:$U" ;;

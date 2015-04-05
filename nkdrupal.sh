@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-11-02
-# Updated: 2014-11-03
+# Updated: 2015-03-19
 #
 #
 #!/bin/bash
@@ -45,7 +45,7 @@ fi
 database="${dbdriv}://${dbuser}:${dbpass}@${dbhost}/${dbname}$(if [[ -n ${prefix} ]]; then echo .${prefix}*; fi)"
 
 base_path=$(cd $sitepath; pwd -P;)
-base_url=$(cd $sitepath; pwd -P | sed 's:/chroot::g;s:/html::g' | cut -d/ -f4-)
+base_url=$(grep -C5 $PWD /usr/local/apache/conf/httpd.conf | awk '/ServerName/ {print $2}')
 sitename=$(mysql -u $dbuser -p"$dbpass" $dbname -h $dbhost -e "select name,value from ${prefix}variable where name=\"site_name\";" | tail -1 | cut -d\" -f2)
 posts=$(mysql -u $dbuser -p"$dbpass" $dbname -h $dbhost -e "select count(*) from ${prefix}node;" | tail -1)
 
