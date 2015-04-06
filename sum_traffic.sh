@@ -26,7 +26,7 @@ grandtotal=0
 nocolor=0
 DECOMP="$(which grep)"
 DATE="$(date +%d/%b/%Y)"
-DOMAINS="/usr/local/apache/domlogs/*/*[^_log$]"
+DOMAINS="/usr/local/apache/logs/access_log /usr/local/apache/domlogs/*/*[^_log$]"
 THRESH=''
 RANGE=$(seq -w 0 23); TRANGE=$(seq 0 23)
 FMT=" %5s"
