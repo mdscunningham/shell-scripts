@@ -28,9 +28,10 @@ DECOMP="$(which grep)"
 DATE="$(date +%d/%b/%Y)"
 DOMAINS="/usr/local/apache/domlogs/*/*[^_log$]"
 THRESH=''
+RANGE=$(seq -w 0 23); TRANGE=$(seq 0 23)
 FMT=" %5s"
 
-while getopts d:l:nt:vh option; do
+while getopts d:l:nr:t:vh option; do
     case "${option}" in
 	# Caclulate date string for searches
         d) DATE=$(date --date="-${OPTARG} days"  +%d/%b/%Y) ;;
@@ -41,6 +42,9 @@ while getopts d:l:nt:vh option; do
 	# Print w/o color in b/w
 	n) nocolor=1 ;;
 
+	# Print only a specified range of hours
+	r) INPUT=$(echo ${OPTARG} | sed 's/,/ /g'); RANGE=$(seq -w $INPUT); TRANGE=$(seq $INPUT); FMT=" %8s";;
+
 	# Threshold for printing only busy sites
         t) THRESH=${OPTARG} ;;
 
@@ -48,20 +52,20 @@ while getopts d:l:nt:vh option; do
 	v) echo -e "\nDecomp   : $DECOMP\nDate     : $DATE\nDomains  : $DOMAINS\nThreshold: $THRESH" ;;
 
 	# Help output
-	h) echo -e "\n ${BRIGHT}Usage:${NORMAL} $0 [OPTIONS]
+	h) echo -e "\n ${BRIGHT}Usage:${NORMAL} $0 [OPTIONS]\n
     -d ... days-ago <##>
-    -l ... list of domains <dom1,dom2,dom3>
+    -h ... Print this help and quit
+    -l ... list of domains <dom1,dom2,...>
     -n ... No Color (for output to files)
+    -r ... Range of hours <start#,end#>
     -t ... threshold value <#####>
-    -v ... Verbose (debugging output)
-
-    -h ... Print this help and quit\n"; exit ;;
+    -v ... Verbose (debugging output)\n"; exit ;;
     esac
 done; echo
 
 ## Header
 printf "${BRIGHT} %15s" "User/Hour";
-for hour in $(seq -w 0 23); do printf "$FMT" "$hour:00"; done;
+for hour in $RANGE; do printf "$FMT" "$hour:00"; done;
 printf "%8s %-s${NORMAL}\n" "Total" " Domain Name"
 
 ## Data gathering and display
@@ -74,7 +78,7 @@ for logfile in $DOMAINS; do
         printf "${color} %15s" "$(echo $logfile | cut -d/ -f6)"
 
 	# Iterate through the hours
-        for hour in $(seq -w 0 23); do
+        for hour in $RANGE; do
                 count=$($DECOMP -c "$DATE:$hour:" $logfile);
                 hourtotal[$i]=$((${hourtotal[$i]}+$count))
 
@@ -98,6 +102,6 @@ done
 
 ## Footer
 printf "${BRIGHT} %15s" "Total"
-for i in $(seq 0 23); do printf "$FMT" "${hourtotal[$i]}"; done
+for i in $TRANGE; do printf "$FMT" "${hourtotal[$i]}"; done
 printf "%8s %-s${NORMAL}\n" "$grandtotal" "<< Grand Total"
 echo
