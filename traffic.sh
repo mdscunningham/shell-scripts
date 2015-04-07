@@ -37,7 +37,8 @@ echo " Usage: traffic DOMAIN COMMAND [OPTIONS]
     -h | --help .... Print this help and exit
 
  Notes:
-    DOMAIN can be '.' to find the domain from the PWD"; return 0;
+    DOMAIN can be '.' to find the domain from the PWD
+    DOMAIN can also be 'access_log' to check the apache access_log"; return 0;
 }
 
 _trafficDash(){ for ((i=1;i<=$1;i++));do printf '#'; done; }
@@ -49,18 +50,20 @@ if [[ $1 == '.' ]]; then DOMAIN=$(grep -B5 "DocumentRoot $PWD$" /usr/local/apach
 opt=$1; shift; # Set option variable using command parameter
 
 # Determin Log File Location
-LOGFILE="/usr/local/apache/domlogs/*/${DOMAIN}"
+if [[ $DOMAIN == 'access_log' ]]; then LOGFILE="/usr/local/apache/logs/access_log"
+  else LOGFILE="$(echo /usr/local/apache/domlogs/*/${DOMAIN})"; fi
 
-SEARCH=''; DATE=''; TOP='20'; DECOMP='egrep -h'; VERBOSE=0; # Initialize variables
+SEARCH=''; DATE=$(date +%d/%b/%Y); TOP='20'; DECOMP='egrep -h'; VERBOSE=0; # Initialize variables
 OPTIONS=$(getopt -o "s:d:n:hv" --long "search:,days:,lines:,help,verbose" -- "$@") # Execute getopt
 eval set -- "$OPTIONS" # Magic
 
 while true; do # Evaluate the options for their options
 case $1 in
   -s|--search ) SEARCH="$2"; shift ;; # search string (regex)
-  -d|--days   ) DATE="-$(date --date="-$((${2}-1)) day" +%m%d%Y).zip"; DECOMP='zegrep';
-		echo; date --date="-${2} day" +"%A, %B %d, %Y -- %Y.%m.%d";
-		LOGFILE="/home/*/var/${DOMAIN}/logs/transfer.log${DATE}"; shift ;; # days back
+  -d|--days   ) DATE=$(date --date="-${2} day" +%d/%b/%Y); FDATE=$(date --date="-${2} day" +%Y.%m.%d);
+                echo; date --date="-${2} day" +"%A, %B %d, %Y -- %Y.%m.%d";
+		if [[ ! -e $LOGFILE.$FDATE ]]; then grep $DATE $LOGFILE > $LOGFILE.$FDATE; fi
+		LOGFILE="$(echo $LOGFILE.$FDATE)"; shift ;; # days back
   -n|--lines  ) TOP=$2; shift ;; # results
   -v|--verbose) VERBOSE=1 ;; # Debugging Output
   --          ) shift; break ;; # More Magic
@@ -111,4 +114,4 @@ esac
 if [[ $VERBOSE == '1' ]]; then echo; echo -e "DECOMP: $DECOMP\nSEARCH: $SEARCH\nDATE: $DATE\nTOP: $TOP\nLOGFILE: $LOGFILE\n" | column -t; fi # Debugging
 
 echo;
-unset DOMAIN SEARCH DATE TOP LOGFILE DECOMP VERBOSE # Variable Cleanup
+unset DOMAIN SEARCH DATE FDATE TOP LOGFILE DECOMP VERBOSE # Variable Cleanup
