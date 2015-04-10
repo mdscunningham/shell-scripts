@@ -27,7 +27,7 @@ http://www.theskepticsguide.org/feed
 http://skeptoid.com/podcast.xml
 http://www.quackcast.com/spodcasts/files/mp3rss.xml
 http://feeds.twit.tv/twit
-http://twit.tv/show/floss-weekly/feed
+http://feeds.twit.tv/floss
 http://www.npr.org/rss/podcast.php?id=35
 http://www.theovernightscape.com/feed
 )
