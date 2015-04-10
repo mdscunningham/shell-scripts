@@ -20,25 +20,53 @@ modsec(){
     if [[ $1 == '-d' && $2 == '.' ]]; then DOMAIN=$(grep -B5 "DocumentRoot $PWD$" /usr/local/apache/conf/httpd.conf | awk '/ServerName/ {print $2}' | head -1); shift; shift;
        elif [[ $1 == '-d' && -n $2 ]]; then DOMAIN=$(echo $2 | sed 's:/$::'); shift; shift; fi
 
-    if [[ $1 == "-n" ]]; then count="$2"; shift; else count="10"; fi
+    if [[ $1 == '-n' ]]; then count="$2"; shift; shift; else count="10"; fi
 
-    # if [[ $1 == '.' ]]; then D="$(pwd | sed 's:^/chroot::' | cut -d/ -f4)";
-    # else D="$(echo $1 | sed 's/\///g')"; fi;
+    if [[ $1 == '-i' ]]; then IP="$2"; shift; shift; fi;
 
-    if [[ "$1" == '-i' && -z "$2" || "$1" == '--ip' && -z "$2" ]]; then
-        read -p "IPaddress: " IP; echo;
-    else IP="$2"; shift; fi;
+    FORMAT="%-8s %-9s %-16s %-16s\n";
 
-    FORMAT="%-8s %-9s %s\n";
-    printf "$FORMAT" " Count#" " Error#" " IP-Address";
-    printf "$FORMAT" "--------" "---------" "$(dash 17)";
-    if grep -qEi '\[id: [0-9]{6,}\]' /usr/local/apache/logs/error_log; then
-      grep -Eio "client.$IP.*\] |id.*[0-9]{6,}\]" /usr/local/apache/logs/error_log | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
-	 | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $count;
+    if [[ $1 == '-v' ]]; then
+      printf "$FORMAT" " Count#" " Error#" " Local-IP" " Remote-IP";
+      printf "$FORMAT" "--------" "---------" "$(dash 16)" "$(dash 16)";
+      grep -E "client.$IP.*id..[0-9]{6,}\"" /usr/local/apache/logs/error_log\
+	 | perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*hostname "(.*?)".*/\2 \1 \3/'\
+	 | sort | uniq -c | sort -rn | awk '{printf "%7s   %-8s  %-16s %s\n",$1,$2,$3,$4}' | head -n $count
     else
-      grep -Eio "client.$IP.*id..[0-9]{6,}\"" /usr/local/apache/logs/error_log | awk '{print $NF,$2}'\
+      printf "$FORMAT" " Count#" " Error#" " Remote-IP";
+      printf "$FORMAT" "--------" "---------" "$(dash 16)";
+      if grep -qEi '\[id: [0-9]{6,}\]' /usr/local/apache/logs/error_log; then
+        grep -Eio "client.$IP.*\] |id.*[0-9]{6,}\]" /usr/local/apache/logs/error_log | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
+	 | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $count;
+      else
+        grep -Eio "client.$IP.*id..[0-9]{6,}\"" /usr/local/apache/logs/error_log | awk '{print $NF,$2}'\
 	 | sort | uniq -c | tr -d \" | tr -d \] | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $count;
+      fi
     fi
+
     echo
 }
 modsec "$@"
+
+###
+#
+# http://stackoverflow.com/questions/1103149/non-greedy-regex-matching-in-sed
+#
+# So apparently the easy way to do this without having to be very very specific with the regex in 'sed'
+# is to use 'perl -pe' this allows for 'non-greedy' regex and grab just the bits I want from the error
+#
+# perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*hostname "(.*?)".*/\2 \3 \1/'
+# ^^ Solution to replace really long sed command
+#
+####
+
+####
+#
+# Example ModSec error for reference
+#
+# [Wed Apr 08 17:19:04.315431 2015] [:error] [pid 15280:tid 140008266651392] [client 91.217.90.49] ModSecurity: Warning. Match of "pm AppleWebKit Android" against "REQUEST_HEADERS:User-Agent" required.
+# [file "/usr/local/apache/conf/modsec_vendor_configs/OWASP/rules/REQUEST-20-PROTOCOL-ENFORCEMENT.conf"] [line "299"] [id "960015"] [rev "3"] [msg "Request Missing an Accept Header"] [severity "NOTICE"]
+# [ver "OWASP_CRS/3.0.0"] [maturity "9"] [accuracy "8"] [tag "Host: 69.167.152.157"] [tag "OWASP_CRS/PROTOCOL_VIOLATION/MISSING_HEADER_ACCEPT"] [tag "WASCTC/WASC-21"] [tag "OWASP_TOP_10/A7"] [tag "PCI/6.5.10"]
+# [hostname "69.167.152.157"] [uri "/rom-0"] [unique_id "VSWbSEWnmJ0AADuwZSgAAAAD"]
+#
+###
