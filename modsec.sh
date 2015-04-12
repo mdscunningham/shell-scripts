@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-01-01
-# Updated: 2015-04-02
+# Updated: 2015-04-10
 #
 #
 #!/bin/bash
@@ -24,22 +24,23 @@ modsec(){
 
     if [[ $1 == '-i' ]]; then IP="$2"; shift; shift; fi;
 
+    LOGFILE="/usr/local/apache/logs/error_log"
     FORMAT="%-8s %-9s %-16s %-16s\n";
 
     if [[ $1 == '-v' ]]; then
-      printf "$FORMAT" " Count#" " Error#" " Local-IP" " Remote-IP";
+      printf "$FORMAT" " Count#" " Error#" " Remote-IP" " Local-IP/Host";
       printf "$FORMAT" "--------" "---------" "$(dash 16)" "$(dash 16)";
-      grep -E "client.$IP.*id..[0-9]{6,}\"" /usr/local/apache/logs/error_log\
+      grep -E "client.$IP.*id..[0-9]{6,}\"" $LOGFILE\
 	 | perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*hostname "(.*?)".*/\2 \1 \3/'\
 	 | sort | uniq -c | sort -rn | awk '{printf "%7s   %-8s  %-16s %s\n",$1,$2,$3,$4}' | head -n $count
     else
       printf "$FORMAT" " Count#" " Error#" " Remote-IP";
       printf "$FORMAT" "--------" "---------" "$(dash 16)";
-      if grep -qEi '\[id: [0-9]{6,}\]' /usr/local/apache/logs/error_log; then
-        grep -Eio "client.$IP.*\] |id.*[0-9]{6,}\]" /usr/local/apache/logs/error_log | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
+      if grep -qEi '\[id: [0-9]{6,}\]' $LOGFILE; then
+        grep -Eio "client.$IP.*\] |id.*[0-9]{6,}\]" $LOGFILE | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
 	 | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $count;
       else
-        grep -Eio "client.$IP.*id..[0-9]{6,}\"" /usr/local/apache/logs/error_log | awk '{print $NF,$2}'\
+        grep -Eio "client.$IP.*id..[0-9]{6,}\"" $LOGFILE | awk '{print $NF,$2}'\
 	 | sort | uniq -c | tr -d \" | tr -d \] | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $count;
       fi
     fi
