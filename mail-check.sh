@@ -28,9 +28,6 @@ dash (){ for ((i=1; i<=$1; i++)); do printf "$2"; done; }
 
 mailcheck(){
 
-# Sanity Check -- Does Swaks exist
-if [[ ! -x $(which swaks) ]]; then echo -e "\nSwaks does not appear to be installed\n"; return 1; fi
-
 # Help Output and quit
 if [[ $1 =~ -h ]]; then echo -e "\n  Usage: mailcheck [options] [<ip1> <ip2> ... | ALL]\n    -v ... Verbose\n    -h ... Print this help\n   all ... check all IPs\n"; return 0; fi
 
@@ -59,6 +56,9 @@ echo -e "\n$(dash 80 =)\n${WHITE}  Web Based Checks -- ${ipaddr} ${NORMAL}\n$(da
 
   echo -e "\n$(dash 80 =)\n${WHITE}  Swaks Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
 
+# Sanity Check -- Does Swaks exist
+if [[ ! -x $(which swaks) ]]; then echo -e "\nSwaks does not appear to be installed\n"; else
+
   # Send test emails with swaks to check for errors
   for x in live.com att.net earthlink.com gmail.com yahoo.com comcast.net; do
     result=$(swaks -4 -t postmaster@${x} -q RCPT -li $ipaddr 2>&1 | egrep ' 421| 521| 450| 550| 554| 571';)
@@ -66,6 +66,7 @@ echo -e "\n$(dash 80 =)\n${WHITE}  Web Based Checks -- ${ipaddr} ${NORMAL}\n$(da
       echo -e "\n=> $x <=\n$(dash 80 -)\n${result}";
     fi
   done; echo
+fi
 
 done
 echo -e "$(dash 80 =)\n"
