@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-03-09
-# Updated: 2015-03-18
+# Updated: 2015-04-12
 #
 #
 #!/bin/bash
@@ -39,9 +39,9 @@ if [[ $1 =~ -v ]]; then verb=1; shift; else verb=0; fi
 
 # What IPs to check
 if [[ -z "$@" ]]; then
-  ip_list="$(/sbin/ip addr show | awk '/inet / && ($2 !~ /^127\./) {print $2}' | cut -d/ -f1 | head -1)"; # Main IP
+  ip_list="$(/sbin/ip addr show | awk '/inet / && ($2 !~ /^127\.|^10\.|^192\.168\./) {print $2}' | cut -d/ -f1 | head -1)"; # Main IP
 elif [[ $1 == 'all' ]]; then
-  ip_list="$(/sbin/ip addr show | awk '/inet / && ($2 !~ /^127\./) {print $2}' | cut -d/ -f1)"; # All IPs
+  ip_list="$(/sbin/ip addr show | awk '/inet / && ($2 !~ /^127\.|^10\.|^192\.168\./) {print $2}' | cut -d/ -f1)"; # All IPs
 else
   ip_list="$@" # List of IPs
 fi
@@ -59,7 +59,8 @@ for ipaddr in $ip_list; do
   fi
 
   # Sanity Check -- Does Swaks exist
-  if [[ ! -x $(which swaks) ]]; then echo -e "\nSwaks does not appear to be installed\n"; else
+  cont=$(which swaks)
+  if [[ ! -x $cont ]]; then echo -e "\nSwaks does not appear to be installed\n"; else
   echo -e "\n$(dash 80 =)\n${WHITE}  Swaks Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
 
   # Send test emails with swaks to check for errors
@@ -74,7 +75,7 @@ fi
 done
 echo -e "$(dash 80 =)\n"
 
-unset ipaddr rdns result verb
+unset ipaddr rdns result verb quiet cont
 }
 
 mailcheck "$@"
