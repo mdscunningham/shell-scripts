@@ -29,35 +29,38 @@ dash (){ for ((i=1; i<=$1; i++)); do printf "$2"; done; }
 mailcheck(){
 
 # Help Output and quit
-if [[ $1 =~ -h ]]; then echo -e "\n  Usage: mailcheck [options] [<ip1> <ip2> ... | ALL]\n    -v ... Verbose\n    -h ... Print this help\n   all ... check all IPs\n"; return 0; fi
+if [[ $1 =~ -h ]]; then echo -e "\n  Usage: mailcheck [options] [<ip1> <ip2> ... | ALL]\n    -q ... Quiet (don't print web links)\n    -v ... Verbose (print empty swaks results)\n    -h ... Print this help\n   all ... check all IPs\n"; return 0; fi
+
+# Set Quiet Mode for not printing links
+if [[ $1 =~ -q ]]; then quiet=1; shift; else quiet=0; fi
 
 # Print out resuts for all the mail hosts regardless of errors
 if [[ $1 =~ -v ]]; then verb=1; shift; else verb=0; fi
 
 # What IPs to check
 if [[ -z "$@" ]]; then
-  ip_list="$(ip addr show | awk '/inet / && ($2 !~ /^127\./) {print $2}' | cut -d/ -f1 | head -1)"; # Main IP
+  ip_list="$(/sbin/ip addr show | awk '/inet / && ($2 !~ /^127\./) {print $2}' | cut -d/ -f1 | head -1)"; # Main IP
 elif [[ $1 == 'all' ]]; then
-  ip_list="$(ip addr show | awk '/inet / && ($2 !~ /^127\./) {print $2}' | cut -d/ -f1)"; # All IPs
+  ip_list="$(/sbin/ip addr show | awk '/inet / && ($2 !~ /^127\./) {print $2}' | cut -d/ -f1)"; # All IPs
 else
   ip_list="$@" # List of IPs
 fi
 
 for ipaddr in $ip_list; do
-echo -e "\n$(dash 80 =)\n${WHITE}  Web Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
+  if [[ $quiet == '0' ]]; then
+    echo -e "\n$(dash 80 =)\n${WHITE}  Web Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
+    rdns="$(dig +short -x $ipaddr)" # Check RDNS
+    echo "rDNS/PTR: ${GREEN}${rdns:-${RED}Is not setup ...}${NORMAL}"
 
-  rdns="$(dig +short -x $ipaddr)" # Check RDNS
-  echo "rDNS/PTR: ${GREEN}${rdns:-${RED}Is not setup ...}${NORMAL}"
+    # Web based lookups
+    echo "http://multirbl.valli.org/lookup/${YELLOW}${ipaddr}${NORMAL}.html"
+    echo "http://www.senderbase.org/lookup/?search_string=${YELLOW}${ipaddr}${NORMAL}"
+    echo "http://mxtoolbox.com/SuperTool.aspx?action=blacklist%3a${YELLOW}${ipaddr}${NORMAL}&run=toolpage"
+  fi
 
-  # Web based lookups
-  echo "http://multirbl.valli.org/lookup/${YELLOW}${ipaddr}${NORMAL}.html"
-  echo "http://www.senderbase.org/lookup/?search_string=${YELLOW}${ipaddr}${NORMAL}"
-  echo "http://mxtoolbox.com/SuperTool.aspx?action=blacklist%3a${YELLOW}${ipaddr}${NORMAL}&run=toolpage"
-
+  # Sanity Check -- Does Swaks exist
+  if [[ ! -x $(which swaks) ]]; then echo -e "\nSwaks does not appear to be installed\n"; else
   echo -e "\n$(dash 80 =)\n${WHITE}  Swaks Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
-
-# Sanity Check -- Does Swaks exist
-if [[ ! -x $(which swaks) ]]; then echo -e "\nSwaks does not appear to be installed\n"; else
 
   # Send test emails with swaks to check for errors
   for x in live.com att.net earthlink.com gmail.com yahoo.com comcast.net; do
