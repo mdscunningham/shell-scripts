@@ -3,49 +3,57 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-01-01
-# Updated: 2015-04-14
+# Updated: 2015-04-15
 #
 #
 #!/bin/bash
 
 dash(){ for ((i=1;i<=$1;i++)); do printf "-"; done; }
 
+    QUIET=0;VERBOSE=0;COUNT=20;LOGFILE="/usr/local/apache/logs/error_log" # Initialization
+
 modsec(){
-   if [[ "$1" == '-h' || "$1" == '--help' ]]; then
-        echo -e "\n Usage: $FUNCNAME [-d <DOMAIN>] [-n <linecount>] [-i|--ip <IPADDR>]\n\n    If <DOMAIN> is . attempt to get domain from path\n    <IPADDR> can be a full IP address, or regex\n";
-        return 0;
-    fi;
+    local OPTIND
+    while getopts hi:l:n:qv option; do
+      case "${option}" in
+        q) QUIET=1 ;;
+        v) VERBOSE=1 ;;
+        i) IP=${OPTARG} ;;
+	l) LOGFILE=${OPTARG} ;;
+        n) COUNT=${OPTARG} ;;
+        h) echo -e "\n Usage: $0 [OPTIONS]\n
+    -n ... <linecount> (number of results to print)
+    -i ... <ipaddress> (can be full IP or regex)
+    -l ... <logfile> (set alternate log file)
+    -v ... verbose debugging output
+    -q ... quiet, don't print error message\n";
+        return 0 ;;
+      esac
+    done
 
-    echo;
-    if [[ $1 == '-d' && $2 == '.' ]]; then DOMAIN=$(grep -B5 "DocumentRoot $PWD$" /usr/local/apache/conf/httpd.conf | awk '/ServerName/ {print $2}' | head -1); shift; shift;
-       elif [[ $1 == '-d' && -n $2 ]]; then DOMAIN=$(echo $2 | sed 's:/$::'); shift; shift; fi
+    echo; FORMAT="%-8s %-9s %-16s %-16s\n";
 
-    if [[ $1 == '-n' ]]; then count="$2"; shift; shift; else count="10"; fi
-
-    if [[ $1 == '-i' ]]; then IP="$2"; shift; shift; fi;
-
-    LOGFILE="/usr/local/apache/logs/error_log"
-    FORMAT="%-8s %-9s %-16s %-16s\n";
-
-    if [[ $1 == '-v' ]]; then
+    if [[ $QUIET != 1 ]]; then
       printf "$FORMAT" " Count#" " Error#" " Remote-IP" " Error Message";
       printf "$FORMAT" "--------" "---------" "$(dash 16)" "$(dash 42)";
-      grep -E "client.$IP.*id..[0-9]{6,}\"" $LOGFILE\
+      grep -Ei "client.$IP.*id..[0-9]{6,}\"" $LOGFILE\
 	 | perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*msg "(.*?)".*/\2\t\1\t\3/' | sed 's/ /_/g'\
-	 | sort | uniq -c | sort -rn | awk '{printf "%7s   %-8s  %-16s %s\n",$1,$2,$3,$4}' | head -n $count
+	 | sort | uniq -c | sort -rn | awk '{printf "%7s   %-8s  %-16s %s\n",$1,$2,$3,$4}' | sed 's/_/ /g' | head -n $COUNT
     else
       printf "$FORMAT" " Count#" " Error#" " Remote-IP";
       printf "$FORMAT" "--------" "---------" "$(dash 16)";
       if grep -qEi '\[id: [0-9]{6,}\]' $LOGFILE; then
         grep -Eio "client.$IP.*\] |id.*[0-9]{6,}\]" $LOGFILE | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
-	 | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $count;
+	 | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
       else
         grep -Eio "client.$IP.*id..[0-9]{6,}\"" $LOGFILE | awk '{print $NF,$2}'\
-	 | sort | uniq -c | tr -d \" | tr -d \] | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $count;
+	 | sort | uniq -c | tr -d \" | tr -d \] | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
       fi
     fi
-
     echo
+
+    if [[ $VERBOSE == 1 ]]; then
+      echo -e "LOGFILE: $LOGFILE\nCOUNT  : $COUNT\nIP     : $IP\n"; fi
 }
 modsec "$@"
 
