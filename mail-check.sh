@@ -39,9 +39,9 @@ if [[ $1 =~ -v ]]; then verb=1; shift; else verb=0; fi
 
 # What IPs to check
 if [[ -z "$@" ]]; then
-  ip_list="$(/sbin/ip addr show | awk '/inet / && ($2 !~ /^127\.|^10\.|^192\.168\./) {print $2}' | cut -d/ -f1 | head -1)"; # Main IP
+  ip_list="$(/sbin/ip addr show | awk '/inet / && ($2 !~ /^127\.|^10\.|^172\.|^192\.168\./) {print $2}' | cut -d/ -f1 | head -1)"; # Main IP
 elif [[ $1 == 'all' ]]; then
-  ip_list="$(/sbin/ip addr show | awk '/inet / && ($2 !~ /^127\.|^10\.|^192\.168\./) {print $2}' | cut -d/ -f1)"; # All IPs
+  ip_list="$(/sbin/ip addr show | awk '/inet / && ($2 !~ /^127\.|^10\.|^172\.|^192\.168\./) {print $2}' | cut -d/ -f1)"; # All IPs
 else
   ip_list="$@" # List of IPs
 fi
@@ -59,8 +59,7 @@ for ipaddr in $ip_list; do
   fi
 
   # Sanity Check -- Does Swaks exist
-  cont=$(which swaks)
-  if [[ ! -x $cont ]]; then echo -e "\nSwaks does not appear to be installed\n"; else
+  if [[ ! -x /usr/bin/swaks ]]; then echo -e "\nInstalling swaks\n"; wget -q http://jetmore.org/john/code/swaks/latest/swaks -O /usr/bin/swaks; chmod +x /usr/bin/swaks; fi
   echo -e "\n$(dash 80 =)\n${WHITE}  Swaks Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
 
   # Send test emails with swaks to check for errors
@@ -70,8 +69,6 @@ for ipaddr in $ip_list; do
       echo -e "\n=> $x <=\n$(dash 80 -)\n${result}";
     fi
   done; echo
-fi
-
 done
 echo -e "$(dash 80 =)\n"
 
