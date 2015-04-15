@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-01-01
-# Updated: 2015-04-10
+# Updated: 2015-04-14
 #
 #
 #!/bin/bash
@@ -28,10 +28,10 @@ modsec(){
     FORMAT="%-8s %-9s %-16s %-16s\n";
 
     if [[ $1 == '-v' ]]; then
-      printf "$FORMAT" " Count#" " Error#" " Remote-IP" " Local-IP/Host";
-      printf "$FORMAT" "--------" "---------" "$(dash 16)" "$(dash 16)";
+      printf "$FORMAT" " Count#" " Error#" " Remote-IP" " Error Message";
+      printf "$FORMAT" "--------" "---------" "$(dash 16)" "$(dash 42)";
       grep -E "client.$IP.*id..[0-9]{6,}\"" $LOGFILE\
-	 | perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*hostname "(.*?)".*/\2 \1 \3/'\
+	 | perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*msg "(.*?)".*/\2\t\1\t\3/' | sed 's/ /_/g'\
 	 | sort | uniq -c | sort -rn | awk '{printf "%7s   %-8s  %-16s %s\n",$1,$2,$3,$4}' | head -n $count
     else
       printf "$FORMAT" " Count#" " Error#" " Remote-IP";
