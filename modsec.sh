@@ -48,7 +48,7 @@ modsec(){
         grep -Eio "$DATE.*client.$IP.*\] |id.*[0-9]{6,}\]" $LOGFILE | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
 	 | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
       else
-        grep -Eio "$DATE.*client.$IP.*id..[0-9]{6,}\"" $LOGFILE | awk '{print $NF,$2}'\
+        grep -Eio "$DATE.*client.$IP.*id..[0-9]{6,}\"" $LOGFILE | perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*/\2\t\1/'\
 	 | sort | uniq -c | tr -d \" | tr -d \] | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
       fi
     fi
@@ -70,14 +70,3 @@ modsec "$@"
 # ^^ Solution to replace really long sed command
 #
 ####
-
-####
-#
-# Example ModSec error for reference
-#
-# [Wed Apr 08 17:19:04.315431 2015] [:error] [pid 15280:tid 140008266651392] [client 91.217.90.49] ModSecurity: Warning. Match of "pm AppleWebKit Android" against "REQUEST_HEADERS:User-Agent" required.
-# [file "/usr/local/apache/conf/modsec_vendor_configs/OWASP/rules/REQUEST-20-PROTOCOL-ENFORCEMENT.conf"] [line "299"] [id "960015"] [rev "3"] [msg "Request Missing an Accept Header"] [severity "NOTICE"]
-# [ver "OWASP_CRS/3.0.0"] [maturity "9"] [accuracy "8"] [tag "Host: 69.167.152.157"] [tag "OWASP_CRS/PROTOCOL_VIOLATION/MISSING_HEADER_ACCEPT"] [tag "WASCTC/WASC-21"] [tag "OWASP_TOP_10/A7"] [tag "PCI/6.5.10"]
-# [hostname "69.167.152.157"] [uri "/rom-0"] [unique_id "VSWbSEWnmJ0AADuwZSgAAAAD"]
-#
-###
