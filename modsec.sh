@@ -28,8 +28,8 @@ modsec(){
     -i ... <ipaddress> (can be full IP or regex)
     -l ... <logfile> (set alternate log file)
     -n ... <linecount> (number of results to print)
-    -q ... quiet, don't print error message\n";
-    -v ... verbose debugging output
+    -q ... quiet, don't print error message
+    -v ... verbose debugging output\n";
         return 0 ;;
       esac
     done
