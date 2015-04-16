@@ -24,11 +24,12 @@ modsec(){
         n) COUNT=${OPTARG} ;;
         h) echo -e "\n Usage: $0 [OPTIONS]\n
     -d ... <days ago> (1-9...) otherwise assumes today
-    -n ... <linecount> (number of results to print)
+    -h ... display this help output and quit
     -i ... <ipaddress> (can be full IP or regex)
     -l ... <logfile> (set alternate log file)
-    -v ... verbose debugging output
+    -n ... <linecount> (number of results to print)
     -q ... quiet, don't print error message\n";
+    -v ... verbose debugging output
         return 0 ;;
       esac
     done
