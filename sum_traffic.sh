@@ -21,14 +21,10 @@
 shopt -s extglob
 
 ## Initializations
-hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done))
-grandtotal=0
-nocolor=0
-DECOMP="$(which grep)"
-DOMAINS="/usr/local/apache/logs/access_log /usr/local/apache/domlogs/*/*[^_log$]"
-THRESH=''
-RANGE=$(for x in {23..0}; do date --date="-$x hour" +"%d/%b/%Y:%H:"; done); TRANGE=$(seq 0 23);
-FMT=" %5s"
+hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done)); grandtotal=0; nocolor=0
+DECOMP="$(which grep)"; THRESH=''; DATE=$(date +"%d/%b/%Y"); FMT=" %5s"
+DOMAINS="/usr/local/apache/logs/access_log /usr/local/apache/domlogs/*/*[^_log$]";
+RANGE=$(for x in {23..0}; do date --date="-$x hour" +"%d/%b/%Y:%H:"; done);
 
 # Potential replacement for the Date:Hour combination, will also automatically fix the issue of wrapping midnight if I can make it work:
 # 8) RANGE=$(for x in {8..1}; do date --date="-$x hours" +"%d/%b/%Y:%H:"; done)
@@ -36,7 +32,8 @@ FMT=" %5s"
 while getopts d:l:nr:8t:vh option; do
     case "${option}" in
 	# Caclulate date string for searches
-        d) DATE=$(date --date="-${OPTARG} days" +"%d/%b/%Y") ;;
+        d) DATE=$(date --date="-${OPTARG} days" +"%d/%b/%Y"); 
+	   RANGE=$(for x in {23..0}; do date --date="-${OPTARG} days -$x hour" +"%d/%b/%Y:%H:"; done) ;;
 
 	# Use list of domains rather than all sites
         l) DOMAINS="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /usr/local/apache/domlogs/*/$x; done)" ;;
@@ -45,7 +42,7 @@ while getopts d:l:nr:8t:vh option; do
 	n) nocolor=1 ;;
 
 	# Print only a specified range of hours
-	r) INPUT=$(echo ${OPTARG} | sed 's/,/ /g'); FMT=" %7s"; DATE=$(date +"%d/%b/%Y");
+	r) INPUT=$(echo ${OPTARG} | sed 's/,/ /g'); FMT=" %7s";
 	   RANGE=$(for x in $(seq $INPUT); do echo "${DATE}:${x}:"; done) ;;
 
 	8) RANGE=$(for x in {7..0}; do date --date="-$x hours" +"%d/%b/%Y:%H:"; done); FMT=" %7s" ;;
@@ -54,7 +51,7 @@ while getopts d:l:nr:8t:vh option; do
         t) THRESH=${OPTARG} ;;
 
 	# Verbose outpout for debugging
-	v) echo -e "\nDecomp   : $DECOMP\nRange    : $(echo -n $RANGE)\nDomains  : $DOMAINS\nThreshold: $THRESH\n" ;;
+	v) echo -e "\nDecomp   : $DECOMP\nDate     : $DATE\nRange    : $(echo -n $RANGE)\nDomains  : $DOMAINS\nThreshold: $THRESH\n" ;;
 
 	# Help output
 	h) echo -e "\n ${BRIGHT}Usage:${NORMAL} $0 [OPTIONS]\n
