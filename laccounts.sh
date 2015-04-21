@@ -8,4 +8,6 @@
 #
 #!/bin/bash
 
-for x in /home/*/public_html; do echo $x | cut -d/ -f3; done
+# for x in /home/*/public_html; do echo $x | cut -d/ -f3; done
+
+awk -F: '{print $1}' /etc/domainusers
