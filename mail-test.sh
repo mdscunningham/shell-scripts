@@ -1,1 +1,0 @@
-mail-check.sh
