@@ -16,10 +16,8 @@ if [[ -n $2 ]]; then d=$2; else d=31; fi
 ###
 clean_incremental(){
   echo -e "\nCleaning Incremental Backups older than $d days...\n";
-
   for dir in $(find /backup/cpbackup/ -type d -name "*.[0-9]" -mtime +$d -print); do
     echo "Removing: $(du -sh $dir)"; rm -rf $dir; done
-
   echo -e "\nOperation Complete\n"
 }
 
@@ -28,10 +26,11 @@ clean_incremental(){
 ###
 clean_archives(){
   echo -e "\nCleaning Archive Backups older than $d days...\n";
+  new_style=$(find /backup/*/accounts/ -name "*.tar.gz" -mtime +$d -print)
+  old_style=$(find /backup/cpbackup/ -type f -name "*.tar.gz" -mtime +$d -print)
 
-  for backup in $(find /backup/cpbackup/ -type f -name "*.tar.gz" -mtime +$d -print); do
+  for backup in ${new_style} ${old_style}; do
     echo "Removing: $(ls -lah $backup)"; rm -f $backup; done
-
   echo -e "\nOperation Complete\n"
 }
 
@@ -39,11 +38,12 @@ clean_archives(){
 # Find Orphaned backups
 ###
 find_orphans(){
+if [[ -e /backup/cpbackup/ ]]; then
   list=$(for file in /backup/cpbackup/{daily,weekly}/*.tar.gz; do basename $file .tar.gz; done)
-
   for acct in $list; do
     if [[ -z $(grep ${acct}: /etc/domainusers) ]]; then echo "Missing: $acct"; fi
   done; echo
+else echo -e "\n/backup/cpbackup/ does not exist.\n"; fi
 }
 
 ## Original version from jpotter
