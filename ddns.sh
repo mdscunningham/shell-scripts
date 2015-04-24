@@ -15,7 +15,7 @@ if [[ -z "$@" ]]; then
 else
     D="$@";
 fi;
-for x in $(echo $D | sed 's/\// /g');
+for x in $(echo $D | sed 's/http:\/\///g;s/\// /g');
 do
     echo -e "\nDNS Summary: $x\n$(dash 79)";
     for y in a aaaa ns mx srv txt soa;
