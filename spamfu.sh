@@ -30,7 +30,7 @@ dash(){ for ((i=1;i<=$1;i++)); do printf $2; done; }
 #if [[ -z $@ ]]; then
 #  pause(){ echo; read -p "Press [Enter] to continue / [Ctrl+C] To quit ... " enterKey; };
 #else
-  pause(){ enterKey=1; };
+#  pause(){ enterKey=1; };
 #fi
 
 #-----------------------------------------------------------------------------#
@@ -155,7 +155,6 @@ $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g' | awk '!/sp
 # $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g' | sort | uniq -c | sort -rn | egrep -v 'spool|error' | head -n $RESULTCOUNT
 # awk '/cwd=/ && !/spool|error/ {freq[$3]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/cwd=//g' | head;
 # awk '/cwd=/ && !/spool|error/ {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/cwd=//g' | head;
-pause
 
 # Find recent files in CWDs, and stat those files
 # echo -e "\nNewest Files in CWDs"
@@ -166,14 +165,12 @@ echo -e "\nAuth-Users"
 $DECOMP $LOGFILE | grep -o 'login:.*\ S=' | perl -pe 's/.*:(.*?)\ S=/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep -o 'A=.*login:.*@.*\ S=' | cut -d: -f2 | cut -d' ' -f1 | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 # awk '/<=/ && /A=.*login:/ {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-pause
 
 # Count of IPs per Auth-Users
 echo -e "\nIP-Addresses/Auth-Users"
 $DECOMP $LOGFILE | grep 'A=.*login:' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*:(.*?)\ S=.*$/\1 \2/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-15s %s\n",$1,$2,$3}'
 # $DECOMP $LOGFILE | grep 'A=.*login' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*:(.*?)\ S=.*$/\1 \2/g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT | awk '{printf "%7s %-15s %s\n",$1,$2,$3}'
 # awk '/<=/ && /A=/ {print $6,$8}' $LOGFILE | cut -d: -f1 | sort | uniq -c | sort -rn | head | tr -d '[]' | awk '{printf "%8s %-15s %s\n",$1,$3,$2}'
-pause
 
 # Count of From Addresses
 #echo -e "\nFrom Addresses"
@@ -188,14 +185,12 @@ echo -e "\nAccounts"
 $DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | awk '!/mailnull/ {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | grep -v 'mailnull' | sort | uniq -c | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
 # awk '/<=/ && !/U=mailnull/ && ($7 ~ /U=/) {freq[$7]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/U=//g' | head
-pause
 
 # Count of Bouncebacks by address
 echo -e "\nBouncebacks (address)"
 $DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 # awk '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-pause
 
 # Count of Bouncebacks by domain
 # echo -e "\nBouncebacks (domain)"
@@ -206,18 +201,16 @@ echo -e "\nSubjects (Non-Bounceback)"
 $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g' | awk '!/failed: |deferred: / {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g' | sort | uniq -c | sort -rn | grep -Ev 'failed: |deferred: ' | head -n $RESULTCOUNT
 #awk -F\" '/<=/ && /T=/ {freq[$2]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-pause
 
 # Show sent messages with the most recipients
 echo -e "\nMost Recipients\n"
-FMT="%-16s %-7s %s\n"
-printf "$FMT" "MessageID" "RCPTs" "Auth-User"
+FMT="%-16s %7s %s\n"
+printf "$FMT" " MessageID" " RCPTs " " Auth-User"
 printf "$FMT" "$(dash 16 -)" "-------" "$(dash 40 -)"
-$DECOMP $LOGFILE | grep "A=.*_login:"\
- | perl -pe 's/.*?\ .*?\ .*?\ (.*?)\ .*A=.*_login:(.*)\ S=.*>\ for\ (.*)//g; print $1," ",$count = scalar(split(" ",$3))," ",$2;'\
- | sort -rnk2 | awk -v FMT="$FMT" '{printf FMT,$1,$2,$3}'| head -n $RESULTCOUNT
+$DECOMP $LOGFILE | grep "\ <= .*A=.*_login:.*\ for\ "\
+ | perl -pe 's/.*\ (.*?)\ <=\ .*A=.*_login:(.*)\ S=.*\ for\ (.*)//g; print $1," ",$count = scalar(split(" ",$3))," ",$2;'\
+ | sort -rnk2 | awk -v FMT="$FMT" '{printf FMT,$1,$2" "," "$3}'| head -n $RESULTCOUNT
 printf "$FMT" "$(dash 16 -)" "-------" "$(dash 40 -)"
-pause
 
 # Count of IPs sending mail
 # echo -e "\nIP-Addresses"
@@ -309,11 +302,12 @@ mail_php(){
 ## Run either logs() or queue() function
 #clear
 if [[ $l == 1 ]]; then
-  mail_logs;
-elif [[ $q == 1 ]]; then
-  mail_queue;
-elif [[ $p == 1 ]]; then
-  mail_php
-fi
+  mail_logs; fi
+
+if [[ $q == 1 ]]; then
+  mail_queue; fi
+
+if [[ $p == 1 ]]; then
+  mail_php; fi
 
 #~Fin~
