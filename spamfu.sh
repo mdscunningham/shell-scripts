@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-05-02
+# Updated: 2015-05-04
 #
 #
 #!/bin/bash
@@ -22,8 +22,9 @@
 shopt -s extglob
 
 #-----------------------------------------------------------------------------#
-## Because prettier is better
+## Utility functions, because prettier is better
 dash(){ for ((i=1;i<=$1;i++)); do printf $2; done; }
+section_header(){ echo -e "$(dash 80 -)\n$1\n$(dash 40 -)"; }
 
 #-----------------------------------------------------------------------------#
 ## Setup pause between sections of analysis
@@ -68,7 +69,7 @@ select OPTION in "Analyze Logs" "Analyze Queue" "Quit"; do
              else echo -e "\nPlease enter a valid option.\n"; fi ;;
         esac
       done;
-      if [[ $LOGS == '/var/log/exim_mainlog' ]]; then
+      if [[ $l != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then
         PS3="Enter selection or linecount: "
         echo -e "\nHow much of the log?\n$(dash 40 -)"
         select LINES in "Last 1,000,000 lines" "Full log" "Quit"; do
@@ -81,6 +82,10 @@ select OPTION in "Analyze Logs" "Analyze Queue" "Quit"; do
            #*) echo -e "\nPlease enter a valid option.\n" ;;
           esac
         done
+      fi
+      if [[ $l != '0' ]]; then
+	echo; read -p "How many results do you want? [10]: " NEWCOUNT;
+        if [[ -n $NEWCOUNT ]]; then RESULTCOUNT=$NEWCOUNT; fi;
       fi
       break ;;
     "Analyze Queue") l=0; q=1; break ;;
@@ -150,7 +155,7 @@ fi
 #####
 
 ## Count of messages sent by scripts
-echo -e "\nDirectories"
+section_header "Directories"
 $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g' | awk '!/spool|error/ {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g' | sort | uniq -c | sort -rn | egrep -v 'spool|error' | head -n $RESULTCOUNT
 # awk '/cwd=/ && !/spool|error/ {freq[$3]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/cwd=//g' | head;
@@ -161,49 +166,49 @@ $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g' | awk '!/sp
 # for x in $(echo $SCRIPT_DIRS | head -3 | awk '{print $2}'; do ls -larth $x | tail; done | xargs stat
 
 # Count of messages per Auth-Users
-echo -e "\nAuth-Users"
+section_header "Auth-Users"
 $DECOMP $LOGFILE | grep -o 'login:.*\ S=' | perl -pe 's/.*:(.*?)\ S=/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep -o 'A=.*login:.*@.*\ S=' | cut -d: -f2 | cut -d' ' -f1 | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 # awk '/<=/ && /A=.*login:/ {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
 # Count of IPs per Auth-Users
-echo -e "\nIP-Addresses/Auth-Users"
+section_header "IP-Addresses/Auth-Users"
 $DECOMP $LOGFILE | grep 'A=.*login:' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*:(.*?)\ S=.*$/\1 \2/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-15s %s\n",$1,$2,$3}'
 # $DECOMP $LOGFILE | grep 'A=.*login' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*:(.*?)\ S=.*$/\1 \2/g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT | awk '{printf "%7s %-15s %s\n",$1,$2,$3}'
 # awk '/<=/ && /A=/ {print $6,$8}' $LOGFILE | cut -d: -f1 | sort | uniq -c | sort -rn | head | tr -d '[]' | awk '{printf "%8s %-15s %s\n",$1,$3,$2}'
 
 # Count of From Addresses
-#echo -e "\nFrom Addresses"
+#section_header "From Addresses"
 #awk '/<=/ && !/U=mailnull/ {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
 # Count of To Addresses
-# echo -e "\nTo Addresses"
+#section_header "To Addresses"
 # awk '/<=/ && !/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
 # Count of Messages per account
-echo -e "\nAccounts"
+section_header "Accounts"
 $DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | awk '!/mailnull/ {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | grep -v 'mailnull' | sort | uniq -c | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
 # awk '/<=/ && !/U=mailnull/ && ($7 ~ /U=/) {freq[$7]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/U=//g' | head
 
 # Count of Bouncebacks by address
-echo -e "\nBouncebacks (address)"
+section_header "Bouncebacks (address)"
 $DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 # awk '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
 # Count of Bouncebacks by domain
-# echo -e "\nBouncebacks (domain)"
+#section_header "Bouncebacks (domain)"
 # awk -F@ '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
 # Count of Messages by Subject
-echo -e "\nSubjects (Non-Bounceback)"
+section_header "Subjects (Non-Bounceback)"
 $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g' | awk '!/failed: |deferred: / {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g' | sort | uniq -c | sort -rn | grep -Ev 'failed: |deferred: ' | head -n $RESULTCOUNT
 #awk -F\" '/<=/ && /T=/ {freq[$2]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
 # Show sent messages with the most recipients
-echo -e "\nMost Recipients\n"
+section_header "Bulk Senders"
 FMT="%-16s %7s %s\n"
 printf "$FMT" " MessageID" " RCPTs " " Auth-User"
 printf "$FMT" "$(dash 16 -)" "-------" "$(dash 40 -)"
@@ -255,33 +260,33 @@ else
 fi
 
 ## Queue Summary
-echo -e "\nQueue: Summary"
+section_header "Queue: Summary"
 $DECOMP $QUEUEFILE | exiqsumm | head -3 | tail -2; cat $QUEUEFILE | exiqsumm | sort -rnk1 | grep -v "TOTAL$" | head -n $RESULTCOUNT
 # exim -bp | exiqsumm
 
 ## Queue Senders
-# echo -e "\nQueue: Auth Users"
+#section_header "Queue: Auth Users"
 # find /var/spool/exim/input/ -type f -name "*-H" -print | xargs grep --no-filename 'auth_id'
 
 ## Queue Subjects
 # http://www.commandlinefu.com/commands/view/9758/sort-and-count-subjects-of-emails-stuck-in-exim-queue
-# echo -e "\nQueue: Subjects"
+#section_header "Queue: Subjects"
 # find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "Subject: " | sort | uniq -c | sort -rn | sed 's/Subject: //g' | head -n $RESULTCOUNT
 
 ## Queue Scripts
-# echo -e "\nQueue: X-PHP-Scripts"
+#section_header "Queue: X-PHP-Scripts"
 # find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "X-PHP-Script" | sort | uniq -c | sort -rn | sed 's/^X-PHP-Script//g' | head -n $RESULTCOUNT
 
 ## Count of (non-bounceback) Sending Addresses in queue
-echo -e "\nQueue: Senders"
+section_header "Queue: Senders"
 $DECOMP $QUEUEFILE | awk '($4 ~ /<[^>]/) {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | tr -d '<>' | head -n $RESULTCOUNT
 
 ## Count of Bouncebacks in the queue
-echo -e "\nQueue: Bouncebacks (count)"
+section_header "Queue: Bouncebacks (count)"
 $DECOMP $QUEUEFILE | awk '($4 ~ /<>/) {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
 ## Count of 'frozen' messages by user
-echo -e "\nQueue: Frozen (count)"
+section_header "Queue: Frozen (count)"; echo
 $DECOMP $QUEUEFILE | awk '/frozen/ {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | sed 's/<>/*** Bounceback ***/' | tr -d '<>' | head -n $RESULTCOUNT
 echo -e "\nRemove Frozen Bouncebacks:\nawk '/<>.*frozen/ {print \$3}' $QUEUEFILE | xargs exim -Mrm > /dev/null"
 echo -e "find /var/spool/exim/msglog/ | xargs egrep -l \"P=local\" | cut -b26- | xargs -P6 -n500 exim -Mrm > /dev/null"
