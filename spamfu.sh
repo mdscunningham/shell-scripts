@@ -24,7 +24,7 @@ shopt -s extglob
 #-----------------------------------------------------------------------------#
 ## Utility functions, because prettier is better
 dash(){ for ((i=1;i<=$1;i++)); do printf $2; done; }
-section_header(){ echo -e "$(dash 80 -)\n$1\n$(dash 40 -)"; }
+section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 
 #-----------------------------------------------------------------------------#
 ## Setup pause between sections of analysis
@@ -79,7 +79,6 @@ select OPTION in "Analyze Logs" "Analyze Queue" "Quit"; do
             "Last 1,000,000 lines") break ;;
             *) if [[ ${REPLY} =~ ([0-9]) ]]; then LINECOUNT=${REPLY}; break;
                else echo "Invalid input, using defaults."; break; fi ;;
-           #*) echo -e "\nPlease enter a valid option.\n" ;;
           esac
         done
       fi
@@ -265,17 +264,17 @@ $DECOMP $QUEUEFILE | exiqsumm | head -3 | tail -2; cat $QUEUEFILE | exiqsumm | s
 # exim -bp | exiqsumm
 
 ## Queue Senders
-#section_header "Queue: Auth Users"
-# find /var/spool/exim/input/ -type f -name "*-H" -print | xargs grep --no-filename 'auth_id'
+section_header "Queue: Auth Users"
+find /var/spool/exim/input/ -type f -name "*-H" -print | xargs grep --no-filename 'auth_id' | sed 's/-auth_id//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Subjects
 # http://www.commandlinefu.com/commands/view/9758/sort-and-count-subjects-of-emails-stuck-in-exim-queue
-#section_header "Queue: Subjects"
-# find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "Subject: " | sort | uniq -c | sort -rn | sed 's/Subject: //g' | head -n $RESULTCOUNT
+section_header "Queue: Subjects"
+find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "Subject: " | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Scripts
-#section_header "Queue: X-PHP-Scripts"
-# find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "X-PHP-Script" | sort | uniq -c | sort -rn | sed 's/^X-PHP-Script//g' | head -n $RESULTCOUNT
+section_header "Queue: X-PHP-Scripts"
+find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "X-PHP-Script" | sort | uniq -c | sort -rn | sed 's/^X-PHP-Script//g' | head -n $RESULTCOUNT
 
 ## Count of (non-bounceback) Sending Addresses in queue
 section_header "Queue: Senders"
@@ -300,7 +299,21 @@ echo
 }
 
 mail_php(){
-  echo -e "\nPHP Mail Log .. Work in progress\n\n$(php -v | head -1)\n"
+#---LF_SCRIPT-----------------------------------------------------------------#
+# https://forums.cpanel.net/threads/see-which-php-scripts-are-sending-mail.163345/
+
+PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
+echo -e "\nphp.ini : $PHPCONF"
+
+if [[ -n $(grep 'mail.add_x_header.*On' $PHPCONF) ]]; then
+  PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
+  echo "mail.log: $PHPLOG"
+  echo "X_Header: Enabled"
+else
+  echo "X_Header: Disabled"
+fi
+
+echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
 }
 
 #-----------------------------------------------------------------------------#
