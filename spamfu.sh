@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-05-04
+# Updated: 2015-05-06
 #
 #
 #!/bin/bash
@@ -265,7 +265,7 @@ $DECOMP $QUEUEFILE | exiqsumm | head -3 | tail -2; cat $QUEUEFILE | exiqsumm | s
 
 ## Queue Senders
 section_header "Queue: Auth Users"
-find /var/spool/exim/input/ -type f -name "*-H" -print | xargs grep --no-filename 'auth_id' | sed 's/-auth_id//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+find /var/spool/exim/input/ -type f -name "*-H" -print | xargs grep --no-filename 'auth_id' | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Subjects
 # http://www.commandlinefu.com/commands/view/9758/sort-and-count-subjects-of-emails-stuck-in-exim-queue
