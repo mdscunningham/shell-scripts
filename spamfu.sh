@@ -10,6 +10,13 @@
 
 # Based partially on previous work by: mwineland
 
+
+### Exim.conf
+# /etc/exim.conf -- Full Options, only some of these are configured by default
+# log_selector = +address_rewrite +all_parents +arguments +connection_reject +delay_delivery +delivery_size +dnslist_defer +incoming_interface +incoming_port
+# +lost_incoming_connection +queue_run +received_sender +received_recipients +retry_defer +sender_on_delivery +size_reject +skip_delivery
+# +smtp_confirmation +smtp_connection +smtp_protocol_error +smtp_syntax_error +subject +tls_cipher +tls_peerdn
+
 ## LW Docs
 # http://www.liquidweb.com/kb/digging-into-exim-mail-logs-with-exigrep/
 # http://www.liquidweb.com/kb/how-to-read-an-exim-maillog/
@@ -285,7 +292,7 @@ section_header "Queue: Bouncebacks (count)"
 $DECOMP $QUEUEFILE | awk '($4 ~ /<>/) {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
 ## Count of 'frozen' messages by user
-section_header "Queue: Frozen (count)"; echo
+section_header "Queue: Frozen (count)"
 $DECOMP $QUEUEFILE | awk '/frozen/ {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | sed 's/<>/*** Bounceback ***/' | tr -d '<>' | head -n $RESULTCOUNT
 echo -e "\nRemove Frozen Bouncebacks:\nawk '/<>.*frozen/ {print \$3}' $QUEUEFILE | xargs exim -Mrm > /dev/null"
 echo -e "find /var/spool/exim/msglog/ | xargs egrep -l \"P=local\" | cut -b26- | xargs -P6 -n500 exim -Mrm > /dev/null"
