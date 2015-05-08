@@ -61,42 +61,59 @@ if [[ -z $@ ]]; then
 #-----------------------------------------------------------------------------#
 # Menues for the un-initiated
 
+line_count_menu(){
+  PS3="Enter selection or linecount: "
+  echo -e "\nHow much of the log?\n$(dash 40 -)"
+  select LINES in "Last 1,000,000 lines" "Full log" "Quit"; do
+    case $LINES in
+      "Quit") l=0; q=0; p=0; break ;;
+      "Full log") full_log=1; break ;;
+      "Last 1,000,000 lines") break ;;
+      *) if [[ ${REPLY} =~ ([0-9]) ]]; then LINECOUNT=${REPLY}; break;
+         else echo "Invalid input, using defaults."; break; fi ;;
+    esac
+  done
+}
+
+log_select_menu(){
+  echo -e "\nWhich file?\n$(dash 40 -)\n$(du -sh $1)\n"
+  select LOGS in $1 "Quit"; do
+    case $LOGS in
+      "Quit") l=0; q=0; p=0; break ;;
+      *) if [[ -f $LOGS ]]; then LOGFILE=$LOGS; QUEUEFILE=$LOGS; break;
+         elif [[ -f ${REPLY} ]]; then LOGFILE=${REPLY}; QUEUEFILE=${REPLY}; break;
+         else echo -e "\nPlease enter a valid option.\n"; fi ;;
+    esac
+  done;
+}
+
 PS3="Enter selection: ";
 clear
 echo -e "$(dash 80 =)\nCurrent Queue: $(exim -bpc)\n$(dash 40 -)\n\nWhat would you like to do?\n$(dash 40 -)"
-select OPTION in "Analyze Logs" "Analyze Queue" "Quit"; do
+select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Quit"; do
   case $OPTION in
-    "Analyze Logs")
-      echo -e "\nWhich log file?\n$(dash 40 -)\n$(du -sh /var/log/exim_mainlog*)\n"
-      select LOGS in /var/log/exim_mainlog* "Quit"; do
-        case $LOGS in
-          "Quit") l=0; break ;;
-          *) if [[ -f $LOGS ]]; then LOGFILE=$LOGS; break;
-             elif [[ -f ${REPLY} ]]; then LOGFILE=${REPLY}; break;
-             else echo -e "\nPlease enter a valid option.\n"; fi ;;
-        esac
-      done;
+
+    "Analyze Exim Logs")
+      log_select_menu "/var/log/exim_mainlog*"
       if [[ $l != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then
-        PS3="Enter selection or linecount: "
-        echo -e "\nHow much of the log?\n$(dash 40 -)"
-        select LINES in "Last 1,000,000 lines" "Full log" "Quit"; do
-          case $LINES in
-            "Quit") l=0; break ;;
-            "Full log") full_log=1; break ;;
-            "Last 1,000,000 lines") break ;;
-            *) if [[ ${REPLY} =~ ([0-9]) ]]; then LINECOUNT=${REPLY}; break;
-               else echo "Invalid input, using defaults."; break; fi ;;
-          esac
-        done
+	line_count_menu
       fi
       if [[ $l != '0' ]]; then
 	echo; read -p "How many results do you want? [10]: " NEWCOUNT;
         if [[ -n $NEWCOUNT ]]; then RESULTCOUNT=$NEWCOUNT; fi;
       fi
       break ;;
-    "Analyze Queue") l=0; q=1; break ;;
-    "Quit") l=0; q=0; break ;;
+
+    "Analyze PHP Logs")
+      l=0; p=1; q=0; break;;
+
+    "Analyze Exim Queue")
+      l=0; q=1; p=0; line_count_menu; break ;;
+
+    "Quit") l=0; q=0; p=0; break ;;
+
     *) echo -e "\nPlease enter a valid option.\n" ;;
+
   esac;
 done;
 clear
@@ -261,14 +278,16 @@ if [[ $full_log == 1 ]]; then
   du -sh $QUEUEFILE | awk '{print "Using Queue Dump: "$2,"("$1")"}'
 # Minimize impact on initial scan, using last 1,000,000 lines
 else
-  DECOMP="tail -1000000";
-  du -sh $QUEUEFILE | awk '{print "Last 1M lines of: "$2,"("$1")"}';
+  DECOMP="tail -$LINECOUNT";
+  du -sh $QUEUEFILE | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
 fi
 
 ## Queue Summary
 section_header "Queue: Summary"
+if [[ -n $(head $QUEUEFILE) ]]; then
 $DECOMP $QUEUEFILE | exiqsumm | head -3 | tail -2; cat $QUEUEFILE | exiqsumm | sort -rnk1 | grep -v "TOTAL$" | head -n $RESULTCOUNT
-# exim -bp | exiqsumm
+fi
+#exim -bp | exiqsumm
 
 ## Queue Senders
 section_header "Queue: Auth Users"
