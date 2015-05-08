@@ -34,14 +34,6 @@ dash(){ for ((i=1;i<=$1;i++)); do printf $2; done; }
 section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 
 #-----------------------------------------------------------------------------#
-## Setup pause between sections of analysis
-#if [[ -z $@ ]]; then
-#  pause(){ echo; read -p "Press [Enter] to continue / [Ctrl+C] To quit ... " enterKey; };
-#else
-#  pause(){ enterKey=1; };
-#fi
-
-#-----------------------------------------------------------------------------#
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
 QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H).00"
@@ -61,13 +53,14 @@ if [[ -z $@ ]]; then
 #-----------------------------------------------------------------------------#
 # Menues for the un-initiated
 
+## Lines to read from the log file
 line_count_menu(){
   PS3="Enter selection or linecount: "
-  echo -e "\nHow much of the log?\n$(dash 40 -)"
-  select LINES in "Last 1,000,000 lines" "Full log" "Quit"; do
+  echo -e "\nHow many lines to analyze?\n$(dash 40 -)"
+  select LINES in "Last 1,000,000 lines" "All of it" "Quit"; do
     case $LINES in
       "Quit") l=0; q=0; p=0; break ;;
-      "Full log") full_log=1; break ;;
+      "All of it") full_log=1; break ;;
       "Last 1,000,000 lines") break ;;
       *) if [[ ${REPLY} =~ ([0-9]) ]]; then LINECOUNT=${REPLY}; break;
          else echo "Invalid input, using defaults."; break; fi ;;
@@ -75,6 +68,7 @@ line_count_menu(){
   done
 }
 
+## Select a log file from what's on the server
 log_select_menu(){
   echo -e "\nWhich file?\n$(dash 40 -)\n$(du -sh $1)\n"
   select LOGS in $1 "Quit"; do
@@ -87,6 +81,8 @@ log_select_menu(){
   done;
 }
 
+#-----------------------------------------------------------------------------#
+## MAIN MENU BEGIN
 PS3="Enter selection: ";
 clear
 echo -e "$(dash 80 =)\nCurrent Queue: $(exim -bpc)\n$(dash 40 -)\n\nWhat would you like to do?\n$(dash 40 -)"
@@ -105,7 +101,21 @@ select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Qu
       break ;;
 
     "Analyze PHP Logs")
-      l=0; p=1; q=0; break;;
+      l=0; p=1; q=0;
+      PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
+      echo -e "\nphp.ini : $PHPCONF"
+      if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
+        PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
+        echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
+        echo "X_Header: Enabled"
+        log_select_menu "${PHPLOG}*"
+        if [[ $p != '0' && $(file -b $LOGFILE) =~ zip ]]; then
+          line_count_menu
+        fi
+      else
+        echo "X_Header: Disabled"
+      fi
+      break;;
 
     "Analyze Exim Queue")
       l=0; q=1; p=0; line_count_menu; break ;;
@@ -117,6 +127,8 @@ select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Qu
   esac;
 done;
 clear
+## MAIN MENU END
+
 else
 #-----------------------------------------------------------------------------#
 # Process commandline flags
@@ -124,10 +136,10 @@ while getopts fhl:n:pqc: OPTIONS; do
   case "${OPTIONS}" in
     c) LINECOUNT=${OPTARG} ;;
     f) full_log=1 ;;
-    l) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG};; # Specify a log/queue file
+    l) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
     n) RESULTCOUNT=${OPTARG} ;;
-    p) l=0; if [[ $(php -v) =~ 5.[3-9] ]]; then p=1; fi ;; # PHP log
-    q) l=0; q=1;; # Analyze queue instead of log
+    p) l=0; p=1; q=0 ;; # PHP log
+    q) l=0; q=1; p=0 ;; # Analyze queue instead of log
     ## t) t=${OPTARG};; # Set a timeframe [log/queue] to analyze
     h) echo -e "\nUsage: $0 [OPTIONS]\n
     -c ... <#lines> to read from the end of the log
@@ -188,6 +200,12 @@ $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g' | awk '!/sp
 # echo -e "\nNewest Files in CWDs"
 # for x in $(echo $SCRIPT_DIRS | head -3 | awk '{print $2}'; do ls -larth $x | tail; done | xargs stat
 
+# Count of Messages per account
+section_header "Accounts"
+$DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | awk '!/mailnull/ {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
+# $DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | grep -v 'mailnull' | sort | uniq -c | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
+# awk '/<=/ && !/U=mailnull/ && ($7 ~ /U=/) {freq[$7]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/U=//g' | head
+
 # Count of messages per Auth-Users
 section_header "Auth-Users"
 $DECOMP $LOGFILE | grep -o 'login:.*\ S=' | perl -pe 's/.*:(.*?)\ S=/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
@@ -200,35 +218,15 @@ $DECOMP $LOGFILE | grep 'A=.*login:' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*:(.*?)\
 # $DECOMP $LOGFILE | grep 'A=.*login' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*:(.*?)\ S=.*$/\1 \2/g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT | awk '{printf "%7s %-15s %s\n",$1,$2,$3}'
 # awk '/<=/ && /A=/ {print $6,$8}' $LOGFILE | cut -d: -f1 | sort | uniq -c | sort -rn | head | tr -d '[]' | awk '{printf "%8s %-15s %s\n",$1,$3,$2}'
 
-# Count of From Addresses
-#section_header "From Addresses"
-#awk '/<=/ && !/U=mailnull/ {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-
-# Count of To Addresses
-#section_header "To Addresses"
-# awk '/<=/ && !/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-
-# Count of Messages per account
-section_header "Accounts"
-$DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | awk '!/mailnull/ {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
-# $DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | grep -v 'mailnull' | sort | uniq -c | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
-# awk '/<=/ && !/U=mailnull/ && ($7 ~ /U=/) {freq[$7]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/U=//g' | head
-
-# Count of Bouncebacks by address
-section_header "Bouncebacks (address)"
-$DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
-# $DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
-# awk '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-
-# Count of Bouncebacks by domain
-#section_header "Bouncebacks (domain)"
-# awk -F@ '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-
-# Count of Messages by Subject
-section_header "Subjects (Non-Bounceback)"
-$DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g' | awk '!/failed: |deferred: / {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
-# $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g' | sort | uniq -c | sort -rn | grep -Ev 'failed: |deferred: ' | head -n $RESULTCOUNT
-#awk -F\" '/<=/ && /T=/ {freq[$2]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
+# Spoofed Sender Addresses
+section_header "Spoofed Senders"
+FMT="%8s %-35s %s\n"
+printf "$FMT" " Count  " " Auth-User" " Spoofed-User"
+printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
+$DECOMP $LOGFILE | grep '<=.*login:' | perl -pe 's/.*<=\ (.*?)\ .*A=.*_login:(.*?)\ .*/\2 \1/g'\
+ | awk '{ if ($1 != $2) freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
+ | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1,$2,$3}'
+printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
 
 # Show sent messages with the most recipients
 section_header "Bulk Senders"
@@ -239,6 +237,30 @@ $DECOMP $LOGFILE | grep "\ <= .*A=.*_login:.*\ for\ "\
  | perl -pe 's/.*\ (.*?)\ <=\ .*A=.*_login:(.*)\ S=.*\ for\ (.*)//g; print $1," ",$count = scalar(split(" ",$3))," ",$2;'\
  | sort -rnk2 | awk -v FMT="$FMT" '{printf FMT,$1,$2" "," "$3}'| head -n $RESULTCOUNT
 printf "$FMT" "$(dash 16 -)" "-------" "$(dash 40 -)"
+
+# Count of Messages by Subject
+section_header "Subjects (Non-Bounceback)"
+$DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g' | awk '!/failed: |deferred: / {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+# $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g' | sort | uniq -c | sort -rn | grep -Ev 'failed: |deferred: ' | head -n $RESULTCOUNT
+#awk -F\" '/<=/ && /T=/ {freq[$2]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
+
+# Count of From Addresses
+#section_header "From Addresses"
+#awk '/<=/ && !/U=mailnull/ {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
+
+# Count of To Addresses
+#section_header "To Addresses"
+# awk '/<=/ && !/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
+
+# Count of Bouncebacks by address
+section_header "Bouncebacks (address)"
+$DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+# $DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+# awk '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
+
+# Count of Bouncebacks by domain
+#section_header "Bouncebacks (domain)"
+# awk -F@ '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
 # Count of IPs sending mail
 # echo -e "\nIP-Addresses"
@@ -328,30 +350,14 @@ mail_php(){
 #---LF_SCRIPT-----------------------------------------------------------------#
 # https://forums.cpanel.net/threads/see-which-php-scripts-are-sending-mail.163345/
 
-PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
-echo -e "\nphp.ini : $PHPCONF"
-
-if [[ -n $(grep 'mail.add_x_header.*On' $PHPCONF) ]]; then
-  PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
-  echo "mail.log: $PHPLOG"
-  echo "X_Header: Enabled"
-else
-  echo "X_Header: Disabled"
-fi
-
 echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
 }
 
 #-----------------------------------------------------------------------------#
 ## Run either logs() or queue() function
 #clear
-if [[ $l == 1 ]]; then
-  mail_logs; fi
-
-if [[ $q == 1 ]]; then
-  mail_queue; fi
-
-if [[ $p == 1 ]]; then
-  mail_php; fi
+if [[ $l == 1 ]]; then mail_logs
+elif [[ $q == 1 ]]; then mail_queue
+elif [[ $p == 1 ]]; then mail_php; fi
 
 #~Fin~
