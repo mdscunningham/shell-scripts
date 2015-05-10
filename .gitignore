@@ -29,3 +29,4 @@ traffic2.sh
 sum_traffic2.sh
 killingstroke/
 test-case-modsec
+rsync.trace.txt
