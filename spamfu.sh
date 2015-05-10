@@ -91,9 +91,7 @@ select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Qu
 
     "Analyze Exim Logs")
       log_select_menu "/var/log/exim_mainlog*"
-      if [[ $l != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then
-	line_count_menu
-      fi
+      if [[ $l != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
       if [[ $l != '0' ]]; then
 	echo; read -p "How many results do you want? [10]: " NEWCOUNT;
         if [[ -n $NEWCOUNT ]]; then RESULTCOUNT=$NEWCOUNT; fi;
@@ -109,9 +107,7 @@ select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Qu
         echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
         echo "X_Header: Enabled"
         log_select_menu "${PHPLOG}*"
-        if [[ $p != '0' && $(file -b $LOGFILE) =~ zip ]]; then
-          line_count_menu
-        fi
+        if [[ $p != '0' && $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
       else
         echo "X_Header: Disabled"
       fi
@@ -201,10 +197,18 @@ $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g' | awk '!/sp
 # for x in $(echo $SCRIPT_DIRS | head -3 | awk '{print $2}'; do ls -larth $x | tail; done | xargs stat
 
 # Count of Messages per account
-section_header "Accounts"
-$DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | awk '!/mailnull/ {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
+# section_header "Accounts"
+# $DECOMP $LOGFILE | grep -o '<=\ [^<>].*U=.*\ ' | perl -pe 's/.*U=(.*?)\ .*/\1/g' | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | grep -v 'mailnull' | sort | uniq -c | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
 # awk '/<=/ && !/U=mailnull/ && ($7 ~ /U=/) {freq[$7]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/U=//g' | head
+
+# Count of messages per "Account/Domains"
+section_header "Accounts/Domains"
+$DECOMP $LOGFILE | grep -o '<=\ [^<>].*\ U=.*\ P='\
+ | perl -pe 's/.*@(.*?)\ U=(.*?)\ P=/\2 \1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
+ | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-10s %s\n",$1,$2,$3}'
+# $DECOMP $LOGFILE | grep -o '<=\ [^<>].*\ U=.*\ ' | perl -pe 's/.*@(.*?)\ U=(.*?)\ /\2 \1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | awk '{printf "%8s %-15s %s\n",$1,$2,$3}' | head -n $RESULTCOUNT
+# $DECOMP $LOGFILE | grep '<=\ [^<>].*' | perl -pe '<=\ .*@(.*?)\ ' | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
 # Count of messages per Auth-Users
 section_header "Auth-Users"
@@ -225,18 +229,18 @@ printf "$FMT" " Count  " " Auth-User" " Spoofed-User"
 printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
 $DECOMP $LOGFILE | grep '<=.*login:' | perl -pe 's/.*<=\ (.*?)\ .*A=.*_login:(.*?)\ .*/\2 \1/g'\
  | awk '{ if ($1 != $2) freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
- | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1,$2,$3}'
+ | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
 printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
 
 # Show sent messages with the most recipients
 section_header "Bulk Senders"
-FMT="%-16s %7s %s\n"
-printf "$FMT" " MessageID" " RCPTs " " Auth-User"
-printf "$FMT" "$(dash 16 -)" "-------" "$(dash 40 -)"
+FMT="%8s %-16s %s\n"
+printf "$FMT" "RCPTs  " " MessageID" " Auth-User"
+printf "$FMT" "--------" "$(dash 16 -)" "$(dash 40 -)"
 $DECOMP $LOGFILE | grep "\ <= .*A=.*_login:.*\ for\ "\
- | perl -pe 's/.*\ (.*?)\ <=\ .*A=.*_login:(.*)\ S=.*\ for\ (.*)//g; print $1," ",$count = scalar(split(" ",$3))," ",$2;'\
- | sort -rnk2 | awk -v FMT="$FMT" '{printf FMT,$1,$2" "," "$3}'| head -n $RESULTCOUNT
-printf "$FMT" "$(dash 16 -)" "-------" "$(dash 40 -)"
+ | perl -pe 's/.*\ (.*?)\ <=\ .*A=.*_login:(.*)\ S=.*\ for\ (.*)//g; print $count = scalar(split(" ",$3))," ",$1," ",$2;'\
+ | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
+printf "$FMT" "--------" "$(dash 16 -)" "$(dash 40 -)"
 
 # Count of Messages by Subject
 section_header "Subjects (Non-Bounceback)"
