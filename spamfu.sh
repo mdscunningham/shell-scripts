@@ -40,6 +40,8 @@ QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H).00"
 l=1; p=0; q=0; full_log=0;
 LINECOUNT='1000000'
 RESULTCOUNT='10'
+PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
+PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 
 #-----------------------------------------------------------------------------#
 # Menu scripting
@@ -127,7 +129,10 @@ select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Qu
       results_prompt $l; break ;;
 
     "Analyze PHP Logs")
-      l=0; p=1; q=0; break;;
+      l=0; p=1; q=0; log_select_menu "${PHPLOG}*";
+      if [[ $p != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
+      results_prompt $p;
+      break;;
 
     "Analyze Exim Queue")
       l=0; q=1; p=0; line_count_menu; results_prompt $q; break ;;
@@ -371,16 +376,17 @@ mail_php(){
 
 echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
 
-PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
-echo -e "\nphp.ini : $PHPCONF"
 if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
-  PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
+  echo "php.ini : $PHPCONF"
   echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
-  echo "X_Header: Enabled"
-  log_select_menu "${PHPLOG}*"
-  if [[ $p != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
-  results_prompt $p; set_decomp;
+  echo -e "X_Header: Enabled\n"
+  set_decomp;
+
+  # Look for mailer scripts in the php_maillog
+  section_header "PHP Mailer Scripts"
   $DECOMP $LOGFILE | grep 'mail' | perl -pe 's/.*\[(.*?)\]/\1/g' | awk -F: '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+
+  echo
 else
   echo "X_Header: Disabled"
 fi
