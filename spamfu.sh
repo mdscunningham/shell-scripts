@@ -49,10 +49,7 @@ RESULTCOUNT='10'
 # http://askubuntu.com/questions/1705/how-can-i-create-a-select-menu-in-a-shell-script
 #
 
-if [[ -z $@ ]]; then
 #-----------------------------------------------------------------------------#
-# Menues for the un-initiated
-
 ## Lines to read from the log file
 line_count_menu(){
   PS3="Enter selection or linecount: "
@@ -68,6 +65,7 @@ line_count_menu(){
   done
 }
 
+#-----------------------------------------------------------------------------#
 ## Select a log file from what's on the server
 log_select_menu(){
   echo -e "\nWhich file?\n$(dash 40 -)\n$(du -sh $1)\n"
@@ -82,6 +80,40 @@ log_select_menu(){
 }
 
 #-----------------------------------------------------------------------------#
+# How many results to show
+results_prompt(){
+  if [[ $1 != '0' ]]; then
+    echo; read -p "How many results do you want? [10]: " NEWCOUNT;
+    if [[ -n $NEWCOUNT ]]; then RESULTCOUNT=$NEWCOUNT; fi;
+  fi
+}
+
+#-----------------------------------------------------------------------------#
+# Setup how much of the log file to read and how.
+set_decomp(){
+  # Compressed file -- decompress and read whole log
+  if [[ $(file -b $LOGFILE) =~ zip ]]; then
+    DECOMP="zcat -f";
+    du -sh $LOGFILE | awk '{print "Using Log File: "$2,"("$1")"}'
+  # Read full log (uncompressed)
+  elif [[ $full_log == 1 ]]; then
+    DECOMP="cat";
+    du -sh $LOGFILE | awk '{print "Using Log File: "$2,"("$1")"}'
+    head -1 $LOGFILE | awk '{print "First date in log: "$1,$2}';
+    tail -1 $LOGFILE | awk '{print "Last date in log: "$1,$2}'
+  # Minimize impact on initial scan, using last 1,000,000 lines
+  else
+    DECOMP="tail -n $LINECOUNT";
+    du -sh $LOGFILE | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
+fi
+}
+
+
+if [[ -z $@ ]]; then
+#-----------------------------------------------------------------------------#
+# Menues for the un-initiated
+
+#-----------------------------------------------------------------------------#
 ## MAIN MENU BEGIN
 PS3="Enter selection: ";
 clear
@@ -92,29 +124,13 @@ select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Qu
     "Analyze Exim Logs")
       log_select_menu "/var/log/exim_mainlog*"
       if [[ $l != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
-      if [[ $l != '0' ]]; then
-	echo; read -p "How many results do you want? [10]: " NEWCOUNT;
-        if [[ -n $NEWCOUNT ]]; then RESULTCOUNT=$NEWCOUNT; fi;
-      fi
-      break ;;
+      results_prompt $l; break ;;
 
     "Analyze PHP Logs")
-      l=0; p=1; q=0;
-      PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
-      echo -e "\nphp.ini : $PHPCONF"
-      if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
-        PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
-        echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
-        echo "X_Header: Enabled"
-        log_select_menu "${PHPLOG}*"
-        if [[ $p != '0' && $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
-      else
-        echo "X_Header: Disabled"
-      fi
-      break;;
+      l=0; p=1; q=0; break;;
 
     "Analyze Exim Queue")
-      l=0; q=1; p=0; line_count_menu; break ;;
+      l=0; q=1; p=0; line_count_menu; results_prompt $q; break ;;
 
     "Quit") l=0; q=0; p=0; break ;;
 
@@ -155,23 +171,7 @@ mail_logs(){
 # This will run a basic analysis of the exim_mainlog, and hopefully will also do the first few
 # steps of finding any malware/scripts that are sending mail and their origins
 
-echo;
-
-# Compressed file -- decompress and read whole log
-if [[ $(file -b $LOGFILE) =~ zip ]]; then
-  DECOMP="zcat -f";
-  du -sh $LOGFILE | awk '{print "Using Log File: "$2,"("$1")"}'
-# Read full log (uncompressed)
-elif [[ $full_log == 1 ]]; then
-  DECOMP="cat";
-  du -sh $LOGFILE | awk '{print "Using Log File: "$2,"("$1")"}'
-  head -1 $LOGFILE | awk '{print "First date in log: "$1,$2}';
-  tail -1 $LOGFILE | awk '{print "Last date in log: "$1,$2}'
-# Minimize impact on initial scan, using last 1,000,000 lines
-else
-  DECOMP="tail -n $LINECOUNT";
-  du -sh $LOGFILE | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
-fi
+set_decomp; echo;
 
 #####
 ## Top Subjects in the log:
@@ -336,8 +336,8 @@ find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "Subject: 
 
 ## Queue Scripts
 section_header "Queue: X-PHP-Scripts"
-find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "X-PHP-Script"\
- | sort | uniq -c | sort -rn | sed 's/^X-PHP-Script//g' | head -n $RESULTCOUNT
+find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "X-PHP.*-Script:"\
+ | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Count of (non-bounceback) Sending Addresses in queue
 section_header "Queue: Senders"
@@ -370,6 +370,21 @@ mail_php(){
 # https://forums.cpanel.net/threads/see-which-php-scripts-are-sending-mail.163345/
 
 echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
+
+PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
+echo -e "\nphp.ini : $PHPCONF"
+if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
+  PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
+  echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
+  echo "X_Header: Enabled"
+  log_select_menu "${PHPLOG}*"
+  if [[ $p != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
+  results_prompt $p; set_decomp;
+  $DECOMP $LOGFILE | grep 'mail' | perl -pe 's/.*\[(.*?)\]/\1/g' | awk -F: '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+else
+  echo "X_Header: Disabled"
+fi
+
 }
 
 #-----------------------------------------------------------------------------#
