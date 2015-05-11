@@ -37,6 +37,7 @@ section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
 QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H).00"
+PHPLOG="/var/log/php_maillog"
 l=1; p=0; q=0; full_log=0;
 LINECOUNT='1000000'
 RESULTCOUNT='10'
@@ -74,8 +75,8 @@ log_select_menu(){
   select LOGS in $1 "Quit"; do
     case $LOGS in
       "Quit") l=0; q=0; p=0; break ;;
-      *) if [[ -f $LOGS ]]; then LOGFILE=$LOGS; QUEUEFILE=$LOGS; break;
-         elif [[ -f ${REPLY} ]]; then LOGFILE=${REPLY}; QUEUEFILE=${REPLY}; break;
+      *) if [[ -f $LOGS ]]; then LOGFILE=$LOGS; PHPLOG=$LOGS; break;
+         elif [[ -f ${REPLY} ]]; then LOGFILE=${REPLY}; PHPLOG=${REPLY}; break;
          else echo -e "\nPlease enter a valid option.\n"; fi ;;
     esac
   done;
@@ -94,19 +95,19 @@ results_prompt(){
 # Setup how much of the log file to read and how.
 set_decomp(){
   # Compressed file -- decompress and read whole log
-  if [[ $(file -b $LOGFILE) =~ zip ]]; then
+  if [[ $(file -b $1) =~ zip ]]; then
     DECOMP="zcat -f";
-    du -sh $LOGFILE | awk '{print "Using Log File: "$2,"("$1")"}'
+    du -sh $1 | awk '{print "Using Log File: "$2,"("$1")"}'
   # Read full log (uncompressed)
   elif [[ $full_log == 1 ]]; then
     DECOMP="cat";
-    du -sh $LOGFILE | awk '{print "Using Log File: "$2,"("$1")"}'
-    head -1 $LOGFILE | awk '{print "First date in log: "$1,$2}';
-    tail -1 $LOGFILE | awk '{print "Last date in log: "$1,$2}'
+    du -sh $1 | awk '{print "Using Log File: "$2,"("$1")"}'
+    head -1 $1 | awk '{print "First date in log: "$1,$2}';
+    tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
   # Minimize impact on initial scan, using last 1,000,000 lines
   else
     DECOMP="tail -n $LINECOUNT";
-    du -sh $LOGFILE | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
+    du -sh $1 | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
 fi
 }
 
@@ -130,7 +131,7 @@ select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Qu
 
     "Analyze PHP Logs")
       l=0; p=1; q=0; log_select_menu "${PHPLOG}*";
-      if [[ $p != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
+      if [[ $p != '0' && ! $(file -b $PHPLOG) =~ zip ]]; then line_count_menu; fi
       results_prompt $p;
       break;;
 
@@ -176,7 +177,7 @@ mail_logs(){
 # This will run a basic analysis of the exim_mainlog, and hopefully will also do the first few
 # steps of finding any malware/scripts that are sending mail and their origins
 
-set_decomp; echo;
+set_decomp $LOGFILE; echo;
 
 #####
 ## Top Subjects in the log:
@@ -218,13 +219,13 @@ $DECOMP $LOGFILE | grep -o '<=\ [^<>].*\ U=.*\ P=' | perl -pe 's/.*@(.*?)\ U=(.*
 
 # Count of messages per Auth-Users
 section_header "Auth-Users"
-$DECOMP $LOGFILE | grep -o 'login:.*\ S=' | perl -pe 's/.*:(.*?)\ S=/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+$DECOMP $LOGFILE | grep -Eo 'A=.*in:.*\ S=' | perl -pe 's/.*:(.*?)\ S=/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep -o 'A=.*login:.*@.*\ S=' | cut -d: -f2 | cut -d' ' -f1 | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 # awk '/<=/ && /A=.*login:/ {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
 # Count of IPs per Auth-Users
 section_header "IP-Addresses/Auth-Users"
-$DECOMP $LOGFILE | grep 'A=.*login:' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*:(.*?)\ S=.*$/\1 \2/g'\
+$DECOMP $LOGFILE | grep 'A=.*in:' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*in:(.*?)\ S=.*$/\1 \2/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-15s %s\n",$1,$2,$3}'
 # $DECOMP $LOGFILE | grep 'A=.*login' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*:(.*?)\ S=.*$/\1 \2/g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT | awk '{printf "%7s %-15s %s\n",$1,$2,$3}'
@@ -235,7 +236,7 @@ section_header "Spoofed Senders"
 FMT="%8s %-35s %s\n"
 printf "$FMT" " Count  " " Auth-User" " Spoofed-User"
 printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
-$DECOMP $LOGFILE | grep '<=.*login:' | perl -pe 's/.*<=\ (.*?)\ .*A=.*_login:(.*?)\ .*/\2 \1/g'\
+$DECOMP $LOGFILE | grep '<=.*in:' | perl -pe 's/.*<=\ (.*?)\ .*A=.*in:(.*?)\ .*/\2 \1/g'\
  | awk '{ if ($1 != $2) freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
 printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
@@ -245,8 +246,8 @@ section_header "Bulk Senders"
 FMT="%8s %-16s %s\n"
 printf "$FMT" "RCPTs  " " MessageID" " Auth-User"
 printf "$FMT" "--------" "$(dash 16 -)" "$(dash 40 -)"
-$DECOMP $LOGFILE | grep "\ <= .*A=.*_login:.*\ for\ "\
- | perl -pe 's/.*\ (.*?)\ <=\ .*A=.*_login:(.*)\ S=.*\ for\ (.*)//g; print $count = scalar(split(" ",$3))," ",$1," ",$2;'\
+$DECOMP $LOGFILE | grep "<=.*A=.*in:.*\ for\ "\
+ | perl -pe 's/.*\ (.*?)\ <=\ .*A=.*in:(.*)\ S=.*\ for\ (.*)//g; print $count = scalar(split(" ",$3))," ",$1," ",$2;'\
  | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
 printf "$FMT" "--------" "$(dash 16 -)" "$(dash 40 -)"
 
@@ -380,11 +381,12 @@ if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
   echo "php.ini : $PHPCONF"
   echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
   echo -e "X_Header: Enabled\n"
-  set_decomp;
+  set_decomp $PHPLOG;
 
   # Look for mailer scripts in the php_maillog
   section_header "PHP Mailer Scripts"
-  $DECOMP $LOGFILE | grep 'mail' | perl -pe 's/.*\[(.*?)\]/\1/g' | awk -F: '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+  $DECOMP $PHPLOG | grep 'mail' | perl -pe 's/.*\[(.*?)\]/\1/g'\
+   | awk -F: '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
   echo
 else
