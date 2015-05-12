@@ -177,7 +177,7 @@ mail_logs(){
 # This will run a basic analysis of the exim_mainlog, and hopefully will also do the first few
 # steps of finding any malware/scripts that are sending mail and their origins
 
-set_decomp $LOGFILE; echo;
+echo; set_decomp $LOGFILE;
 
 #####
 ## Top Subjects in the log:
@@ -234,7 +234,7 @@ $DECOMP $LOGFILE | grep 'A=.*in:' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*in:(.*?)\ 
 # Spoofed Sender Addresses
 section_header "Spoofed Senders"
 FMT="%8s %-35s %s\n"
-printf "$FMT" " Count  " " Auth-User" " Spoofed-User"
+printf "$FMT" "Count " " Auth-User" " Spoofed-User"
 printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
 $DECOMP $LOGFILE | grep '<=.*in:' | perl -pe 's/.*<=\ (.*?)\ .*A=.*in:(.*?)\ .*/\2 \1/g'\
  | awk '{ if ($1 != $2) freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
@@ -244,7 +244,7 @@ printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
 # Show sent messages with the most recipients
 section_header "Bulk Senders"
 FMT="%8s %-16s %s\n"
-printf "$FMT" "RCPTs  " " MessageID" " Auth-User"
+printf "$FMT" "RCPTs " " MessageID" " Auth-User"
 printf "$FMT" "--------" "$(dash 16 -)" "$(dash 40 -)"
 $DECOMP $LOGFILE | grep "<=.*A=.*in:.*\ for\ "\
  | perl -pe 's/.*\ (.*?)\ <=\ .*A=.*in:(.*)\ S=.*\ for\ (.*)//g; print $count = scalar(split(" ",$3))," ",$1," ",$2;'\
@@ -381,6 +381,7 @@ if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
   echo "php.ini : $PHPCONF"
   echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
   echo -e "X_Header: Enabled\n"
+
   set_decomp $PHPLOG;
 
   # Look for mailer scripts in the php_maillog
