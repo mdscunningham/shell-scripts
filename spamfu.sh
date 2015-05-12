@@ -114,7 +114,7 @@ fi
 
 if [[ -z $@ ]]; then
 #-----------------------------------------------------------------------------#
-# Menues for the un-initiated
+# Menus for the un-initiated
 
 #-----------------------------------------------------------------------------#
 ## MAIN MENU BEGIN
@@ -374,6 +374,7 @@ echo
 mail_php(){
 #---LF_SCRIPT-----------------------------------------------------------------#
 # https://forums.cpanel.net/threads/see-which-php-scripts-are-sending-mail.163345/
+# http://blog.rimuhosting.com/2012/09/20/finding-spam-sending-scripts-on-your-server/
 
 echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
 
