@@ -98,7 +98,7 @@ alias h='echo; serverName; echo'
 alias os='echo; cat /etc/redhat-release; echo'
 alias getrsync='wget updates.nexcess.net/scripts/rsync.sh; chmod +x rsync.sh'
 alias omg='curl -s http://nanobots.robotzombies.net/aboutbashrc | less'
-alias wtf="grep -B1 '^[a-z].*(){' /home/nexmcunningham/.bashrc | sed 's/(){.*$//' | less"
+alias wtf="grep -B1 '^[a-z].*(){' /home/${SUDO_USER}/.bashrc | sed 's/(){.*$//' | less"
 alias credits='curl -s http://nanobots.robotzombies.net/credits | less'
 alias quotas='checkquota'
 
@@ -1848,25 +1848,61 @@ fi
 
 ## Find ModSec error codes in an Apache error.log for a domain
 modsec(){
-if [[ "$1" == '-h' || "$1" == '--help' ]]; then
-  echo -e "\n Usage: modsec <DOMAIN> [-i|--ip <IPADDR>]\n If <DOMAIN> is . attempt to get domain from path\n <IPADDR> can be a full IP address, regex, 'otr', or 'mel'\n"; return 0; fi;
+    QUIET=0;VERBOSE=0;COUNT=20; DATE="$(date +'%a.%b.%d')";
 
-echo;
-if [[ -z "$1" ]]; then read -p "Domain: " D; echo;
-  elif [[ $1 == '.' ]]; then D="$(pwd | sed 's:^/chroot::' | cut -d/ -f4)"; else D="$(echo $1 | sed 's/\///g')"; fi
-if [[ "$2" == '-i' && -z "$3" || "$2" == '--ip' && -z "$3" ]]; then read -p "IPaddress: " IP; echo;
-  elif [[ "$3" == 'otr' ]]; then IP='208.69.120.120'; elif [[ "$3" == 'mel' ]]; then IP="192.240.191.2"; else IP="$3"; fi
+_domain_lookup(){
+	if [[ -z $1 ]]; then read -p "Domain: " INPUT; DOMAIN="$(echo $INPUT | sed 's/^http:\/\///g;s/\/.*$//g')"
+	elif [[ $1 == '.' ]]; then DOMAIN="$(pwd | sed 's:^/chroot::' | cut -d/ -f4)";
+	else DOMAIN="$(echo $1 | sed 's/^http:\/\///g;s/\/.*$//g')"; fi
+	}
 
-FORMAT="%-8s %-9s %s\n";
-printf "$FORMAT" " Count#" " Error#" " IP-Address";
-printf "$FORMAT" "--------" "---------" "$(dash 17)";
-if grep -qEi '\[id: [0-9]{6,}\]' /home/*/var/$D/logs/error.log; then
-   grep -Eio "client.$IP.*\] |id.*[0-9]{6,}\]" /home/*/var/$D/logs/error.log | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
-     | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}'
+if [[ -z $@ ]]; then _domain_lookup
 else
-   grep -Eio "client.$IP.*id..[0-9]{6,}\"" /home/*/var/$D/logs/error.log | awk '{print $NF,$2}'\
-     | sort | uniq -c | tr -d \" | tr -d \] | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}';
-fi; echo
+    local OPTIND
+    while getopts d:hi:n:qv option; do
+      case "${option}" in
+	d) _domain_lookup ${OPTARG} ;;
+        q) QUIET=1 ;;
+        v) VERBOSE=1 ;;
+        i) IP=${OPTARG} ;;
+        n) COUNT=${OPTARG} ;;
+        h) echo -e "\n Usage: $0 [OPTIONS]\n
+    -d ... <domain> for looking up error log
+    -h ... display this help output and quit
+    -i ... <ipaddress> (can be full IP or regex)
+    -n ... <linecount> (number of results to print)
+    -q ... quiet, don't print error message
+    -v ... verbose debugging output\n";
+        return 0 ;;
+      esac
+    done
+fi
+
+    echo $DOMAIN
+    LOGFILE="/home/*/var/$DOMAIN/logs/error.log"
+    echo; FORMAT="%-8s %-9s %-16s %-16s\n";
+
+    if [[ $QUIET != 1 ]]; then
+      printf "$FORMAT" " Count#" " Error#" " Remote-IP" " Error Message";
+      printf "$FORMAT" "--------" "---------" "$(dash 16)" "$(dash 42)";
+      grep -Ei "$DATE.*client.$IP.*id..[0-9]{6,}\"" $LOGFILE\
+	 | perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*msg "(.*?)".*/\2\t\1\t\3/' | sed 's/ /_/g'\
+	 | sort | uniq -c | sort -rn | awk '{printf "%7s   %-8s  %-16s %s\n",$1,$2,$3,$4}' | sed 's/_/ /g' | head -n $COUNT
+    else
+      printf "$FORMAT" " Count#" " Error#" " Remote-IP";
+      printf "$FORMAT" "--------" "---------" "$(dash 16)";
+      if grep -qEi '\[id: [0-9]{6,}\]' $LOGFILE; then
+        grep -Eio "$DATE.*client.$IP.*\] |id.*[0-9]{6,}\]" $LOGFILE | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
+	 | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
+      else
+        grep -Eio "$DATE.*client.$IP.*id..[0-9]{6,}\"" $LOGFILE | perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*/\2\t\1/'\
+	 | sort | uniq -c | tr -d \" | tr -d \] | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
+      fi
+    fi
+    echo
+
+    if [[ $VERBOSE == 1 ]]; then
+      echo -e "LOGFILE: $LOGFILE\nDATE   : $DATE\nCOUNT  : $COUNT\nIP     : $IP\n"; fi
 }
 
 ## Show requests to all sites on server for the last hour in the transfer logs
@@ -1914,49 +1950,92 @@ esac
 
 ## Print hits per hour for all domains on the server (using current transfer.log's)
 sum_traffic(){
-echo; FMT=" %5s"
+## Initializations
+hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done)); grandtotal=0; nocolor=0
+DECOMP="$(which grep)"; THRESH=''; DATE=$(date +"%d/%b/%Y"); FMT=" %5s"
+SUFFIX=''; DOMAINS="/home/*/var/*/logs/transfer.log";
+RANGE=$(for x in {00..23}; do date +"%d/%b/%Y:$x:"; done);
+
+local OPTIND
+while getopts d:l:nr:8t:vh option; do
+    case "${option}" in
+	# Caclulate date string for searches
+        d) DATE=$(date --date="-${OPTARG} days" +"%d/%b/%Y"); DECOMP="$(which zgrep)";
+	   SUFFIX=$(date --date="-$((${OPTARG}-1)) days" +"-%m%d%Y.zip"); DOMAINS="/home/*/var/*/logs/transfer.log${SUFFIX}";
+	   RANGE=$(for x in {00..23}; do date --date="-${OPTARG} days" +"%d/%b/%Y:$x:"; done) ;;
+
+	# Use list of domains rather than all sites
+        l) DOMAINS="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /home/*/var/$x/logs/transfer.log${SUFFIX}; done)" ;;
+
+	# Print w/o color in b/w
+	n) nocolor=1 ;;
+
+	# Print only a specified range of hours
+	r) INPUT=$(echo ${OPTARG} | sed 's/,/ /g'); FMT=" %7s";
+	   RANGE=$(for x in $(seq -w $INPUT); do echo "${DATE}:${x}:"; done) ;;
+
+	8) RANGE=$(for x in {7..0}; do date --date="-$x hours" +"${DATE}:%H:"; done); FMT=" %7s" ;;
+
+	# Threshold for printing only busy sites
+        t) THRESH=${OPTARG} ;;
+
+	# Verbose outpout for debugging
+	v) echo -e "\nDecomp   : $DECOMP\nDate     : $DATE\nSuffix   : $SUFFIX\nRange    : $(echo -n $RANGE)\nDomains  : $DOMAINS\nThreshold: $THRESH\n" ;;
+
+	# Help output
+	h) echo -e "\n ${BRIGHT}Usage:${NORMAL} $0 [OPTIONS]\n
+    -d ... days-ago <##>
+    -h ... Print this help and quit
+    -l ... list of domains <dom1,dom2,...>
+    -n ... No Color (for output to files)
+    -r ... Range of hours <start#,end#>
+    -8 ... Auto set to previous 8 hours
+    -t ... threshold value <#####>
+    -v ... Verbose (debugging output)\n"; return 0 ;;
+    esac
+done; echo
 
 ## Header
-printf "${BRIGHT} %9s" "User/Hour"
-for hour in $(seq -w 0 23); do printf "$FMT" "$hour:00"; done
+printf "${BRIGHT} %15s" "User/Hour";
+for hour in $RANGE; do printf "$FMT" "$(echo $hour | cut -d: -f2):00"; done;
 printf "%8s %-s${NORMAL}\n" "Total" " Domain Name"
 
-## Initializations
-hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done)); grandtotal=0
-
-# Caclulate filname suffix of previous logs
-if [[ $1 == '-d' ]]; then DECOMP='zgrep' DATE="-$(date --date="-$2 day" +%m%d%Y).zip"; shift; shift; else DECOMP='grep' DATE=''; fi
-
 ## Data gathering and display
-for logfile in /home/*/var/*/logs/transfer.log${DATE}; do
-	total=0; i=0;
-	if [[ $1 != '-n' && $1 != '--nocolor' ]]; then color="${BLUE}"; else color=''; fi
-	printf "${color} %9s" "$(echo $logfile | cut -d/ -f3)"
-	for hour in $(seq -w 0 23); do
-		count=$($DECOMP -Ec "[0-9]{4}:$hour:" $logfile);
-		hourtotal[$i]=$((${hourtotal[$i]}+$count))
+for logfile in $DOMAINS; do
+        total=0;
 
-		## COLOR VERSION (HEAT MAP)
-		if [[ $1 != '-n' && $1 != '--nocolor' ]]; then
-		    if [[ $count -gt 20000 ]]; then color="${BRIGHT}${RED}";
-		    elif [[ $count -gt 2000 ]]; then color="${RED}";
-		    elif [[ $count -gt 200 ]]; then color="${YELLOW}";
-		    else color="${GREEN}"; fi
-		else color=''; fi
-		printf "${color}$FMT${NORMAL}" "$count"
-		total=$((${total}+${count})); i=$(($i+1))
-	done
-	grandtotal=$(($grandtotal+$total))
+    # Only print if the threshold condition is set/met
+    if [[ -z $THRESH || $THRESH -le $($DECOMP -c $DATE $logfile) ]]; then
+        if [[ $nocolor != '1' ]]; then color="${BLUE}"; else color=''; fi
+        printf "${color} %15s" "$(echo $logfile | cut -d/ -f3)"
 
-if [[ $1 != '-n' && $1 != '--nocolor' ]]; then ## Color version
-    printf "${CYAN}%8s ${PURPLE}%-s${NORMAL}\n" "$total" "$(echo $logfile | cut -d/ -f5)"
-else printf "%8s %-s\n" "$total" "$(echo $logfile | cut -d/ -f5)"; fi
+	i=0;
+	# Iterate through the hours
+        for hour in $RANGE; do
+                count=$($DECOMP -c "$hour" $logfile);
+                hourtotal[$i]=$((${hourtotal[$i]}+$count))
 
+                if [[ $nocolor != '1' ]]; then ## COLOR VERSION (HEAT MAP)
+                    if [[ $count -gt 20000 ]]; then color="${BRIGHT}${RED}";
+                    elif [[ $count -gt 2000 ]]; then color="${RED}";
+                    elif [[ $count -gt 200 ]]; then color="${YELLOW}";
+                    else color="${GREEN}"; fi
+                else color=''; fi
+
+                printf "${color}$FMT${NORMAL}" "$count"
+                total=$((${total}+${count})); i=$(($i+1))
+        done
+        grandtotal=$(($grandtotal+$total))
+
+        if [[ $nocolor != '1' ]]; then ## Color version
+          printf "${CYAN}%8s ${PURPLE}%-s${NORMAL}\n" "$total" "$(echo $logfile | cut -d/ -f5)"
+        else printf "%8s %-s\n" "$total" "$(echo $logfile | cut -d/ -f5)"; fi
+    fi
 done
 
 ## Footer
-printf "${BRIGHT} %9s" "Total"
-for i in $(seq 0 23); do printf "$FMT" "${hourtotal[$i]}"; done
+printf "${BRIGHT} %15s" "Total"
+for x in $(seq 0 $((${i}-1))); do printf "$FMT" "${hourtotal[$x]}"; done
 printf "%8s %-s${NORMAL}\n" "$grandtotal" "<< Grand Total"
 echo
 }
