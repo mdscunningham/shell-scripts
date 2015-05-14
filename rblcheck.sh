@@ -8,6 +8,9 @@
 #
 #!/bin/bash
 
+quiet=0
+DNSBL=''
+
 if [[ -f multirbl ]]; then
   DNSBL="$(cat multirbl)" # Local
   lineCount=$(wc -l < multirbl)
@@ -59,7 +62,7 @@ for IPADDR in "$@"; do
         printf "%-50s : %-11s : %s\n" "${LOOKUP}" "${LISTED:-Clean}" "${REASON:------}";
       fi
     done
-    echo -ne "\r"
-    if [[ -f rbl.log && $quiet == 1 ]]; then cat rbl.log; echo; rm rbl.log; fi
-done; echo
+    if [[ -f rbl.log && $quiet == 1 ]]; then echo -ne "\r"; cat rbl.log; rm rbl.log; fi
+    echo
+done;
 unset count quiet DNSBL lineCount IPADDR RDNS LOOKUP LISTED REASON;
