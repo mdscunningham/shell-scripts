@@ -36,11 +36,15 @@ function usage(){
 echo "
 ${BRIGHT}Usage:${NORMAL} $0 [options] domain [domain2 domain3 ...]
 
-${BRIGHT}-h|--help${NORMAL} ......... Show this help/usage message.
+${BRIGHT}-a|--anycast${NORMAL} ...... Use the LW anycast caching server list.
 ${BRIGHT}-l|--links${NORMAL} ........ Generate links to the Global DNS Checker page and exit.
 ${BRIGHT}-2|--secondline${NORMAL} ... Display the second line of a record lookup response.
 ${BRIGHT}-n|--new${NORMAL} <Record> . Check if the record lookup matches the new record.
 ${BRIGHT}-t|--type${NORMAL} <Type> .. Change the requested record type of lookup.
+${BRIGHT}-v|--verbose${NORMAL} ...... Switch the dig from '+short' to '+short +noshort'
+
+
+${BRIGHT}-h|--help${NORMAL} ......... Show this help/usage message.
 
 ${BRIGHT}ALLOWED RECORD TYPES:${NORMAL}
     A ..... IPv4 Address
@@ -54,8 +58,18 @@ ${BRIGHT}ALLOWED RECORD TYPES:${NORMAL}
 "
 }
 
+# Source of all the dns servers used
+# http://public-dns.tk/
+
+# Read in data from remote file
+# data=($(curl -s http://nanobots.robotzombies.net/nameserver))
+
+# Read in data from local file
+data=($(cat nameserver))
+verbose=''
+
 # Execute Getopt
-OPTIONS=$(getopt -o "hl2t:n:" --long "help,links,secondline,type:,new:" -- "$@")
+OPTIONS=$(getopt -o "hal2t:n:v" --long "help,anycast,links,secondline,type:,new:,verbose" -- "$@")
 
 # Check for bad arguments
 if [ $? -ne 0 ] ; then usage ; exit 1 ; fi
@@ -68,12 +82,16 @@ while true; do
 case "$1" in
 	-h|--help)
 		usage; exit 1;;
+
+	-a|--anycast)
+		data=''; data=($(cat anycast));;
+
         -l|--links)
 		#echo "$@"
 		echo
 		shift;shift;
 		for domain in "$@"; do
-		        echo "${BLUE}http://www.nexcess.net/global-dns-checker/?h=${CYAN}$domain${BLUE}&t=$recordType${NORMAL}"
+		        echo "${BLUE}https://www.whatsmydns.net/${CYAN}#$(echo $recordType | sed 's/\(.*\)/\U\1/g')${NORMAL}/$domain"
 		done
 		echo
 		exit;;
@@ -99,6 +117,8 @@ case "$1" in
 	-n|--new)
 		highlight=1
 		newResult="$2"; shift;;
+	-v|--verbose)
+		verbose="+noshort" ;;
 	--)
 		# Announce the type of record lookup
 		echo "${RED}Checking ${YELLOW}$recordType ${RED}Records for the following domain(s) ${YELLOW}...${NORMAL}"
@@ -108,15 +128,6 @@ case "$1" in
 esac
 shift
 done
-
-# Source of all the dns servers used 
-# http://public-dns.tk/
-
-# Read in data from remote file
-data=($(curl -s http://nanobots.robotzombies.net/nameserver))
-
-# Read in data from local file
-# data=($(cat nameserver))
 
 # Find length of primary array
 dataLen=${#data[@]}
@@ -137,21 +148,14 @@ if [ $namLen = $locLen ]; then echo
 # Iterate through the array of domain parameters
 for domain in "$@"; do
 	echo "${WHITE}========== $domain ==========${NORMAL}"
-	echo "http://www.nexcess.net/global-dns-checker/?h=$domain&t=$recordType"
-
-	# Check if at office and use rdns01/rdns02 else use ns1/ns2
-	if [[ $(hostname) == *nex* ]]; then
-		newLen=($namLen-2); i=0
-	else
-		newLen=$namLen; i=2
-	fi
+	echo "https://www.whatsmydns.net/#$(echo $recordType | sed 's/\(.*\)/\U\1/g')/$domain"
 
 	# Iterate through the array of nameservers
-	for (( $i; i<$newLen; i++ )); do
+	i=0; for (( $i; i<$namLen; i++ )); do
 		if [[ $linetwo = 1 ]]; then
-		result=$(dig +time=2 +tries=2 +short "$recordType" "$domain" @"${ipaddress[i]}" | head -n2 | tail -n1 | grep -v \;)
+		result=$(dig +time=2 +tries=2 +short $verbose "$recordType" "$domain" @"${ipaddress[i]}" | head -n2 | tail -n1 | grep -v \;)
 		else
-		result=$(dig +time=2 +tries=2 +short "$recordType" "$domain" @"${ipaddress[i]}" | head -n1 | grep -v \;)
+		result=$(dig +time=2 +tries=2 +short $verbose "$recordType" "$domain" @"${ipaddress[i]}" | head -n1 | grep -v \;)
 		fi
 		if [[ $highlight = 1 && $result = $newResult ]]; then
 		printf "${BLUE}%-30s ${NORMAL}: ${BLUE}%-26s ${NORMAL}: ${RED}%s\n${NORMAL}" "${nameserver[i]}" "$(echo ${location[i]} | sed s/_/\ /g)" "$result"
