@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2014-04-18
-# Updated: 2015-04-19
+# Updated: 2015-05-15
 #
 #
 #!/bin/bash
@@ -32,7 +32,8 @@ RANGE=$(for x in {23..0}; do date --date="-$x hour" +"%d/%b/%Y:%H:"; done);
 while getopts d:l:nr:8t:vh option; do
     case "${option}" in
 	# Caclulate date string for searches
-        d) DATE=$(date --date="-${OPTARG} days" +"%d/%b/%Y"); 
+        d) DATE=$(date --date="-${OPTARG} days" +"%d/%b/%Y"); DECOMP="$(which zgrep)"; SUFFIX=$(date --date="-${OPTARG} days" +"-%b-%Y.gz")
+	   DOMAINS="/usr/local/apache/logs/access_log /home/*/logs/*[^_log]$SUFFIX"
 	   RANGE=$(for x in {23..0}; do date --date="-${OPTARG} days -$x hour" +"%d/%b/%Y:%H:"; done) ;;
 
 	# Use list of domains rather than all sites
@@ -51,7 +52,7 @@ while getopts d:l:nr:8t:vh option; do
         t) THRESH=${OPTARG} ;;
 
 	# Verbose outpout for debugging
-	v) echo -e "\nDecomp   : $DECOMP\nDate     : $DATE\nRange    : $(echo -n $RANGE)\nDomains  : $DOMAINS\nThreshold: $THRESH\n" ;;
+	v) echo -e "\nDecomp   : $DECOMP\nDate     : $DATE\nSuffix   : $SUFFIX\nRange    : $(echo -n $RANGE)\nDomains  : $DOMAINS\nThreshold: $THRESH\n" ;;
 
 	# Help output
 	h) echo -e "\n ${BRIGHT}Usage:${NORMAL} $0 [OPTIONS]\n
@@ -78,7 +79,14 @@ for logfile in $DOMAINS; do
     # Only print if the threshold condition is set/met
     if [[ -z $THRESH || $THRESH -le $($DECOMP -c $DATE $logfile) ]]; then
         if [[ $nocolor != '1' ]]; then color="${BLUE}"; else color=''; fi
-        printf "${color} %15s" "$(echo $logfile | cut -d/ -f6)"
+	if [[ $DATE != $(date +"%d/%b/%Y") ]]; then
+	    ACCT=$(echo $logfile | cut -d/ -f3)
+	    SITE=$(basename $logfile $SUFFIX)
+	else
+	    ACCT=$(echo $logfile | cut -d/ -f6)
+	    SITE=$(echo $logfile | cut -d/ -f7)
+	fi
+        printf "${color} %15s" "$ACCT"
 
 	i=0;
 	# Iterate through the hours
@@ -99,8 +107,8 @@ for logfile in $DOMAINS; do
         grandtotal=$(($grandtotal+$total))
 
         if [[ $nocolor != '1' ]]; then ## Color version
-          printf "${CYAN}%8s ${PURPLE}%-s${NORMAL}\n" "$total" "$(echo $logfile | cut -d/ -f7)"
-        else printf "%8s %-s\n" "$total" "$(echo $logfile | cut -d/ -f7)"; fi
+          printf "${CYAN}%8s ${PURPLE}%-s${NORMAL}\n" "$total" "$SITE"
+        else printf "%8s %-s\n" "$total" "$SITE"; fi
     fi
 done
 

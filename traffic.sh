@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-08-10
-# Updated: 2015-04-06
+# Updated: 2015-05-15
 #
 #
 #!/bin/bash
@@ -60,9 +60,9 @@ eval set -- "$OPTIONS" # Magic
 while true; do # Evaluate the options for their options
 case $1 in
   -s|--search ) SEARCH="$2"; shift ;; # search string (regex)
-  -d|--days   ) DATE=$(date --date="-${2} day" +%d/%b/%Y); FDATE=$(date --date="-${2} day" +%Y.%m.%d);
-                echo; date --date="-${2} day" +"%A, %B %d, %Y -- %Y.%m.%d";
-		if [[ ! -e $LOGFILE.$FDATE ]]; then grep $DATE $LOGFILE > $LOGFILE.$FDATE; fi
+  -d|--days   ) DATE=$(date --date="-${2} days" +%d/%b/%Y); FDATE=$(date --date="-${2} days" +%Y.%m.%d);
+                echo; date --date="-${2} days" +"%A, %B %d, %Y -- %Y.%m.%d";
+		if [[ ! -e $LOGFILE.$FDATE ]]; then zgrep -h $DATE /home/*/logs/${DOMAIN}$(date --date="-${2} days" +"-%b-%Y.gz") > $LOGFILE.$FDATE; fi
 		LOGFILE="$(echo $LOGFILE.$FDATE)"; shift ;; # days back
   -n|--lines  ) TOP=$2; shift ;; # results
   -v|--verbose) VERBOSE=1 ;; # Debugging Output
@@ -112,6 +112,7 @@ ref|referrer	) $DECOMP "$SEARCH" $LOGFILE | awk '{freq[$11]++} END {for (x in fr
 esac
 
 if [[ $VERBOSE == '1' ]]; then echo; echo -e "DECOMP: $DECOMP\nSEARCH: $SEARCH\nDATE: $DATE\nTOP: $TOP\nLOGFILE: $LOGFILE\n" | column -t; fi # Debugging
+if [[ -n "$FDATE" ]]; then echo "Cleanup temp log $LOGFILE"; rm -f $LOGFILE; fi
 
 echo;
 unset DOMAIN SEARCH DATE FDATE TOP LOGFILE DECOMP VERBOSE # Variable Cleanup
