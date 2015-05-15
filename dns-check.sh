@@ -42,8 +42,6 @@ ${BRIGHT}-2|--secondline${NORMAL} ... Display the second line of a record lookup
 ${BRIGHT}-n|--new${NORMAL} <Record> . Check if the record lookup matches the new record.
 ${BRIGHT}-t|--type${NORMAL} <Type> .. Change the requested record type of lookup.
 ${BRIGHT}-v|--verbose${NORMAL} ...... Switch the dig from '+short' to '+short +noshort'
-
-
 ${BRIGHT}-h|--help${NORMAL} ......... Show this help/usage message.
 
 ${BRIGHT}ALLOWED RECORD TYPES:${NORMAL}
