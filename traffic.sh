@@ -112,7 +112,7 @@ ref|referrer	) $DECOMP "$SEARCH" $LOGFILE | awk '{freq[$11]++} END {for (x in fr
 esac
 
 if [[ $VERBOSE == '1' ]]; then echo; echo -e "DECOMP: $DECOMP\nSEARCH: $SEARCH\nDATE: $DATE\nTOP: $TOP\nLOGFILE: $LOGFILE\n" | column -t; fi # Debugging
-if [[ -n "$FDATE" ]]; then echo "Cleanup temp log $LOGFILE"; rm -f $LOGFILE; fi
+if [[ -n "$FDATE" ]]; then; rm -f $LOGFILE; fi
 
 echo;
 unset DOMAIN SEARCH DATE FDATE TOP LOGFILE DECOMP VERBOSE # Variable Cleanup
