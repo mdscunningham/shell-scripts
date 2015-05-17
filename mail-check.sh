@@ -29,7 +29,14 @@ dash (){ for ((i=1; i<=$1; i++)); do printf "$2"; done; }
 mailcheck(){
 
 # Help Output and quit
-if [[ $1 =~ -h ]]; then echo -e "\n  Usage: mailcheck [options] [<ip1> <ip2> ... | ALL]\n    -q ... Quiet (don't print web links)\n    -v ... Verbose (print empty swaks results)\n    -h ... Print this help\n   all ... check all IPs\n"; return 0; fi
+if [[ $1 =~ -h ]]; then
+  echo -e "\n  Usage: mailcheck [options] [<ip1> <ip2> ... | ALL]
+    -q ... Quiet (don't print web links)
+    -v ... Verbose (print empty swaks results)
+    -h ... Print this help
+   all ... check all IPs\n";
+  return 0;
+fi
 
 # Set Quiet Mode for not printing links
 if [[ $1 =~ -q ]]; then quiet=1; shift; else quiet=0; fi
@@ -58,8 +65,8 @@ for ipaddr in $ip_list; do
     echo "http://mxtoolbox.com/SuperTool.aspx?action=blacklist%3a${YELLOW}${ipaddr}${NORMAL}&run=toolpage"
   fi
 
-  # Sanity Check -- Does Swaks exist
-  if [[ ! -x /usr/bin/swaks ]]; then echo -e "\nInstalling swaks\n"; wget -q http://jetmore.org/john/code/swaks/latest/swaks -O /usr/bin/swaks; chmod +x /usr/bin/swaks; fi
+  # Sanity Check -- Does Swaks exist, if not, install it
+  if [[ ! -x /usr/bin/swaks ]]; then wget -q http://jetmore.org/john/code/swaks/latest/swaks -O /usr/bin/swaks; chmod +x /usr/bin/swaks; fi
   echo -e "\n$(dash 80 =)\n${WHITE}  Swaks Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
 
   # Send test emails with swaks to check for errors
