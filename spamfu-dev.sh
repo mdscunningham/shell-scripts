@@ -53,6 +53,41 @@ PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 #
 
 #-----------------------------------------------------------------------------#
+# Menus for the un-initiated
+#-----------------------------------------------------------------------------#
+## MAIN MENU BEGIN
+main_menu(){
+PS3="Enter selection: ";
+clear
+echo -e "$(dash 80 =)\nCurrent Queue: $(exim -bpc)\n$(dash 40 -)\n\nWhat would you like to do?\n$(dash 40 -)"
+select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Quit"; do
+  case $OPTION in
+
+    "Analyze Exim Logs")
+      log_select_menu "/var/log/exim_mainlog*"
+      if [[ $l != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
+      results_prompt $l; break ;;
+
+    "Analyze PHP Logs")
+      l=0; p=1; q=0; log_select_menu "${PHPLOG}*";
+      if [[ $p != '0' && ! $(file -b $PHPLOG) =~ zip ]]; then line_count_menu; fi
+      results_prompt $p;
+      break;;
+
+    "Analyze Exim Queue")
+      l=0; q=1; p=0; line_count_menu; results_prompt $q; break ;;
+
+    "Quit") l=0; q=0; p=0; break ;;
+
+    *) echo -e "\nPlease enter a valid option.\n" ;;
+
+  esac;
+done;
+clear
+}
+## MAIN MENU END
+
+#-----------------------------------------------------------------------------#
 ## Lines to read from the log file
 line_count_menu(){
   PS3="Enter selection or linecount: "
@@ -111,45 +146,10 @@ set_decomp(){
 fi
 }
 
-
-if [[ -z $@ ]]; then
-#-----------------------------------------------------------------------------#
-# Menus for the un-initiated
-
-#-----------------------------------------------------------------------------#
-## MAIN MENU BEGIN
-PS3="Enter selection: ";
-clear
-echo -e "$(dash 80 =)\nCurrent Queue: $(exim -bpc)\n$(dash 40 -)\n\nWhat would you like to do?\n$(dash 40 -)"
-select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Quit"; do
-  case $OPTION in
-
-    "Analyze Exim Logs")
-      log_select_menu "/var/log/exim_mainlog*"
-      if [[ $l != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
-      results_prompt $l; break ;;
-
-    "Analyze PHP Logs")
-      l=0; p=1; q=0; log_select_menu "${PHPLOG}*";
-      if [[ $p != '0' && ! $(file -b $PHPLOG) =~ zip ]]; then line_count_menu; fi
-      results_prompt $p;
-      break;;
-
-    "Analyze Exim Queue")
-      l=0; q=1; p=0; line_count_menu; results_prompt $q; break ;;
-
-    "Quit") l=0; q=0; p=0; break ;;
-
-    *) echo -e "\nPlease enter a valid option.\n" ;;
-
-  esac;
-done;
-clear
-## MAIN MENU END
-
-else
 #-----------------------------------------------------------------------------#
 # Process commandline flags
+arg_parse(){
+local OPTIND;
 while getopts fhl:n:pqc: OPTIONS; do
   case "${OPTIONS}" in
     c) LINECOUNT=${OPTARG} ;;
@@ -159,17 +159,18 @@ while getopts fhl:n:pqc: OPTIONS; do
     p) l=0; p=1; q=0 ;; # PHP log
     q) l=0; q=1; p=0 ;; # Analyze queue instead of log
     ## t) t=${OPTARG};; # Set a timeframe [log/queue] to analyze
-    h) echo -e "\nUsage: $0 [OPTIONS]\n
+    h) l=0; q=0; p=0;
+       echo -e "\nUsage: $0 [OPTIONS]\n
     -c ... <#lines> to read from the end of the log
     -f ... Read full log (instead of last 1M lines)
-    -l ... <logfile> to use instead of default
+    -l ... </path/to/logfile> to use instead of default
     -n ... <#results> to show from analysis
     -p ... Look for 'X-PHP-Script' in the php mail log
     -q ... Create a queue logfile and analyze the queue\n
-    -h ... Print this help and quit\n"; exit ;; # Print help and quit
+    -h ... Print this help and quit\n"; return 0 ;; # Print help and quit
   esac
 done
-fi
+}
 
 #-----------------------------------------------------------------------------#
 ## Setup the log file analysis methods
@@ -394,8 +395,11 @@ if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
 else
   echo "X_Header: Disabled"
 fi
-
 }
+
+#-----------------------------------------------------------------------------#
+# Call menus or parse cli flags
+if [[ -z $@ ]]; then main_menu; else arg_parse "$@"; fi
 
 #-----------------------------------------------------------------------------#
 ## Run either logs() or queue() function
