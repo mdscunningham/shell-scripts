@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-05-10
+# Updated: 2015-05-17
 #
 #
 #!/bin/bash
@@ -57,8 +57,7 @@ PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 #-----------------------------------------------------------------------------#
 ## MAIN MENU BEGIN
 main_menu(){
-PS3="Enter selection: ";
-clear
+PS3="Enter selection: "; clear
 echo -e "$(dash 80 =)\nCurrent Queue: $(exim -bpc)\n$(dash 40 -)\n\nWhat would you like to do?\n$(dash 40 -)"
 select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Quit"; do
   case $OPTION in
@@ -71,19 +70,18 @@ select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Qu
     "Analyze PHP Logs")
       l=0; p=1; q=0; log_select_menu "${PHPLOG}*";
       if [[ $p != '0' && ! $(file -b $PHPLOG) =~ zip ]]; then line_count_menu; fi
-      results_prompt $p;
-      break;;
+      results_prompt $p; break;;
 
     "Analyze Exim Queue")
-      l=0; q=1; p=0; line_count_menu; results_prompt $q; break ;;
+      l=0; q=1; p=0; line_count_menu;
+      results_prompt $q; break ;;
 
     "Quit") l=0; q=0; p=0; break ;;
 
     *) echo -e "\nPlease enter a valid option.\n" ;;
 
   esac;
-done;
-clear
+done; clear
 }
 ## MAIN MENU END
 
@@ -143,33 +141,34 @@ set_decomp(){
   else
     DECOMP="tail -n $LINECOUNT";
     du -sh $1 | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
-fi
+  fi
 }
 
 #-----------------------------------------------------------------------------#
 # Process commandline flags
 arg_parse(){
-local OPTIND;
-while getopts fhl:n:pqc: OPTIONS; do
-  case "${OPTIONS}" in
-    c) LINECOUNT=${OPTARG} ;;
-    f) full_log=1 ;;
-    l) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
-    n) RESULTCOUNT=${OPTARG} ;;
-    p) l=0; p=1; q=0 ;; # PHP log
-    q) l=0; q=1; p=0 ;; # Analyze queue instead of log
-    ## t) t=${OPTARG};; # Set a timeframe [log/queue] to analyze
-    h) l=0; q=0; p=0;
-       echo -e "\nUsage: $0 [OPTIONS]\n
+  local OPTIND;
+  while getopts fhl:n:pqc: OPTIONS; do
+    case "${OPTIONS}" in
+      c) LINECOUNT=${OPTARG} ;;
+      f) full_log=1 ;;
+      l) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
+      n) RESULTCOUNT=${OPTARG} ;;
+      p) l=0; p=1; q=0 ;; # PHP log
+      q) l=0; q=1; p=0 ;; # Analyze queue instead of log
+      ## t) t=${OPTARG};; # Set a timeframe [log/queue] to analyze
+      h) l=0; q=0; p=0;
+         echo -e "\nUsage: $0 [OPTIONS]\n
     -c ... <#lines> to read from the end of the log
     -f ... Read full log (instead of last 1M lines)
     -l ... </path/to/logfile> to use instead of default
     -n ... <#results> to show from analysis
     -p ... Look for 'X-PHP-Script' in the php mail log
     -q ... Create a queue logfile and analyze the queue\n
-    -h ... Print this help and quit\n"; return 0 ;; # Print help and quit
-  esac
-done
+    -h ... Print this help and quit\n";
+         return 0 ;; # Print help and quit
+    esac
+  done
 }
 
 #-----------------------------------------------------------------------------#
