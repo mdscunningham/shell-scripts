@@ -19,13 +19,19 @@ else
   lineCount=$(curl -s axeblade.net/multirbl | wc -l)
 fi
 
-OPTIONS=$(getopt -o "hiq" -- "$@") # Execute getopt
+OPTIONS=$(getopt -o "f:hiq" -- "$@") # Execute getopt
 eval set -- "$OPTIONS" # Magic
 while true; do # Evaluate the options for their options
 case $1 in
+  -f ) if [[ -e $2 ]]; then
+	 lineCount=$(wc -l < $2)
+	 DNSBL="$(cat $2)"; shift;
+       else
+	 echo -e "\n$2 does not exist\n"
+       fi ;;
   -i ) if [[ -f rbl-info ]]; then
          lineCount=$(wc -l < rbl-info)
-          DNSBL="$(cat rbl-info)"
+         DNSBL="$(cat rbl-info)"
        else
          lineCount=$(curl -s axeblade.net/rbl-info | wc -l)
          DNSBL=$(curl -s axeblade.net/rbl-info)
@@ -37,18 +43,19 @@ esac;
 shift;
 done
 
-echo;
+echo -e "\nChecking $lineCount RBLs\n"
 for IPADDR in "$@"; do
     count=1
     RDNS=$(dig +short -x $IPADDR)
     echo "----- $IPADDR ----- ${RDNS:-Missing rDNS} -----";
     for RBL in $DNSBL; do
       LOOKUP="$(echo $IPADDR | awk -F. '{print $4"."$3"."$2"."$1}').${RBL}"
-      LISTED="$(dig +time=0 +tries=1 +short $LOOKUP | grep -v \;)"
-      REASON="$(dig +time=0 +tries=1 +short txt $LOOKUP | grep -v \;)"
+      LISTED="$(dig +time=0 +tries=2 +short $LOOKUP | grep -v \;)"
+      REASON="$(dig +time=0 +tries=2 +short txt $LOOKUP | grep -v \;)"
 
       if [[ $quiet == 1 ]]; then
-        echo -ne "\r$(echo "scale=4;${count}/${lineCount}*100.0" | bc | sed 's/00$//g')%"; count=$(($count+1));
+        echo -ne "\r [$(echo "scale=4;${count}/${lineCount}*100.0" | bc | sed 's/00$//g')%] $RBL                    \r";
+	count=$(($count+1));
       fi
 
       if [[ $quiet == 1 && $LISTED =~ ^127\. ]]; then
