@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-05-10
+# Updated: 2015-05-19
 #
 #
 #!/bin/bash
@@ -32,7 +32,38 @@ PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
 PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 
 #-----------------------------------------------------------------------------#
-# Menu scripting
+# Menus for the un-initiated
+#-----------------------------------------------------------------------------#
+## MAIN MENU BEGIN
+main_menu(){
+PS3="Enter selection: "; clear
+echo -e "$(dash 80 =)\nCurrent Queue: $(exim -bpc)\n$(dash 40 -)\n\nWhat would you like to do?\n$(dash 40 -)"
+select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Quit"; do
+  case $OPTION in
+
+    "Analyze Exim Logs")
+      log_select_menu "/var/log/exim_mainlog*"
+      if [[ $l != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
+      results_prompt $l; break ;;
+
+    "Analyze PHP Logs")
+      l=0; p=1; q=0; log_select_menu "${PHPLOG}*";
+      if [[ $p != '0' && ! $(file -b $PHPLOG) =~ zip ]]; then line_count_menu; fi
+      results_prompt $p; break;;
+
+    "Analyze Exim Queue")
+      l=0; q=1; p=0; line_count_menu;
+      results_prompt $q; break ;;
+
+    "Quit") l=0; q=0; p=0; break ;;
+
+    *) echo -e "\nPlease enter a valid option.\n" ;;
+
+  esac;
+done; clear
+}
+## MAIN MENU END
+
 #-----------------------------------------------------------------------------#
 ## Lines to read from the log file
 line_count_menu(){
@@ -83,80 +114,51 @@ set_decomp(){
   elif [[ $full_log == 1 ]]; then
     DECOMP="cat";
     du -sh $1 | awk '{print "Using Log File: "$2,"("$1")"}'
-    head -1 $1 | awk '{print "First date in log: "$1,$2}';
-    tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+    if [[ $l == 1 ]]; then
+      head -1 $1 | awk '{print "First date in log: "$1,$2}';
+      tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+    fi
   # Minimize impact on initial scan, using last 1,000,000 lines
   else
     DECOMP="tail -n $LINECOUNT";
     du -sh $1 | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
-fi
+    if [[ $l == 1 ]]; then
+    #  lines=$(wc -l < $1); firstLine=$(( $lines - $LINECOUNT ));
+    #  sed -n "${firstLine}p" $1 | awk '{print "First date found: "$1,$2}';
+      tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+    fi
+  fi
 }
 
-
-if [[ -z $@ ]]; then
-
-#-----------------------------------------------------------------------------#
-# Menus for the un-initiated
-#-----------------------------------------------------------------------------#
-## MAIN MENU BEGIN
-PS3="Enter selection: ";
-clear
-echo -e "$(dash 80 =)\nCurrent Queue: $(exim -bpc)\n$(dash 40 -)\n\nWhat would you like to do?\n$(dash 40 -)"
-select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Quit"; do
-  case $OPTION in
-
-    "Analyze Exim Logs")
-      log_select_menu "/var/log/exim_mainlog*"
-      if [[ $l != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
-      results_prompt $l; break ;;
-
-    "Analyze PHP Logs")
-      l=0; p=1; q=0; log_select_menu "${PHPLOG}*";
-      if [[ $p != '0' && ! $(file -b $PHPLOG) =~ zip ]]; then line_count_menu; fi
-      results_prompt $p;
-      break;;
-
-    "Analyze Exim Queue")
-      l=0; q=1; p=0; line_count_menu; results_prompt $q; break ;;
-
-    "Quit") l=0; q=0; p=0; break ;;
-
-    *) echo -e "\nPlease enter a valid option.\n" ;;
-
-  esac;
-done;
-clear
-## MAIN MENU END
-
-else
 #-----------------------------------------------------------------------------#
 # Process commandline flags
-while getopts fhl:n:pqc: OPTIONS; do
-  case "${OPTIONS}" in
-    c) LINECOUNT=${OPTARG} ;;
-    f) full_log=1 ;;
-    l) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
-    n) RESULTCOUNT=${OPTARG} ;;
-    p) l=0; p=1; q=0 ;; # PHP log
-    q) l=0; q=1; p=0 ;; # Analyze queue instead of log
-    ## t) t=${OPTARG};; # Set a timeframe [log/queue] to analyze
-    h) echo -e "\nUsage: $0 [OPTIONS]\n
+arg_parse(){
+  local OPTIND;
+  while getopts fhl:n:pqc: OPTIONS; do
+    case "${OPTIONS}" in
+      c) LINECOUNT=${OPTARG} ;;
+      f) full_log=1 ;;
+      l) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
+      n) RESULTCOUNT=${OPTARG} ;;
+      p) l=0; p=1; q=0 ;; # PHP log
+      q) l=0; q=1; p=0 ;; # Analyze queue instead of log
+      h) l=0; q=0; p=0;
+         echo -e "\nUsage: $0 [OPTIONS]\n
     -c ... <#lines> to read from the end of the log
     -f ... Read full log (instead of last 1M lines)
-    -l ... <logfile> to use instead of default
+    -l ... </path/to/logfile> to use instead of default
     -n ... <#results> to show from analysis
     -p ... Look for 'X-PHP-Script' in the php mail log
     -q ... Create a queue logfile and analyze the queue\n
-    -h ... Print this help and quit\n"; exit ;; # Print help and quit
-  esac
-done
-fi
+    -h ... Print this help and quit\n";
+         return 0 ;; # Print help and quit
+    esac
+  done
+}
 
 #-----------------------------------------------------------------------------#
 ## Setup the log file analysis methods
 mail_logs(){
-# This will run a basic analysis of the exim_mainlog
-
 echo; set_decomp $LOGFILE;
 
 ## Count of messages sent by scripts
@@ -164,10 +166,6 @@ section_header "Directories"
 $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g'\
  | awk '!/spool|error/ {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
-
-# Count of Messages per account
-# section_header "Accounts"
-# $DECOMP $LOGFILE | grep -o '<=\ [^<>].*U=.*\ ' | perl -pe 's/.*U=(.*?)\ .*/\1/g' | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
 # Count of messages per "Account/Domains"
 section_header "Accounts/Domains"
@@ -211,35 +209,11 @@ $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g'\
  | awk '!/failed: |deferred: / {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
 
-# Count of From Addresses
-#section_header "From Addresses"
-#awk '/<=/ && !/U=mailnull/ {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-
-# Count of To Addresses
-#section_header "To Addresses"
-# awk '/<=/ && !/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-
 # Count of Bouncebacks by address
 section_header "Bouncebacks (address)"
 $DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
-
-# Count of Bouncebacks by domain
-# section_header "Bouncebacks (domain)"
-# awk -F@ '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-
-# Count of IPs sending mail
-# echo -e "\nIP-Addresses"
-# awk '/<=/ && ($7 ~ /H=/) && ($8 ~ /\[.*\]/) {print $8}' $LOGFILE | cut -d\] -f1 | sort | uniq -c | sort -rn | tr -d \[ | head -n $RESULTCOUNT
-
-# Find Subjects for an auth user
-# echo -e "\nSubjects for Auth $EMAILADDR"
-# awk -F\" "/<= $EMAILADDR/"'{print $2}' $LOGFILE | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
-
-# Find IPs for an auth user
-# echo -e "\nIPs for Auth $EMAILADDR"
-# awk "/<= $EMAILADDR/"'{print $8}' $LOGFILE | cut -d: -f1 | sort | uniq -c | sort -rn | head -n $RESULTCOUNT | tr -d '[]'
 
 echo
 }
@@ -247,7 +221,6 @@ echo
 #-----------------------------------------------------------------------------#
 ## Setup the queue/file analysis methods
 mail_queue(){
-# This will run a basic summary of the mail queue, using both exim -bp and /var/spool/exim/input/*
 
 ## Current Queue Dump
 if [[ -f $QUEUEFILE ]]; then
@@ -273,7 +246,6 @@ if [[ -n $(head $QUEUEFILE) ]]; then
 $DECOMP $QUEUEFILE | exiqsumm | head -3 | tail -2;
 cat $QUEUEFILE | exiqsumm | sort -rnk1 | grep -v "TOTAL$" | head -n $RESULTCOUNT
 fi
-#exim -bp | exiqsumm
 
 ## Queue Senders
 section_header "Queue: Auth Users"
@@ -281,7 +253,6 @@ find /var/spool/exim/input/ -type f -name "*-H" -print | xargs grep --no-filenam
  | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Subjects
-# http://www.commandlinefu.com/commands/view/9758/sort-and-count-subjects-of-emails-stuck-in-exim-queue
 section_header "Queue: Subjects"
 find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "Subject: "\
  | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
@@ -306,26 +277,15 @@ section_header "Queue: Frozen (count)"
 $DECOMP $QUEUEFILE | awk '/frozen/ {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn  | head -n $RESULTCOUNT | sed 's/<>/*** Bounceback ***/' | tr -d '<>'
 
-# echo -e "\nRemove Frozen Bouncebacks:\nawk '/<>.*frozen/ {print \$3}' $QUEUEFILE | xargs exim -Mrm > /dev/null"
-# echo -e "find /var/spool/exim/msglog/ | xargs egrep -l \"P=local\" | cut -b26- | xargs -P6 -n500 exim -Mrm > /dev/null"
-
-## Bounceback IDs in the queue
-# cat $QUEUEFILE | awk '($4 ~ /<>/) {print $3}'
-
-## Frozen Message IDs
-# awk '/frozen/ {print $3}' $QUEUEFILE
+#echo -e "\nRemove Frozen Bouncebacks:\nawk '/<>.*frozen/ {print \$3}' $QUEUEFILE | xargs exim -Mrm > /dev/null"
+#echo -e "find /var/spool/exim/msglog/ | xargs egrep -l \"P=local\" | cut -b26- | xargs -P6 -n500 exim -Mrm > /dev/null"
 
 echo
 }
 
 mail_php(){
-# This checks to see if the php_maillog has been enabled, and if so, then
-# runs a simple analysis of the scripts sending mail from that log.
-
-# Warning
 echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
 
-# Check if add_x_header is on
 if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
   echo "php.ini : $PHPCONF"
   echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
@@ -335,18 +295,22 @@ if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
 
   # Look for mailer scripts in the php_maillog
   section_header "PHP Mailer Scripts"
-  $DECOMP $PHPLOG | grep '/home' | perl -pe 's/.*\[(.*?)\]/\1/g'\
+  $DECOMP $PHPLOG | perl -pe 's/.*\[(\/home.*?)\]/\1/g'\
    | awk -F: '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
   echo
 else
   echo "X_Header: Disabled"
 fi
-
 }
 
 #-----------------------------------------------------------------------------#
+# Call menus or parse cli flags
+if [[ -z $@ ]]; then main_menu; else arg_parse "$@"; fi
+
+#-----------------------------------------------------------------------------#
 ## Run either logs() or queue() function
+#clear
 if [[ $l == 1 ]]; then mail_logs
 elif [[ $q == 1 ]]; then mail_queue
 elif [[ $p == 1 ]]; then mail_php; fi
