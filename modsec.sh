@@ -3,14 +3,14 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-01-01
-# Updated: 2015-04-15
+# Updated: 2015-05-20
 #
 #
 #!/bin/bash
 
 dash(){ for ((i=1;i<=$1;i++)); do printf "-"; done; }
 
-    QUIET=0;VERBOSE=0;COUNT=20;DATE="$(date +'%a.%b.%d')";LOGFILE="/usr/local/apache/logs/error_log" # Initialization
+    QUIET=0;VERBOSE=0;COUNT=10;DATE="$(date +'%a.%b.%d')";LOGFILE="/usr/local/apache/logs/error_log" # Initialization
 
 modsec(){
     local OPTIND
@@ -36,20 +36,41 @@ modsec(){
 
     echo; FORMAT="%-8s %-9s %-16s %-16s\n";
 
+    nomsg=$(grep "$DATE" $LOGFILE | grep -v "\[msg" | grep "phase 2" | head -1)
+    pcre=$(grep "$DATE.*PCRE" $LOGFILE | head -1)
+
     if [[ $QUIET != 1 ]]; then
       printf "$FORMAT" " Count#" " Error#" " Remote-IP" " Error Message";
+
       printf "$FORMAT" "--------" "---------" "$(dash 16)" "$(dash 42)";
-      grep -Ei "$DATE.*client.$IP.*id..[0-9]{6,}\"" $LOGFILE\
-	 | perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*msg "(.*?)".*/\2\t\1\t\3/' | sed 's/ /_/g'\
-	 | sort | uniq -c | sort -rn | awk '{printf "%7s   %-8s  %-16s %s\n",$1,$2,$3,$4}' | sed 's/_/ /g' | head -n $COUNT
+      grep -Ei "$DATE.*client.$IP.*id..[0-9]{6,}\".*\[msg" $LOGFILE\
+         | perl -pe 's/.*\[client\ (.*?)\].*\[id "([0-9]{6,})"\].*\[msg "(.*?)"\].*/\2\t\1\t\3/' | sed 's/ /_/g'\
+         | sort | uniq -c | sort -rn | awk '{printf "%7s   %-8s  %-16s %s\n",$1,$2,$3,$4}' | sed 's/_/ /g' | head -n $COUNT
+
+      if [[ -n $nomsg ]]; then
+	echo -e "\nPattern Matches"
+        printf "$FORMAT" "--------" "---------" "$(dash 16)" "$(dash 42)";
+        grep -v "\[msg" $LOGFILE | grep -E "$DATE.*client.$IP.*phase\ 2"\
+           | perl -pe 's/.*\[client\ (.*?)\].*phase.2\).\ (.*?)\[file.*\[id\ "(.*?)"\].*/\3\t\1\t\2/g' | sed 's/ /_/g'\
+	   | sort | uniq -c | sort -rn | awk '{printf "%7s   %-8s  %-16s %s\n",$1,$2,$3,$4}' | sed 's/_/ /g' | head -n $COUNT
+      fi
+
+      if [[ -n $pcre ]]; then
+	echo -e "\nPCRE Limits"
+        printf "$FORMAT" "--------" "---------" "$(dash 16)" "$(dash 42)";
+        grep PCRE $LOGFILE | grep -Ei "$DATE.*client.$IP.*id..[0-9]{6,}\""\
+           | perl -pe 's/.*\[client\ (.*?)\].*\[id\ "(.*?)"\].*(Execution.*?):.*/\2\t\1\t\3/' | sed 's/ /_/g'\
+           | sort | uniq -c | sort -rn | awk '{printf "%7s   %-8s  %-16s %s\n",$1,$2,$3,$4}' | sed 's/_/ /g' | head -n $COUNT
+      fi
+
     else
       printf "$FORMAT" " Count#" " Error#" " Remote-IP";
       printf "$FORMAT" "--------" "---------" "$(dash 16)";
       if grep -qEi '\[id: [0-9]{6,}\]' $LOGFILE; then
         grep -Eio "$DATE.*client.$IP.*\] |id.*[0-9]{6,}\]" $LOGFILE | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
-	 | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
+         | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
       else
-        grep -Eio "$DATE.*client.$IP.*id..[0-9]{6,}\"" $LOGFILE | perl -pe 's/.*client\ (.*?)\].*id "([0-9]{6,})".*/\2\t\1/'\
+        grep -Eio "$DATE.*client.$IP.*id..[0-9]{6,}\"" $LOGFILE | perl -pe 's/.*\[client\ (.*?)\].*\[id "([0-9]{6,})"\].*/\2\t\1/'\
 	 | sort | uniq -c | tr -d \" | tr -d \] | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
       fi
     fi
