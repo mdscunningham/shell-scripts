@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-05-17
+# Updated: 2015-05-19
 #
 #
 #!/bin/bash
@@ -135,12 +135,19 @@ set_decomp(){
   elif [[ $full_log == 1 ]]; then
     DECOMP="cat";
     du -sh $1 | awk '{print "Using Log File: "$2,"("$1")"}'
-    head -1 $1 | awk '{print "First date in log: "$1,$2}';
-    tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+    if [[ $l == 1 ]]; then
+      head -1 $1 | awk '{print "First date in log: "$1,$2}';
+      tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+    fi
   # Minimize impact on initial scan, using last 1,000,000 lines
   else
     DECOMP="tail -n $LINECOUNT";
     du -sh $1 | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
+    if [[ $l == 1 ]]; then
+    #  lines=$(wc -l < $1); firstLine=$(( $lines - $LINECOUNT ));
+    #  sed -n "${firstLine}p" $1 | awk '{print "First date found: "$1,$2}';
+      tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+    fi
   fi
 }
 
@@ -387,7 +394,7 @@ if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
 
   # Look for mailer scripts in the php_maillog
   section_header "PHP Mailer Scripts"
-  $DECOMP $PHPLOG | grep '/home' | perl -pe 's/.*\[(.*?)\]/\1/g'\
+  $DECOMP $PHPLOG | perl -pe 's/.*\[(\/home.*?)\]/\1/g'\
    | awk -F: '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
   echo
