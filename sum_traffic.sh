@@ -23,7 +23,7 @@ shopt -s extglob
 ## Initializations
 hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done)); grandtotal=0; nocolor=0
 DECOMP="$(which grep)"; THRESH=''; DATE=$(date +"%d/%b/%Y"); FMT=" %5s"
-DOMAINS="/usr/local/apache/logs/access_log /usr/local/apache/domlogs/*/*[^_log$]";
+DOMAINS="/usr/local/apache/logs/access_log $(echo /usr/local/apache/domlogs/*/* | grep -v '_log$')";
 RANGE=$(for x in {23..0}; do date --date="-$x hour" +"%d/%b/%Y:%H:"; done);
 
 # Potential replacement for the Date:Hour combination, will also automatically fix the issue of wrapping midnight if I can make it work:
