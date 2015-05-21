@@ -59,14 +59,14 @@ for IPADDR in "$@"; do
       fi
 
       if [[ $quiet == 1 && $LISTED =~ ^127\. ]]; then
-        printf "%-50s : %-11s : %s\n" "${LOOKUP}" "${LISTED:-Clean}" "${REASON:------}" >> rbl.log;
+        printf "%-35s : %-11s : %s\n" "$RBL" "${LISTED:-Clean}" "${REASON:------}" >> rbl.log;
 
       ### Debugging file creation ###
       # elif [[ $quiet == 1 && ! $LISTED =~ ^127\. ]]; then
-      #   printf "%-40s : %-11s : %s\n" "${LOOKUP}" "${LISTED:-Clean}" "${REASON:------}" >> rbl-debug.log;
+      #   printf "%-25s : %-11s : %s\n" "$RBL" "${LISTED:-Clean}" "${REASON:------}" >> rbl-debug.log;
 
       elif [[ $quiet != 1 ]]; then
-        printf "%-50s : %-11s : %s\n" "${LOOKUP}" "${LISTED:-Clean}" "${REASON:------}";
+        printf "%-35s : %-11s : %s\n" "$RBL" "${LISTED:-Clean}" "${REASON:------}";
       fi
     done
     if [[ -f rbl.log && $quiet == 1 ]]; then echo -ne "\r"; cat rbl.log; rm rbl.log; fi
