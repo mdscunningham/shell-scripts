@@ -67,11 +67,11 @@ modsec(){
       printf "$FORMAT" " Count#" " Error#" " Remote-IP";
       printf "$FORMAT" "--------" "---------" "$(dash 16)";
       if grep -qEi '\[id: [0-9]{6,}\]' $LOGFILE; then
-        grep -Eio "$DATE.*client.$IP.*\] |id.*[0-9]{6,}\]" $LOGFILE | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
+        grep -Ei "$DATE.*client.$IP.*\] |id.*[0-9]{6,}\]" $LOGFILE | awk 'BEGIN {RS="]\nc"} {print $4,$2}'\
          | tr -d \] | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
       else
-        grep -Eio "$DATE.*client.$IP.*id..[0-9]{6,}\"" $LOGFILE | perl -pe 's/.*\[client\ (.*?)\].*\[id "([0-9]{6,})"\].*/\2\t\1/'\
-	 | sort | uniq -c | tr -d \" | tr -d \] | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rnk1 | head -n $COUNT;
+        grep -Ei "$DATE.*client.$IP.*id..[0-9]{6,}\"" $LOGFILE | perl -pe 's/.*\[client\ (.*?)\].*\[id\ \"([0-9]{6,})\"\].*/\2 \1/'\
+	 | sort | uniq -c | awk '{printf "%7s   %-8s  %s\n",$1,$2,$3}' | sort -rn | head -n $COUNT;
       fi
     fi
     echo
