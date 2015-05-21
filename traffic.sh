@@ -53,7 +53,7 @@ opt=$1; shift; # Set option variable using command parameter
 if [[ $DOMAIN == 'access_log' ]]; then LOGFILE="/usr/local/apache/logs/access_log"
   else LOGFILE="$(echo /usr/local/apache/domlogs/*/${DOMAIN})"; fi
 
-SEARCH=''; DATE=$(date +%d/%b/%Y); TOP='20'; DECOMP='egrep -h'; VERBOSE=0; # Initialize variables
+SEARCH=''; DATE=$(date +%d/%b/%Y); TOP='20'; DECOMP='grep -Eh'; VERBOSE=0; # Initialize variables
 OPTIONS=$(getopt -o "s:d:n:hv" --long "search:,days:,lines:,help,verbose" -- "$@") # Execute getopt
 eval set -- "$OPTIONS" # Magic
 
@@ -62,8 +62,8 @@ case $1 in
   -s|--search ) SEARCH="$2"; shift ;; # search string (regex)
   -d|--days   ) DATE=$(date --date="-${2} days" +%d/%b/%Y); FDATE=$(date --date="-${2} days" +%Y.%m.%d);
                 echo; date --date="-${2} days" +"%A, %B %d, %Y -- %Y.%m.%d";
-		if [[ ! -e $LOGFILE.$FDATE ]]; then zgrep -h $DATE /home/*/logs/${DOMAIN}$(date --date="-${2} days" +"-%b-%Y.gz") > $LOGFILE.$FDATE; fi
-		LOGFILE="$(echo $LOGFILE.$FDATE)"; shift ;; # days back
+		zgrep -h $DATE /home/*/logs/${DOMAIN}$(date --date="-${2} days" +"-%b-%Y.gz") > ${LOGFILE}.${FDATE}
+		LOGFILE=${LOGFILE}.${FDATE}; shift ;; # days back
   -n|--lines  ) TOP=$2; shift ;; # results
   -v|--verbose) VERBOSE=1 ;; # Debugging Output
   --          ) shift; break ;; # More Magic
