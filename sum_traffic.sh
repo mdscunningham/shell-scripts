@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2014-04-18
-# Updated: 2015-05-15
+# Updated: 2015-05-20
 #
 #
 #!/bin/bash
@@ -23,17 +23,14 @@ shopt -s extglob
 ## Initializations
 hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done)); grandtotal=0; nocolor=0
 DECOMP="$(which grep)"; THRESH=''; DATE=$(date +"%d/%b/%Y"); FMT=" %5s"
-DOMAINS="/usr/local/apache/logs/access_log /usr/local/apache/domlogs/*/*[^_]*";
+DOMAINS="/usr/local/apache/logs/access_log /usr/local/apache/domlogs/*/!(*[^ssl]_log*)";
 RANGE=$(for x in {23..0}; do date --date="-$x hour" +"%d/%b/%Y:%H:"; done);
-
-# Potential replacement for the Date:Hour combination, will also automatically fix the issue of wrapping midnight if I can make it work:
-# 8) RANGE=$(for x in {8..1}; do date --date="-$x hours" +"%d/%b/%Y:%H:"; done)
 
 while getopts d:l:nr:8t:vh option; do
     case "${option}" in
 	# Caclulate date string for searches
         d) DATE=$(date --date="-${OPTARG} days" +"%d/%b/%Y"); DECOMP="$(which zgrep)"; SUFFIX=$(date --date="-${OPTARG} days" +"-%b-%Y.gz")
-	   DOMAINS="/usr/local/apache/logs/access_log /home/*/logs/*[^_log]$SUFFIX"
+	   DOMAINS="/usr/local/apache/logs/access_log /home/*/logs/!(*[^ssl]_log*)$SUFFIX"
 	   RANGE=$(for x in {23..0}; do date --date="-${OPTARG} days -$x hour" +"%d/%b/%Y:%H:"; done) ;;
 
 	# Use list of domains rather than all sites
