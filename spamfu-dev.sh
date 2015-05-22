@@ -36,7 +36,7 @@ section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 #-----------------------------------------------------------------------------#
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
-QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H).00"
+QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
 PHPLOG="/var/log/php_maillog"
 l=1; p=0; q=0; full_log=0;
 LINECOUNT='1000000'
@@ -312,9 +312,9 @@ mail_queue(){
 
 ## Current Queue Dump
 if [[ -f $QUEUEFILE ]]; then
-  echo -e "\nFound existing queue dump from this hour ( $(date +%Y.%m.%d_%H).00 ).\n"
+  echo -e "\nFound existing queue dump ( $QUEUEFILE ).\n"
 else
-  echo -e "\nCreating Queue Dump to speed up analysis ... Thank you for your patience"
+  echo -e "\nCreating Queue Dump ($QUEUEFILE) to speed up analysis\n ... Thank you for your patience"
   exim -bp > $QUEUEFILE
 fi
 
@@ -367,8 +367,9 @@ section_header "Queue: Frozen (count)"
 $DECOMP $QUEUEFILE | awk '/frozen/ {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn  | head -n $RESULTCOUNT | sed 's/<>/*** Bounceback ***/' | tr -d '<>'
 
-echo -e "\nRemove Frozen Bouncebacks:\nawk '/<>.*frozen/ {print \$3}' $QUEUEFILE | xargs exim -Mrm > /dev/null"
-echo -e "find /var/spool/exim/msglog/ | xargs egrep -l \"P=local\" | cut -b26- | xargs -P6 -n500 exim -Mrm > /dev/null"
+# echo -e "\nRemove Frozen Bouncebacks:\nawk '/<>.*frozen/ {print \$3}' $QUEUEFILE | xargs exim -Mrm > /dev/null"
+# echo -e "find /var/spool/exim/msglog/ | xargs egrep -l \"P=local\" | cut -b26- | xargs -P6 -n500 exim -Mrm > /dev/null"
+
 ## Bounceback IDs in the queue
 # cat $QUEUEFILE | awk '($4 ~ /<>/) {print $3}'
 
@@ -409,7 +410,6 @@ if [[ -z $@ ]]; then main_menu; else arg_parse "$@"; fi
 
 #-----------------------------------------------------------------------------#
 ## Run either logs() or queue() function
-#clear
 if [[ $l == 1 ]]; then mail_logs
 elif [[ $q == 1 ]]; then mail_queue
 elif [[ $p == 1 ]]; then mail_php; fi
