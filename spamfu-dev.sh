@@ -41,6 +41,7 @@ PHPLOG="/var/log/php_maillog"
 l=1; p=0; q=0; full_log=0;
 LINECOUNT='1000000'
 RESULTCOUNT='10'
+DAYS=''
 PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
 PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 
@@ -138,15 +139,19 @@ set_decomp(){
     if [[ $l == 1 ]]; then
       head -1 $1 | awk '{print "First date in log: "$1,$2}';
       tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+    elif [[ $p == 1 ]]; then
+      grep "Date:" $1 | head -1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "First date in log: "$2,$3,$4,$5,$6}';
+      tail $1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "Last date in log: "$2,$3,$4,$5,$6}' | tail -1;
     fi
   # Minimize impact on initial scan, using last 1,000,000 lines
   else
     DECOMP="tail -n $LINECOUNT";
     du -sh $1 | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
+    if [[ -n $DATE ]]; then echo "Starting with specified date: $DATE"; fi
     if [[ $l == 1 ]]; then
-    #  lines=$(wc -l < $1); firstLine=$(( $lines - $LINECOUNT ));
-    #  sed -n "${firstLine}p" $1 | awk '{print "First date found: "$1,$2}';
       tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+    elif [[ $p == 1 ]]; then
+      tail $1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "Last date in log: "$2,$3,$4,$5,$6}' | tail -1
     fi
   fi
 }
@@ -155,18 +160,19 @@ set_decomp(){
 # Process commandline flags
 arg_parse(){
   local OPTIND;
-  while getopts fhl:n:pqc: OPTIONS; do
+  while getopts c:d:fhl:n:pq OPTIONS; do
     case "${OPTIONS}" in
       c) LINECOUNT=${OPTARG} ;;
+      d) DAYS=${OPTARG} ;;
       f) full_log=1 ;;
       l) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
       n) RESULTCOUNT=${OPTARG} ;;
       p) l=0; p=1; q=0 ;; # PHP log
       q) l=0; q=1; p=0 ;; # Analyze queue instead of log
-      ## t) t=${OPTARG};; # Set a timeframe [log/queue] to analyze
       h) l=0; q=0; p=0;
          echo -e "\nUsage: $0 [OPTIONS]\n
     -c ... <#lines> to read from the end of the log
+    -d ... <#days> back to read in the log (calulates linecount)
     -f ... Read full log (instead of last 1M lines)
     -l ... </path/to/logfile> to use instead of default
     -n ... <#results> to show from analysis
@@ -183,6 +189,14 @@ arg_parse(){
 mail_logs(){
 # This will run a basic analysis of the exim_mainlog, and hopefully will also do the first few
 # steps of finding any malware/scripts that are sending mail and their origins
+
+DATE=$(date --date="-$DAYS days" +%Y-%m-%d)
+if [[ -n $DAYS && -n $(grep "$DATE" $LOGFILE 2> /dev/null) ]]; then
+  FIRSTLINE=$(grep -n "$DATE" $LOGFILE | head -1 | cut -d: -f1)
+  LINETOTAL=$(wc -l < $LOGFILE)
+  LINECOUNT=$(( $LINETOTAL - $FIRSTLINE ))
+  else echo -e "\nCould not find the desired date in the log, using default 1,000,000 lines."
+fi
 
 echo; set_decomp $LOGFILE;
 
@@ -385,6 +399,14 @@ mail_php(){
 # http://blog.rimuhosting.com/2012/09/20/finding-spam-sending-scripts-on-your-server/
 
 echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
+
+DATE=$(date --date="-$DAYS days" +"%e %b %Y")
+if [[ -n $DAYS && -n $(grep "$DATE" $PHPLOG 2> /dev/null) ]]; then
+  FIRSTLINE=$(grep -n "$DATE" $PHPLOG | head -1 | cut -d: -f1)
+  LINETOTAL=$(wc -l < $PHPLOG)
+  LINECOUNT=$(( $LINETOTAL - $FIRSTLINE ))
+  else echo "Could not find the desired date in the log, using default 1,000,000 lines."
+fi
 
 if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
   echo "php.ini : $PHPCONF"
