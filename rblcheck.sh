@@ -54,7 +54,7 @@ for IPADDR in "$@"; do
       REASON="$(dig +time=0 +tries=2 +short txt $LOOKUP | grep -v \;)"
 
       if [[ $quiet == 1 ]]; then
-        echo -ne "\r [$(echo "scale=4;${count}/${lineCount}*100.0" | bc | sed 's/00$//g')%] $RBL                    \r";
+        printf "\r_%-70s _[%-4.2f%%]\r" "${RBL}_" "$(echo "scale=4;${count}/${lineCount}*100.0" | bc)" | sed 's/ /./g;s/_/ /g'
 	count=$(($count+1));
       fi
 
