@@ -69,7 +69,7 @@ for IPADDR in "$@"; do
         printf "%-35s : %-11s : %s\n" "$RBL" "${LISTED:-Clean}" "${REASON:------}";
       fi
     done
-    if [[ -f rbl.log && $quiet == 1 ]]; then echo -ne "\r"; cat rbl.log; rm rbl.log; fi
+    if [[ -f rbl.log && $quiet == 1 ]]; then printf "%90s\r" ""; cat rbl.log; rm rbl.log; fi
     echo
 done;
 unset count quiet DNSBL lineCount IPADDR RDNS LOOKUP LISTED REASON;
