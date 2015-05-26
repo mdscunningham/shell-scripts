@@ -162,7 +162,7 @@ set_decomp(){
   else
     DECOMP="tail -n $LINECOUNT";
     du -sh $1 | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
-    if [[ -n $DATE ]]; then echo "Starting with specified date: $DATE"; fi
+    if [[ -n $DAYS ]]; then echo "Starting with specified date: $DATE"; fi
     if [[ $l == 1 ]]; then
       tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
     elif [[ $p == 1 ]]; then
