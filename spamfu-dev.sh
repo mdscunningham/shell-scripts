@@ -187,7 +187,7 @@ arg_parse(){
       h) l=0; q=0; p=0;
          echo -e "\nUsage: $0 [OPTIONS]\n
     -c ... <#lines> to read from the end of the log
-    -d ... <#days> back to read in the log (calulates linecount)
+    -d ... <#days> back to read in the log (calculates linecount)
     -f ... Read full log (instead of last 1M lines)
     -l ... </path/to/logfile> to use instead of default
     -n ... <#results> to show from analysis
