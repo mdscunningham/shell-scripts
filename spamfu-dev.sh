@@ -37,13 +37,12 @@ section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
 QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
-PHPLOG="/var/log/php_maillog"
+PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
+PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 l=1; p=0; q=0; full_log=0;
 LINECOUNT='1000000'
 RESULTCOUNT='10'
 DAYS=''
-PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
-PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 
 #-----------------------------------------------------------------------------#
 # Menu scripting
@@ -121,7 +120,23 @@ log_select_menu(){
 results_prompt(){
   if [[ $1 != '0' ]]; then
     echo; read -p "How many results do you want? [10]: " NEWCOUNT;
-    if [[ -n $NEWCOUNT ]]; then RESULTCOUNT=$NEWCOUNT; fi;
+    if [[ $NEWCOUNT =~ ([0-9]) ]]; then RESULTCOUNT=$NEWCOUNT;
+      else echo "Invalid input, using defaults."; fi;
+  fi
+}
+
+#-----------------------------------------------------------------------------#
+# Calculate lines to read if start date is set (-d flag).
+date_lookup(){
+  if [[ $l == 1 ]]; then DATE=$(date --date="-$DAYS days" +%Y-%m-%d);
+    elif [[ $p == 1 ]]; then DATE=$(date --date="-$DAYS days" +"%e %b %Y"); fi
+
+  if [[ -n $DAYS && -n $(grep "$DATE" $1 2> /dev/null) ]]; then
+    FIRSTLINE=$(grep -n "$DATE" $1 | head -1 | cut -d: -f1)
+    LINETOTAL=$(wc -l < $1)
+    LINECOUNT=$(( $LINETOTAL - $FIRSTLINE ))
+  elif [[ -n $DAYS ]]; then
+    echo "Could not find the desired date in the log, using default 1,000,000 lines."
   fi
 }
 
@@ -190,13 +205,7 @@ mail_logs(){
 # This will run a basic analysis of the exim_mainlog, and hopefully will also do the first few
 # steps of finding any malware/scripts that are sending mail and their origins
 
-DATE=$(date --date="-$DAYS days" +%Y-%m-%d)
-if [[ -n $DAYS && -n $(grep "$DATE" $LOGFILE 2> /dev/null) ]]; then
-  FIRSTLINE=$(grep -n "$DATE" $LOGFILE | head -1 | cut -d: -f1)
-  LINETOTAL=$(wc -l < $LOGFILE)
-  LINECOUNT=$(( $LINETOTAL - $FIRSTLINE ))
-  else echo -e "\nCould not find the desired date in the log, using default 1,000,000 lines."
-fi
+date_lookup $LOGFILE
 
 echo; set_decomp $LOGFILE;
 
@@ -400,13 +409,7 @@ mail_php(){
 
 echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
 
-DATE=$(date --date="-$DAYS days" +"%e %b %Y")
-if [[ -n $DAYS && -n $(grep "$DATE" $PHPLOG 2> /dev/null) ]]; then
-  FIRSTLINE=$(grep -n "$DATE" $PHPLOG | head -1 | cut -d: -f1)
-  LINETOTAL=$(wc -l < $PHPLOG)
-  LINECOUNT=$(( $LINETOTAL - $FIRSTLINE ))
-  else echo "Could not find the desired date in the log, using default 1,000,000 lines."
-fi
+date_lookup $PHPLOG
 
 if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
   echo "php.ini : $PHPCONF"
@@ -436,4 +439,5 @@ if [[ $l == 1 ]]; then mail_logs
 elif [[ $q == 1 ]]; then mail_queue
 elif [[ $p == 1 ]]; then mail_php; fi
 
+unset LOGFILE QUEUEFILE PHPCONF PHPLOG full_log LINECOUNT RESULTCOUNT DAYS
 #~Fin~
