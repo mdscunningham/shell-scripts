@@ -23,13 +23,13 @@ section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 #-----------------------------------------------------------------------------#
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
-QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H).00"
-PHPLOG="/var/log/php_maillog"
+QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
+PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
+PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 l=1; p=0; q=0; full_log=0;
 LINECOUNT='1000000'
 RESULTCOUNT='10'
-PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
-PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
+DAYS=''
 
 #-----------------------------------------------------------------------------#
 # Menus for the un-initiated
@@ -99,7 +99,23 @@ log_select_menu(){
 results_prompt(){
   if [[ $1 != '0' ]]; then
     echo; read -p "How many results do you want? [10]: " NEWCOUNT;
-    if [[ -n $NEWCOUNT ]]; then RESULTCOUNT=$NEWCOUNT; fi;
+    if [[ $NEWCOUNT =~ ([0-9]) ]]; then RESULTCOUNT=$NEWCOUNT;
+      else echo "Invalid input, using defaults."; fi;
+  fi
+}
+
+#-----------------------------------------------------------------------------#
+# Calculate lines to read if start date is set (-d flag).
+date_lookup(){
+  if [[ $l == 1 ]]; then DATE=$(date --date="-$DAYS days" +%Y-%m-%d);
+    elif [[ $p == 1 ]]; then DATE=$(date --date="-$DAYS days" +"%e %b %Y"); fi
+
+  if [[ -n $DAYS && -n $(grep "$DATE" $1 2> /dev/null) ]]; then
+    FIRSTLINE=$(grep -n "$DATE" $1 | head -1 | cut -d: -f1)
+    LINETOTAL=$(wc -l < $1)
+    LINECOUNT=$(( $LINETOTAL - $FIRSTLINE ))
+  elif [[ -n $DAYS ]]; then
+    echo "Could not find the desired date in the log, using default 1,000,000 lines."
   fi
 }
 
@@ -117,15 +133,19 @@ set_decomp(){
     if [[ $l == 1 ]]; then
       head -1 $1 | awk '{print "First date in log: "$1,$2}';
       tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+    elif [[ $p == 1 ]]; then
+      grep "Date:" $1 | head -1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "First date in log: "$2,$3,$4,$5,$6}';
+      tail $1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "Last date in log: "$2,$3,$4,$5,$6}' | tail -1;
     fi
   # Minimize impact on initial scan, using last 1,000,000 lines
   else
     DECOMP="tail -n $LINECOUNT";
     du -sh $1 | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
+    if [[ -n $DAYS ]]; then echo "Starting with specified date: $DATE"; fi
     if [[ $l == 1 ]]; then
-    #  lines=$(wc -l < $1); firstLine=$(( $lines - $LINECOUNT ));
-    #  sed -n "${firstLine}p" $1 | awk '{print "First date found: "$1,$2}';
       tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+    elif [[ $p == 1 ]]; then
+      tail $1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "Last date in log: "$2,$3,$4,$5,$6}' | tail -1
     fi
   fi
 }
@@ -134,9 +154,10 @@ set_decomp(){
 # Process commandline flags
 arg_parse(){
   local OPTIND;
-  while getopts fhl:n:pqc: OPTIONS; do
+  while getopts c:d:fhl:n:pq OPTIONS; do
     case "${OPTIONS}" in
       c) LINECOUNT=${OPTARG} ;;
+      d) DAYS=${OPTARG} ;;
       f) full_log=1 ;;
       l) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
       n) RESULTCOUNT=${OPTARG} ;;
@@ -145,6 +166,7 @@ arg_parse(){
       h) l=0; q=0; p=0;
          echo -e "\nUsage: $0 [OPTIONS]\n
     -c ... <#lines> to read from the end of the log
+    -d ... <#days> back to read in the log (calculates linecount)
     -f ... Read full log (instead of last 1M lines)
     -l ... </path/to/logfile> to use instead of default
     -n ... <#results> to show from analysis
@@ -159,6 +181,10 @@ arg_parse(){
 #-----------------------------------------------------------------------------#
 ## Setup the log file analysis methods
 mail_logs(){
+# This will run a basic analysis of the exim_mainlog, and hopefully will also do the first few
+# steps of finding any malware/scripts that are sending mail and their origins
+
+date_lookup $LOGFILE
 echo; set_decomp $LOGFILE;
 
 ## Count of messages sent by scripts
@@ -221,12 +247,13 @@ echo
 #-----------------------------------------------------------------------------#
 ## Setup the queue/file analysis methods
 mail_queue(){
+# This will run a basic summary of the mail queue, using both exim -bp and /var/spool/exim/input/*
 
 ## Current Queue Dump
 if [[ -f $QUEUEFILE ]]; then
-  echo -e "\nFound existing queue dump from this hour ( $(date +%Y.%m.%d_%H).00 ).\n"
+  echo -e "\nFound existing queue dump ( $QUEUEFILE ).\n"
 else
-  echo -e "\nCreating Queue Dump to speed up analysis ... Thank you for your patience"
+  echo -e "\nCreating Queue Dump ($QUEUEFILE) to speed up analysis\n ... Thank you for your patience"
   exim -bp > $QUEUEFILE
 fi
 
@@ -234,8 +261,7 @@ fi
 if [[ $full_log == 1 ]]; then
   DECOMP="cat";
   du -sh $QUEUEFILE | awk '{print "Using Queue Dump: "$2,"("$1")"}'
-# Minimize impact on initial scan, using last 1,000,000 lines
-else
+else # Minimize impact on initial scan, using last 1,000,000 lines
   DECOMP="tail -$LINECOUNT";
   du -sh $QUEUEFILE | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
 fi
@@ -246,6 +272,7 @@ if [[ -n $(head $QUEUEFILE) ]]; then
 $DECOMP $QUEUEFILE | exiqsumm | head -3 | tail -2;
 cat $QUEUEFILE | exiqsumm | sort -rnk1 | grep -v "TOTAL$" | head -n $RESULTCOUNT
 fi
+#exim -bp | exiqsumm
 
 ## Queue Senders
 section_header "Queue: Auth Users"
@@ -277,14 +304,16 @@ section_header "Queue: Frozen (count)"
 $DECOMP $QUEUEFILE | awk '/frozen/ {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn  | head -n $RESULTCOUNT | sed 's/<>/*** Bounceback ***/' | tr -d '<>'
 
-#echo -e "\nRemove Frozen Bouncebacks:\nawk '/<>.*frozen/ {print \$3}' $QUEUEFILE | xargs exim -Mrm > /dev/null"
-#echo -e "find /var/spool/exim/msglog/ | xargs egrep -l \"P=local\" | cut -b26- | xargs -P6 -n500 exim -Mrm > /dev/null"
+# echo -e "\nRemove Frozen Bouncebacks:\nawk '/<>.*frozen/ {print \$3}' $QUEUEFILE | xargs exim -Mrm > /dev/null"
+# echo -e "find /var/spool/exim/msglog/ | xargs egrep -l \"P=local\" | cut -b26- | xargs -P6 -n500 exim -Mrm > /dev/null"
 
 echo
 }
 
 mail_php(){
 echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
+
+date_lookup $PHPLOG
 
 if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
   echo "php.ini : $PHPCONF"
@@ -310,9 +339,9 @@ if [[ -z $@ ]]; then main_menu; else arg_parse "$@"; fi
 
 #-----------------------------------------------------------------------------#
 ## Run either logs() or queue() function
-#clear
 if [[ $l == 1 ]]; then mail_logs
 elif [[ $q == 1 ]]; then mail_queue
 elif [[ $p == 1 ]]; then mail_php; fi
 
+unset LOGFILE QUEUEFILE PHPCONF PHPLOG full_log LINECOUNT RESULTCOUNT DAYS
 #~Fin~
