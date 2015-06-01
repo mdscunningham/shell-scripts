@@ -193,7 +193,8 @@ arg_parse(){
     -l ... </path/to/logfile> to use instead of default
     -n ... <#results> to show from analysis
     -p ... Look for 'X-PHP-Script' in the php mail log
-    -q ... Create a queue logfile and analyze the queue\n
+    -q ... Create a queue logfile and analyze the queue
+    -v ... Verbose (debugging output)\n
     -h ... Print this help and quit\n";
          return 0 ;; # Print help and quit
     esac
