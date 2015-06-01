@@ -442,8 +442,7 @@ elif [[ $q == 1 ]]; then mail_queue
 elif [[ $p == 1 ]]; then mail_php; fi
 
 if [[ $VERBOSE == 1 ]]; then
-  echo $(dash 80 =)
-  section_header "Debugging Information"
+  dash 80 =; section_header "Debugging Information"
   echo -e "    LOGFILE : $LOGFILE
   QUEUEFILE : $QUEUEFILE
      PHPLOG : $PHPLOG
@@ -451,7 +450,8 @@ if [[ $VERBOSE == 1 ]]; then
    full_log : $full_log
   LINECOUNT : $LINECOUNT
 RESULTCOUNT : $RESULTCOUNT
-       DAYS : ${DAYS:-Unset}\n"
+       DAYS : ${DAYS:-Unset}
+       DATE : ${DATE:-Unset}\n"
 fi
 
 unset LOGFILE QUEUEFILE PHPCONF PHPLOG full_log LINECOUNT RESULTCOUNT DAYS VERBOSE
