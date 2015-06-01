@@ -42,7 +42,7 @@ PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 l=1; p=0; q=0; full_log=0;
 LINECOUNT='1000000'
 RESULTCOUNT='10'
-DAYS=''
+DAYS=''; VERBOSE=0;
 
 #-----------------------------------------------------------------------------#
 # Menu scripting
@@ -175,7 +175,7 @@ set_decomp(){
 # Process commandline flags
 arg_parse(){
   local OPTIND;
-  while getopts c:d:fhl:n:pq OPTIONS; do
+  while getopts c:d:fhl:n:pqv OPTIONS; do
     case "${OPTIONS}" in
       c) LINECOUNT=${OPTARG} ;;
       d) DAYS=${OPTARG} ;;
@@ -184,6 +184,7 @@ arg_parse(){
       n) RESULTCOUNT=${OPTARG} ;;
       p) l=0; p=1; q=0 ;; # PHP log
       q) l=0; q=1; p=0 ;; # Analyze queue instead of log
+      v) VERBOSE=1 ;; # Debugging Output
       h) l=0; q=0; p=0;
          echo -e "\nUsage: $0 [OPTIONS]\n
     -c ... <#lines> to read from the end of the log
@@ -439,5 +440,18 @@ if [[ $l == 1 ]]; then mail_logs
 elif [[ $q == 1 ]]; then mail_queue
 elif [[ $p == 1 ]]; then mail_php; fi
 
-unset LOGFILE QUEUEFILE PHPCONF PHPLOG full_log LINECOUNT RESULTCOUNT DAYS
+if [[ $VERBOSE == 1 ]]; then
+  echo $(dash 80 =)
+  section_header "Debugging Information"
+  echo -e "    LOGFILE : $LOGFILE
+  QUEUEFILE : $QUEUEFILE
+     PHPLOG : $PHPLOG
+    PHPCONF : $PHPCONF
+   full_log : $full_log
+  LINECOUNT : $LINECOUNT
+RESULTCOUNT : $RESULTCOUNT
+       DAYS : ${DAYS:-Unset}\n"
+fi
+
+unset LOGFILE QUEUEFILE PHPCONF PHPLOG full_log LINECOUNT RESULTCOUNT DAYS VERBOSE
 #~Fin~
