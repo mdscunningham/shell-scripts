@@ -29,7 +29,7 @@ PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 l=1; p=0; q=0; full_log=0;
 LINECOUNT='1000000'
 RESULTCOUNT='10'
-DAYS=''
+DAYS=''; VERBOSE=0;
 
 #-----------------------------------------------------------------------------#
 # Menus for the un-initiated
@@ -154,7 +154,7 @@ set_decomp(){
 # Process commandline flags
 arg_parse(){
   local OPTIND;
-  while getopts c:d:fhl:n:pq OPTIONS; do
+  while getopts c:d:fhl:n:pqv OPTIONS; do
     case "${OPTIONS}" in
       c) LINECOUNT=${OPTARG} ;;
       d) DAYS=${OPTARG} ;;
@@ -163,6 +163,7 @@ arg_parse(){
       n) RESULTCOUNT=${OPTARG} ;;
       p) l=0; p=1; q=0 ;; # PHP log
       q) l=0; q=1; p=0 ;; # Analyze queue instead of log
+      v) VERBOSE=1 ;; # Debugging Output
       h) l=0; q=0; p=0;
          echo -e "\nUsage: $0 [OPTIONS]\n
     -c ... <#lines> to read from the end of the log
@@ -171,7 +172,8 @@ arg_parse(){
     -l ... </path/to/logfile> to use instead of default
     -n ... <#results> to show from analysis
     -p ... Look for 'X-PHP-Script' in the php mail log
-    -q ... Create a queue logfile and analyze the queue\n
+    -q ... Create a queue logfile and analyze the queue
+    -v ... Verbose (debugging output)\n
     -h ... Print this help and quit\n";
          return 0 ;; # Print help and quit
     esac
@@ -185,6 +187,7 @@ mail_logs(){
 # steps of finding any malware/scripts that are sending mail and their origins
 
 date_lookup $LOGFILE
+
 echo; set_decomp $LOGFILE;
 
 ## Count of messages sent by scripts
@@ -234,6 +237,8 @@ section_header "Subjects (Non-Bounceback)"
 $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g'\
  | awk '!/failed: |deferred: / {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
+# $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g' | sort | uniq -c | sort -rn | grep -Ev 'failed: |deferred: ' | head -n $RESULTCOUNT
+#awk -F\" '/<=/ && /T=/ {freq[$2]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
 # Count of Bouncebacks by address
 section_header "Bouncebacks (address)"
@@ -261,7 +266,8 @@ fi
 if [[ $full_log == 1 ]]; then
   DECOMP="cat";
   du -sh $QUEUEFILE | awk '{print "Using Queue Dump: "$2,"("$1")"}'
-else # Minimize impact on initial scan, using last 1,000,000 lines
+# Minimize impact on initial scan, using last 1,000,000 lines
+else
   DECOMP="tail -$LINECOUNT";
   du -sh $QUEUEFILE | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
 fi
@@ -280,6 +286,7 @@ find /var/spool/exim/input/ -type f -name "*-H" -print | xargs grep --no-filenam
  | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Subjects
+# http://www.commandlinefu.com/commands/view/9758/sort-and-count-subjects-of-emails-stuck-in-exim-queue
 section_header "Queue: Subjects"
 find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "Subject: "\
  | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
@@ -343,5 +350,18 @@ if [[ $l == 1 ]]; then mail_logs
 elif [[ $q == 1 ]]; then mail_queue
 elif [[ $p == 1 ]]; then mail_php; fi
 
-unset LOGFILE QUEUEFILE PHPCONF PHPLOG full_log LINECOUNT RESULTCOUNT DAYS
+if [[ $VERBOSE == 1 ]]; then
+  dash 80 =; section_header "Debugging Information"
+  echo -e "    LOGFILE : $LOGFILE
+  QUEUEFILE : $QUEUEFILE
+     PHPLOG : $PHPLOG
+    PHPCONF : $PHPCONF
+   full_log : $full_log
+  LINECOUNT : $LINECOUNT
+RESULTCOUNT : $RESULTCOUNT
+       DAYS : ${DAYS:-Unset}
+       DATE : ${DATE:-Unset}\n"
+fi
+
+unset LOGFILE QUEUEFILE PHPCONF PHPLOG full_log LINECOUNT RESULTCOUNT DAYS VERBOSE
 #~Fin~
