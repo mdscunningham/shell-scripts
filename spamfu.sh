@@ -11,6 +11,19 @@
 # Inspiration from previous work by: mwineland
 # With php_maillog functions assisted by: mcarmack
 
+### Exim.conf
+# /etc/exim.conf -- Full Options, only some of these are configured by default
+# log_selector = +address_rewrite +all_parents +arguments +connection_reject +delay_delivery +delivery_size +dnslist_defer +incoming_interface +incoming_port
+# +lost_incoming_connection +queue_run +received_sender +received_recipients +retry_defer +sender_on_delivery +size_reject +skip_delivery
+# +smtp_confirmation +smtp_connection +smtp_protocol_error +smtp_syntax_error +subject +tls_cipher +tls_peerdn
+
+## LW Docs
+# http://www.liquidweb.com/kb/digging-into-exim-mail-logs-with-exigrep/
+# http://www.liquidweb.com/kb/how-to-read-an-exim-maillog/
+
+## Exim Docs
+# http://www.exim.org/exim-html-current/doc/html/spec_html/ch-log_files.html
+
 #-----------------------------------------------------------------------------#
 ## Because /moar/ regex is always better
 shopt -s extglob
@@ -32,6 +45,14 @@ RESULTCOUNT='10'
 DAYS=''; VERBOSE=0;
 
 #-----------------------------------------------------------------------------#
+# Menu scripting
+#
+# http://tldp.org/LDP/Bash-Beginners-Guide/html/sect_09_06.html < Select built-in
+# http://tldp.org/HOWTO/Bash-Prog-Intro-HOWTO-9.html < more Select
+# http://askubuntu.com/questions/1705/how-can-i-create-a-select-menu-in-a-shell-script
+#
+
+#-----------------------------------------------------------------------------#
 # Menus for the un-initiated
 #-----------------------------------------------------------------------------#
 ## MAIN MENU BEGIN
@@ -42,13 +63,13 @@ select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Qu
   case $OPTION in
 
     "Analyze Exim Logs")
-      log_select_menu "/var/log/exim_mainlog*"
-      if [[ $l != '0' && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
+      log_select_menu "/var/log/exim_mainlog"
+      if [[ $l != '0' && -f $LOGFILE && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
       results_prompt $l; break ;;
 
     "Analyze PHP Logs")
-      l=0; p=1; q=0; log_select_menu "${PHPLOG}*";
-      if [[ $p != '0' && ! $(file -b $PHPLOG) =~ zip ]]; then line_count_menu; fi
+      l=0; p=1; q=0; log_select_menu "${PHPLOG}";
+      if [[ $p != '0' && -f $PHPLOG && ! $(file -b $PHPLOG) =~ zip ]]; then line_count_menu; fi
       results_prompt $p; break;;
 
     "Analyze Exim Queue")
@@ -65,6 +86,25 @@ done; clear
 ## MAIN MENU END
 
 #-----------------------------------------------------------------------------#
+## Select a log file from what's on the server
+log_select_menu(){
+  if [[ -f $1 ]]; then
+    echo -e "\nWhich file?\n$(dash 40 -)\n$(du -sh ${1}* 2> /dev/null)\n"
+    select LOGS in ${1}* "Quit"; do
+      case $LOGS in
+        "Quit") l=0; q=0; p=0; break ;;
+        *) if [[ -f $LOGS ]]; then LOGFILE=$LOGS; PHPLOG=$LOGS; break;
+           elif [[ -f ${REPLY} ]]; then LOGFILE=${REPLY}; PHPLOG=${REPLY}; break;
+           else echo -e "\nPlease enter a valid option.\n"; fi ;;
+      esac
+    done;
+  else
+    echo -e "\nNo logs found. Quitting.\n"; l=0; q=0; p=0;
+    read -p "Press [Enter] to continue ..." pause;
+  fi
+}
+
+#-----------------------------------------------------------------------------#
 ## Lines to read from the log file
 line_count_menu(){
   PS3="Enter selection or linecount: "
@@ -78,20 +118,6 @@ line_count_menu(){
          else echo "Invalid input, using defaults."; break; fi ;;
     esac
   done
-}
-
-#-----------------------------------------------------------------------------#
-## Select a log file from what's on the server
-log_select_menu(){
-  echo -e "\nWhich file?\n$(dash 40 -)\n$(du -sh $1)\n"
-  select LOGS in $1 "Quit"; do
-    case $LOGS in
-      "Quit") l=0; q=0; p=0; break ;;
-      *) if [[ -f $LOGS ]]; then LOGFILE=$LOGS; PHPLOG=$LOGS; break;
-         elif [[ -f ${REPLY} ]]; then LOGFILE=${REPLY}; PHPLOG=${REPLY}; break;
-         else echo -e "\nPlease enter a valid option.\n"; fi ;;
-    esac
-  done;
 }
 
 #-----------------------------------------------------------------------------#
@@ -154,22 +180,22 @@ set_decomp(){
 # Process commandline flags
 arg_parse(){
   local OPTIND;
-  while getopts c:d:fhl:n:pqv OPTIONS; do
+  while getopts ac:d:f:hn:pqv OPTIONS; do
     case "${OPTIONS}" in
+      a) full_log=1 ;;
       c) LINECOUNT=${OPTARG} ;;
       d) DAYS=${OPTARG} ;;
-      f) full_log=1 ;;
-      l) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
+      f) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
       n) RESULTCOUNT=${OPTARG} ;;
       p) l=0; p=1; q=0 ;; # PHP log
       q) l=0; q=1; p=0 ;; # Analyze queue instead of log
       v) VERBOSE=1 ;; # Debugging Output
       h) l=0; q=0; p=0;
          echo -e "\nUsage: $0 [OPTIONS]\n
+    -a ... Read full log (instead of last 1M lines)
     -c ... <#lines> to read from the end of the log
     -d ... <#days> back to read in the log (calculates linecount)
-    -f ... Read full log (instead of last 1M lines)
-    -l ... </path/to/logfile> to use instead of default
+    -f ... </path/to/logfile> to use instead of default
     -n ... <#results> to show from analysis
     -p ... Look for 'X-PHP-Script' in the php mail log
     -q ... Create a queue logfile and analyze the queue
@@ -190,27 +216,57 @@ date_lookup $LOGFILE
 
 echo; set_decomp $LOGFILE;
 
+#####
+## Top Subjects in the log:
+# http://www.inmotionhosting.com/support/email/exim/locate-spam-activity-by-subject-with-exim
+# awk -F"T=\"" '/<=/ {print $2}' /var/log/exim_mainlog | cut -d\" -f1 | sort | uniq -c | sort -n
+
+## Top Users
+# cat /var/log/exim_mainlog | awk '{print $6}' | sort | uniq -c | sort -n
+
+## Top IPs for user/subject
+# grep "<= user01@example.com" /var/log/exim_mainlog | grep "Melt Fat Naturally" | grep -o "\[[0-9.]*\]" | sort -n | uniq -c | sort -n
+#####
+
 ## Count of messages sent by scripts
 section_header "Directories"
 $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g'\
  | awk '!/spool|error/ {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
+# $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g' | sort | uniq -c | sort -rn | egrep -v 'spool|error' | head -n $RESULTCOUNT
+# awk '/cwd=/ && !/spool|error/ {freq[$3]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/cwd=//g' | head;
+# awk '/cwd=/ && !/spool|error/ {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/cwd=//g' | head;
+
+# Find recent files in CWDs, and stat those files
+# echo -e "\nNewest Files in CWDs"
+# for x in $(echo $SCRIPT_DIRS | head -3 | awk '{print $2}'; do ls -larth $x | tail; done | xargs stat
+
+# Count of Messages per account
+# section_header "Accounts"
+# $DECOMP $LOGFILE | grep -o '<=\ [^<>].*U=.*\ ' | perl -pe 's/.*U=(.*?)\ .*/\1/g' | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+# $DECOMP $LOGFILE | grep '<=.*U=.*P=' | perl -pe 's/.*U=(.*?)\ P=.*/\1/g' | grep -v 'mailnull' | sort | uniq -c | sort -rn | sed 's/U=//g' | head -n $RESULTCOUNT
+# awk '/<=/ && !/U=mailnull/ && ($7 ~ /U=/) {freq[$7]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | sed 's/U=//g' | head
 
 # Count of messages per "Account/Domains"
 section_header "Accounts/Domains"
 $DECOMP $LOGFILE | grep -o '<=\ [^<>].*\ U=.*\ P=' | perl -pe 's/.*@(.*?)\ U=(.*?)\ P=/\2 \1/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-10s %s\n",$1,$2,$3}'
+# $DECOMP $LOGFILE | grep '<=\ [^<>].*' | perl -pe '<=\ .*@(.*?)\ ' | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
 # Count of messages per Auth-Users
 section_header "Auth-Users"
 $DECOMP $LOGFILE | grep -Eo 'A=.*in:.*\ S=' | perl -pe 's/.*:(.*?)\ S=/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+# $DECOMP $LOGFILE | grep -o 'A=.*login:.*@.*\ S=' | cut -d: -f2 | cut -d' ' -f1 | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+# awk '/<=/ && /A=.*login:/ {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
 # Count of IPs per Auth-Users
 section_header "IP-Addresses/Auth-Users"
 $DECOMP $LOGFILE | grep 'A=.*in:' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*in:(.*?)\ S=.*$/\1 \2/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-15s %s\n",$1,$2,$3}'
+# $DECOMP $LOGFILE | grep 'A=.*login' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*:(.*?)\ S=.*$/\1 \2/g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT | awk '{printf "%7s %-15s %s\n",$1,$2,$3}'
+# awk '/<=/ && /A=/ {print $6,$8}' $LOGFILE | cut -d: -f1 | sort | uniq -c | sort -rn | head | tr -d '[]' | awk '{printf "%8s %-15s %s\n",$1,$3,$2}'
 
 # Spoofed Sender Addresses
 section_header "Spoofed Senders"
@@ -240,11 +296,37 @@ $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g'\
 # $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*\"(.*?)\".*/\1/g' | sort | uniq -c | sort -rn | grep -Ev 'failed: |deferred: ' | head -n $RESULTCOUNT
 #awk -F\" '/<=/ && /T=/ {freq[$2]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
 
+# Count of From Addresses
+#section_header "From Addresses"
+#awk '/<=/ && !/U=mailnull/ {freq[$6]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
+
+# Count of To Addresses
+#section_header "To Addresses"
+# awk '/<=/ && !/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
+
 # Count of Bouncebacks by address
 section_header "Bouncebacks (address)"
 $DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
+# $DECOMP $LOGFILE | grep 'U=mailnull' | perl -pe 's/.*\".*for\ (.*$)/\1/g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+# awk '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
+
+# Count of Bouncebacks by domain
+#section_header "Bouncebacks (domain)"
+# awk -F@ '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
+
+# Count of IPs sending mail
+# echo -e "\nIP-Addresses"
+# awk '/<=/ && ($7 ~ /H=/) && ($8 ~ /\[.*\]/) {print $8}' $LOGFILE | cut -d\] -f1 | sort | uniq -c | sort -rn | tr -d \[ | head -n $RESULTCOUNT
+
+# Find Subjects for an auth user
+# echo -e "\nSubjects for Auth $EMAILADDR"
+# awk -F\" "/<= $EMAILADDR/"'{print $2}' $LOGFILE | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+
+# Find IPs for an auth user
+# echo -e "\nIPs for Auth $EMAILADDR"
+# awk "/<= $EMAILADDR/"'{print $8}' $LOGFILE | cut -d: -f1 | sort | uniq -c | sort -rn | head -n $RESULTCOUNT | tr -d '[]'
 
 echo
 }
@@ -253,6 +335,10 @@ echo
 ## Setup the queue/file analysis methods
 mail_queue(){
 # This will run a basic summary of the mail queue, using both exim -bp and /var/spool/exim/input/*
+
+#####
+## exim queue management
+# https://www.ndchost.com/wiki/mail/exim-management
 
 ## Current Queue Dump
 if [[ -f $QUEUEFILE ]]; then
@@ -314,10 +400,20 @@ $DECOMP $QUEUEFILE | awk '/frozen/ {freq[$4]++} END {for (x in freq) {printf "%8
 # echo -e "\nRemove Frozen Bouncebacks:\nawk '/<>.*frozen/ {print \$3}' $QUEUEFILE | xargs exim -Mrm > /dev/null"
 # echo -e "find /var/spool/exim/msglog/ | xargs egrep -l \"P=local\" | cut -b26- | xargs -P6 -n500 exim -Mrm > /dev/null"
 
+## Bounceback IDs in the queue
+# cat $QUEUEFILE | awk '($4 ~ /<>/) {print $3}'
+
+## Frozen Message IDs
+# awk '/frozen/ {print $3}' $QUEUEFILE
+
 echo
 }
 
 mail_php(){
+#---LF_SCRIPT-----------------------------------------------------------------#
+# https://forums.cpanel.net/threads/see-which-php-scripts-are-sending-mail.163345/
+# http://blog.rimuhosting.com/2012/09/20/finding-spam-sending-scripts-on-your-server/
+
 echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
 
 date_lookup $PHPLOG
