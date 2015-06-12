@@ -374,12 +374,12 @@ find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep 
 ## Queue Subjects
 # http://www.commandlinefu.com/commands/view/9758/sort-and-count-subjects-of-emails-stuck-in-exim-queue
 section_header "Queue: Subjects"
-find /var/spool/exim/input/ -type f -print 2>/dev/null | xargs grep --no-filename "Subject: " 2>/dev/null\
+find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename "Subject: " 2>/dev/null\
  | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Scripts
 section_header "Queue: X-PHP-Scripts"
-find /var/spool/exim/input/ -type f -print 2>/dev/null | xargs grep --no-filename "X-PHP.*-Script:" 2>/dev/null\
+find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename "X-PHP.*-Script:" 2>/dev/null\
  | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Count of (non-bounceback) Sending Addresses in queue
