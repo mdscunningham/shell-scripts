@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-05-19
+# Updated: 2015-06-11
 #
 #
 #!/bin/bash
@@ -368,18 +368,18 @@ fi
 
 ## Queue Senders
 section_header "Queue: Auth Users"
-find /var/spool/exim/input/ -type f -name "*-H" -print | xargs grep --no-filename 'auth_id'\
+find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename 'auth_id' 2>/dev/null\
  | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Subjects
 # http://www.commandlinefu.com/commands/view/9758/sort-and-count-subjects-of-emails-stuck-in-exim-queue
 section_header "Queue: Subjects"
-find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "Subject: "\
+find /var/spool/exim/input/ -type f -print 2>/dev/null | xargs grep --no-filename "Subject: " 2>/dev/null\
  | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Scripts
 section_header "Queue: X-PHP-Scripts"
-find /var/spool/exim/input/ -type f -print | xargs grep --no-filename "X-PHP.*-Script:"\
+find /var/spool/exim/input/ -type f -print 2>/dev/null | xargs grep --no-filename "X-PHP.*-Script:" 2>/dev/null\
  | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Count of (non-bounceback) Sending Addresses in queue
@@ -414,7 +414,7 @@ mail_php(){
 # https://forums.cpanel.net/threads/see-which-php-scripts-are-sending-mail.163345/
 # http://blog.rimuhosting.com/2012/09/20/finding-spam-sending-scripts-on-your-server/
 
-echo -e "\n ... Work in progress\n\n$(php -v | head -1)\n"
+echo -e "\n$(php -v | head -1)\n"
 
 date_lookup $PHPLOG
 
