@@ -230,7 +230,7 @@ echo; set_decomp $LOGFILE;
 
 ## Count of messages sent by scripts
 section_header "Directories"
-$DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g'\
+$DECOMP $LOGFILE | grep 'cwd=' | grep -v 'exim -bp' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g'\
  | awk '!/spool|error/ {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
 # $DECOMP $LOGFILE | grep 'cwd=' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g' | sort | uniq -c | sort -rn | egrep -v 'spool|error' | head -n $RESULTCOUNT
@@ -345,7 +345,7 @@ if [[ -f $QUEUEFILE ]]; then
   echo -e "\nFound existing queue dump ( $QUEUEFILE ).\n"
 else
   echo -e "\nCreating Queue Dump ($QUEUEFILE) to speed up analysis\n ... Thank you for your patience"
-  exim -bp > $QUEUEFILE
+  /usr/sbin/exim -bp > $QUEUEFILE
 fi
 
 # Read full log (uncompressed)
