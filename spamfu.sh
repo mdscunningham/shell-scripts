@@ -222,7 +222,7 @@ section_header "Spoofed Senders"
 FMT="%8s %-35s %s\n"
 printf "$FMT" "Count " " Auth-User" " Spoofed-User"
 printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
-$DECOMP $LOGFILE | grep '<=.*in:' | perl -pe 's/.*<=\ (.*?)\ .*A=.*in:(.*?)\ .*/\2 \1/g'\
+$DECOMP $LOGFILE | grep 'A=.*in:.*\ S=' | perl -pe 's/.*<=\ (.*?)\ .*A=.*in:(.*?)\ .*/\2 \1/g'\
  | awk '{ if ($1 != $2) freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
 printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
