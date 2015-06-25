@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2014-04-18
-# Updated: 2015-05-20
+# Updated: 2015-06-24
 #
 #
 #!/bin/bash
@@ -41,7 +41,7 @@ while getopts d:l:nr:8t:vh option; do
 
 	# Print only a specified range of hours
 	r) INPUT=$(echo ${OPTARG} | sed 's/,/ /g'); FMT=" %7s";
-	   RANGE=$(for x in $(seq $INPUT); do echo "${DATE}:${x}:"; done) ;;
+	   RANGE=$(for x in $(seq -w $INPUT); do echo "${DATE}:${x}:"; done) ;;
 
 	8) RANGE=$(for x in {7..0}; do date --date="-$x hours" +"%d/%b/%Y:%H:"; done); FMT=" %7s" ;;
 
