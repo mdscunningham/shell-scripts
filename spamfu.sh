@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-06-14
+# Updated: 2015-06-27
 #
 #
 #!/bin/bash
@@ -88,11 +88,13 @@ log_select_menu(){
 line_count_menu(){
   PS3="Enter selection or linecount: "
   echo -e "\nHow many lines to analyze?\n$(dash 40 -)"
-  select LINES in "Last 1,000,000 lines" "All of it" "Quit"; do
+  select LINES in "Last 10,000 lines" "Last 100,000 lines" "Last 1,000,000 lines" "All of it" "Quit"; do
     case $LINES in
       "Quit") l=0; q=0; p=0; break ;;
       "All of it") full_log=1; break ;;
-      "Last 1,000,000 lines") break ;;
+      "Last 10,000 lines") LINECOUNT=10000; break ;;
+      "Last 100,000 lines") LINECOUNT=100000; break ;;
+      "Last 1,000,000 lines") LINECOUNT=1000000; break ;;
       *) if [[ ${REPLY} =~ ([0-9]) ]]; then LINECOUNT=${REPLY}; break;
          else echo "Invalid input, using defaults."; break; fi ;;
     esac
@@ -105,6 +107,7 @@ results_prompt(){
   if [[ $1 != '0' ]]; then
     echo; read -p "How many results do you want? [10]: " NEWCOUNT;
     if [[ $NEWCOUNT =~ ([0-9]) ]]; then RESULTCOUNT=$NEWCOUNT;
+      elif [[ -z $NEWCOUNT ]]; then echo "Continuing with defaults.";
       else echo "Invalid input, using defaults."; fi;
   fi
 }
@@ -117,8 +120,9 @@ date_lookup(){
 
   if [[ -n $DAYS && -n $(grep "$DATE" $1 2> /dev/null) ]]; then
     FIRSTLINE=$(grep -n "$DATE" $1 | head -1 | cut -d: -f1)
-    LINETOTAL=$(wc -l < $1)
-    LINECOUNT=$(( $LINETOTAL - $FIRSTLINE ))
+    #LINETOTAL=$(wc -l < $1)
+    #LINECOUNT=$(( $LINETOTAL - $FIRSTLINE ))
+    LINECOUNT="+${FIRSTLINE}"
   elif [[ -n $DAYS ]]; then
     echo "Could not find the desired date in the log, using default 1,000,000 lines."
   fi
@@ -127,6 +131,8 @@ date_lookup(){
 #-----------------------------------------------------------------------------#
 # Setup how much of the log file to read and how.
 set_decomp(){
+  # Servername and Current time of Analysis, and exim version
+  echo -e "Hostname: $(hostname)\nCur.Date: $(date +'%A, %B %d, %Y -- %Y.%m.%d')\nExim Ver: $(/usr/sbin/exim --version | head -n1)\n"
   # Compressed file -- decompress and read whole log
   if [[ $(file -b $1) =~ zip ]]; then
     DECOMP="zcat -f";
@@ -148,9 +154,11 @@ set_decomp(){
     du -sh $1 | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
     if [[ -n $DAYS ]]; then echo "Starting with specified date: $DATE"; fi
     if [[ $l == 1 ]]; then
-      tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
+      tac $1 | head -n $LINECOUNT | tail -n 1 | awk '{print "First date found: "$1,$2}'
+      tail -n 1 $1 | awk '{print "Last date in log: "$1,$2}'
     elif [[ $p == 1 ]]; then
-      tail $1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "Last date in log: "$2,$3,$4,$5,$6}' | tail -1
+      tac $1 | head -n $LINECOUNT | tail -n 1000 | grep -o 'Date:.*\ Ret' | awk '/^Date:/ {print "First date found: "$2,$3,$4,$5,$6}' | head -1
+      tail -n 1000 $1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "Last date in log: "$2,$3,$4,$5,$6}' | tail -1
     fi
   fi
 }
@@ -266,8 +274,12 @@ if [[ -f $QUEUEFILE ]]; then
   echo -e "\nFound existing queue dump ( $QUEUEFILE ).\n"
 else
   echo -e "\nCreating Queue Dump ($QUEUEFILE) to speed up analysis\n ... Thank you for your patience"
-  /usr/sbin/exim -bp > $QUEUEFILE
+  /usr/sbin/exim -bp | head -n $(($LINECOUNT * 3)) > $QUEUEFILE
 fi
+
+# Limit the queue scan to keep things fast
+if [[ $full_log == 1 ]]; then QUEUEDECOMP="cat";
+  else QUEUEDECOMP="head -n $LINECOUNT"; fi
 
 # Read full log (uncompressed)
 if [[ $full_log == 1 ]]; then
@@ -282,24 +294,24 @@ fi
 ## Queue Summary
 section_header "Queue: Summary"
 if [[ -n $(head $QUEUEFILE) ]]; then
-$DECOMP $QUEUEFILE | exiqsumm | head -3 | tail -2;
+$DECOMP $QUEUEFILE | /usr/sbin/exiqsumm | head -3 | tail -2;
 cat $QUEUEFILE | /usr/sbin/exiqsumm | sort -rnk1 | grep -v "TOTAL$" | head -n $RESULTCOUNT
 fi
 
 ## Queue Senders
 section_header "Queue: Auth Users"
 find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename 'auth_id' 2>/dev/null\
- | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+ | $QUEUEDECOMP | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Subjects
 section_header "Queue: Subjects"
 find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename "Subject: " 2>/dev/null\
- | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+ | $QUEUEDECOMP | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Scripts
 section_header "Queue: X-PHP-Scripts"
 find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename "X-PHP.*-Script:" 2>/dev/null\
- | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+ | $QUEUEDECOMP | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Count of (non-bounceback) Sending Addresses in queue
 section_header "Queue: Senders"
