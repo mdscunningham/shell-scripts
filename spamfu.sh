@@ -3,13 +3,25 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-06-27
+# Updated: 2015-06-28
 #
 #
 #!/bin/bash
 
+## Exim Cheetsheet
+# http://bradthemad.org/tech/notes/exim_cheatsheet.php
+
 # Inspiration from previous work by: mwineland
 # With php_maillog functions assisted by: mcarmack
+
+## Exim command line flags and usage
+# http://www.exim.org/exim-html-4.50/doc/html/spec_5.html#IX199
+
+## Exim Utilities (help and usage info)
+# http://www.exim.org/exim-html-4.50/doc/html/spec_49.html#IX2895
+
+## Exim Log Files (flags and delimiters)
+# http://www.exim.org/exim-html-current/doc/html/spec_html/ch-log_files.html
 
 #-----------------------------------------------------------------------------#
 ## Because /moar/ regex is always better
@@ -120,8 +132,6 @@ date_lookup(){
 
   if [[ -n $DAYS && -n $(grep "$DATE" $1 2> /dev/null) ]]; then
     FIRSTLINE=$(grep -n "$DATE" $1 | head -1 | cut -d: -f1)
-    #LINETOTAL=$(wc -l < $1)
-    #LINECOUNT=$(( $LINETOTAL - $FIRSTLINE ))
     LINECOUNT="+${FIRSTLINE}"
   elif [[ -n $DAYS ]]; then
     echo "Could not find the desired date in the log, using default 1,000,000 lines."
@@ -257,10 +267,6 @@ $DECOMP $LOGFILE | grep '<= <>' | perl -pe 's/.*\".*for\ (.*$)/\1/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
 
-# Count of Bouncebacks by domain
-#section_header "Bouncebacks (domain)"
-# awk -F@ '/U=mailnull/ {freq[$NF]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' $LOGFILE | sort -rn | head -n $RESULTCOUNT
-
 echo
 }
 
@@ -274,12 +280,12 @@ if [[ -f $QUEUEFILE ]]; then
   echo -e "\nFound existing queue dump ( $QUEUEFILE ).\n"
 else
   echo -e "\nCreating Queue Dump ($QUEUEFILE) to speed up analysis\n ... Thank you for your patience"
-  /usr/sbin/exim -bp | head -n $(($LINECOUNT * 3)) > $QUEUEFILE
+  /usr/sbin/exim -bpr | head -n $(($LINECOUNT * 3)) > $QUEUEFILE
 fi
 
 # Limit the queue scan to keep things fast
-if [[ $full_log == 1 ]]; then QUEUEDECOMP="cat";
-  else QUEUEDECOMP="head -n $LINECOUNT"; fi
+if [[ $full_log == 1 ]]; then READLIMIT="cat";
+  else READLIMIT="head -n $LINECOUNT"; fi
 
 # Read full log (uncompressed)
 if [[ $full_log == 1 ]]; then
@@ -301,17 +307,17 @@ fi
 ## Queue Senders
 section_header "Queue: Auth Users"
 find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename 'auth_id' 2>/dev/null\
- | $QUEUEDECOMP | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+ | $READLIMIT | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Subjects
 section_header "Queue: Subjects"
 find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename "Subject: " 2>/dev/null\
- | $QUEUEDECOMP | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+ | $READLIMIT | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Scripts
 section_header "Queue: X-PHP-Scripts"
 find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename "X-PHP.*-Script:" 2>/dev/null\
- | $QUEUEDECOMP | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+ | $READLIMIT | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Count of (non-bounceback) Sending Addresses in queue
 section_header "Queue: Senders"
@@ -328,18 +334,10 @@ section_header "Queue: Frozen (count)"
 $DECOMP $QUEUEFILE | awk '/frozen/ {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn  | head -n $RESULTCOUNT | sed 's/<>/*** Bounceback ***/' | tr -d '<>'
 
-# echo -e "\nRemove Frozen Bouncebacks:\nawk '/<>.*frozen/ {print \$3}' $QUEUEFILE | xargs exim -Mrm > /dev/null"
-# echo -e "find /var/spool/exim/msglog/ | xargs egrep -l \"P=local\" | cut -b26- | xargs -P6 -n500 exim -Mrm > /dev/null"
-
-## Bounceback IDs in the queue
-# cat $QUEUEFILE | awk '($4 ~ /<>/) {print $3}'
-
-## Frozen Message IDs
-# awk '/frozen/ {print $3}' $QUEUEFILE
-
 echo
 }
 
+# Check that X_Header is turned on and process the php_maillog
 mail_php(){
 echo -e "\n$(php -v | head -1)\n"
 date_lookup $PHPLOG
