@@ -36,8 +36,6 @@ section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
 QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
-PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
-PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
 l=1; p=0; q=0; full_log=0;
 LINECOUNT='1000000'
 RESULTCOUNT='10'
@@ -281,19 +279,19 @@ echo
 #-----------------------------------------------------------------------------#
 ## Setup the queue/file analysis methods
 mail_queue(){
-# This will run a basic summary of the mail queue, using both exim -bp and /var/spool/exim/input/*
+# This will run a basic summary of the mail queue, using both exim -bpr and /var/spool/exim/input/*
+
+# Limit the queue scan to keep things fast
+if [[ $full_log == 1 ]]; then READLIMIT="cat"; LOGLIMIT="cat"
+  else READLIMIT="head -n $LINECOUNT"; LOGLIMIT="head -n $(( $LINECOUNT * 3 ))"; fi
 
 ## Current Queue Dump
 if [[ -f $QUEUEFILE ]]; then
   echo -e "\nFound existing queue dump ( $QUEUEFILE ).\n"
 else
   echo -e "\nCreating Queue Dump ($QUEUEFILE) to speed up analysis\n ... Thank you for your patience"
-  /usr/sbin/exim -bpr | head -n $(($LINECOUNT * 3)) > $QUEUEFILE
+  /usr/sbin/exim -bpr | $LOGLIMIT > $QUEUEFILE
 fi
-
-# Limit the queue scan to keep things fast
-if [[ $full_log == 1 ]]; then READLIMIT="cat";
-  else READLIMIT="head -n $LINECOUNT"; fi
 
 # Read full log (uncompressed)
 if [[ $full_log == 1 ]]; then
@@ -301,7 +299,7 @@ if [[ $full_log == 1 ]]; then
   du -sh $QUEUEFILE | awk '{print "Using Queue Dump: "$2,"("$1")"}'
 # Minimize impact on initial scan, using last 1,000,000 lines
 else
-  DECOMP="tail -$LINECOUNT";
+  DECOMP="tail -n $LINECOUNT";
   du -sh $QUEUEFILE | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
 fi
 
@@ -347,6 +345,9 @@ echo
 
 # Check that X_Header is turned on and process the php_maillog
 mail_php(){
+PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
+PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
+
 echo -e "\n$(php -v | head -1)\n"
 date_lookup $PHPLOG
 
@@ -391,5 +392,5 @@ RESULTCOUNT : $RESULTCOUNT
        DATE : ${DATE:-Unset}\n"
 fi
 
-unset LOGFILE QUEUEFILE PHPCONF PHPLOG full_log LINECOUNT RESULTCOUNT DAYS VERBOSE
+unset LOGFILE QUEUEFILE PHPCONF PHPLOG full_log LINECOUNT RESULTCOUNT DAYS DATE VERBOSE READLIMIT LOGLIMIT
 #~Fin~
