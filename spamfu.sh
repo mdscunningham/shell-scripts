@@ -239,7 +239,7 @@ $DECOMP $LOGFILE | grep 'A=.*in:.*\ S=' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*in:(
 
 # Count of IPs that failed login
 section_header "Failed Login IPs"
-grep 'authenticator failed' /var/log/exim_mainlog | perl -pe 's/.*\[(.*?)\].*/\1/g'\
+$DECOMP $LOGFILE | grep 'authenticator failed' | perl -pe 's/.*\[(.*?)\].*/\1/g'\
  | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
 
