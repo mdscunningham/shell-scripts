@@ -227,13 +227,21 @@ $DECOMP $LOGFILE | grep -o '<=\ [^<>].*\ U=.*\ P=' | perl -pe 's/.*@(.*?)\ U=(.*
 
 # Count of messages per Auth-Users
 section_header "Auth-Users"
-$DECOMP $LOGFILE | grep -Eo 'A=.*in:.*\ S=' | perl -pe 's/.*:(.*?)\ S=/\1/g' | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+$DECOMP $LOGFILE | grep -Eo 'A=.*in:.*\ S=' | perl -pe 's/.*:(.*?)\ S=/\1/g'\
+ | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
+ | sort -rn | head -n $RESULTCOUNT
 
 # Count of IPs per Auth-Users
 section_header "IP-Addresses/Auth-Users"
 $DECOMP $LOGFILE | grep 'A=.*in:.*\ S=' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*in:(.*?)\ S=.*$/\1 \2/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-15s %s\n",$1,$2,$3}'
+
+# Count of IPs that failed login
+section_header "Failed Login IPs"
+grep 'authenticator failed' /var/log/exim_mainlog | perl -pe 's/.*\[(.*?)\].*/\1/g'\
+ | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
+ | sort -rn | head -n $RESULTCOUNT
 
 # Spoofed Sender Addresses
 section_header "Spoofed Senders"
