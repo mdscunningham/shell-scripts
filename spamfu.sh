@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-06-28
+# Updated: 2015-07-03
 #
 #
 #!/bin/bash
@@ -35,6 +35,8 @@ section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 #-----------------------------------------------------------------------------#
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
+PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
+if [[ -n $PHPCONF ]]; then PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF); fi
 QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
 l=1; p=0; q=0; full_log=0;
 LINECOUNT='1000000'
@@ -165,7 +167,7 @@ set_decomp(){
       tac $1 | head -n $LINECOUNT | tail -n 1 | awk '{print "First date found: "$1,$2}'
       tail -n 1 $1 | awk '{print "Last date in log: "$1,$2}'
     elif [[ $p == 1 ]]; then
-      tac $1 | head -n $LINECOUNT | tail -n 1000 | grep -o 'Date:.*\ Ret' | awk '/^Date:/ {print "First date found: "$2,$3,$4,$5,$6}' | head -1
+      tac $1 | head -n $LINECOUNT | tail -n 1000 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/^Date:/ {print "First date found: "$2,$3,$4,$5,$6}' | tail -1
       tail -n 1000 $1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "Last date in log: "$2,$3,$4,$5,$6}' | tail -1
     fi
   fi
@@ -345,13 +347,10 @@ echo
 
 # Check that X_Header is turned on and process the php_maillog
 mail_php(){
-PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
-PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF);
-
 echo -e "\n$(php -v | head -1)\n"
 date_lookup $PHPLOG
 
-if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
+if [[ -f $PHPCONF && -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
   echo "php.ini : $PHPCONF"
   echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
   echo -e "X_Header: Enabled\n"
@@ -364,6 +363,8 @@ if [[ -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
    | awk -F: '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
   echo
+elif [[ ! -f $PHPCONF ]]; then
+  echo "Could not find php.ini file."
 else
   echo "X_Header: Disabled"
 fi
