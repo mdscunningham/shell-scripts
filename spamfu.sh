@@ -130,11 +130,15 @@ date_lookup(){
   if [[ $l == 1 ]]; then DATE=$(date --date="-$DAYS days" +%Y-%m-%d);
     elif [[ $p == 1 ]]; then DATE=$(date --date="-$DAYS days" +"%e %b %Y"); fi
 
-  if [[ -n $DAYS && -n $(grep "$DATE" $1 2> /dev/null) ]]; then
+  if [[ -n $DAYS ]]; then
+    echo -ne "Searching for date: $DATE\r"
     FIRSTLINE=$(grep -n "$DATE" $1 | head -1 | cut -d: -f1)
-    LINECOUNT="+${FIRSTLINE}"
-  elif [[ -n $DAYS ]]; then
-    echo "Could not find the desired date in the log, using default 1,000,000 lines."
+
+    if [[ -n $FIRSTLINE ]]; then
+      LINECOUNT="+${FIRSTLINE}"
+    else
+      echo "Could not find the desired date in the log, using default 1,000,000 lines."
+    fi
   fi
 }
 
@@ -143,31 +147,51 @@ date_lookup(){
 set_decomp(){
   # Servername and Current time of Analysis, and exim version
   echo -e "Hostname: $(hostname)\nCur.Date: $(date +'%A, %B %d, %Y -- %Y.%m.%d')\nExim Ver: $(/usr/sbin/exim --version | head -n1)\n"
+
   # Compressed file -- decompress and read whole log
   if [[ $(file -b $1) =~ zip ]]; then
     DECOMP="zcat -f";
     du -sh $1 | awk '{print "Using Log File: "$2,"("$1")"}'
+    if [[ $l == 1 ]]; then
+      $DECOMP $1 | head -n 1 | awk '{print "First date in log: "$1,$2}'
+    elif [[ $p == 1 ]]; then
+      $DECOMP $1 | head -n 1000 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "First date in log: "$2,$3,$4,$5,$6}' | head -1
+    fi
+
   # Read full log (uncompressed)
   elif [[ $full_log == 1 ]]; then
     DECOMP="cat";
     du -sh $1 | awk '{print "Using Log File: "$2,"("$1")"}'
     if [[ $l == 1 ]]; then
       head -1 $1 | awk '{print "First date in log: "$1,$2}';
-      tail -1 $1 | awk '{print "Last date in log: "$1,$2}'
     elif [[ $p == 1 ]]; then
       grep "Date:" $1 | head -1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "First date in log: "$2,$3,$4,$5,$6}';
-      tail $1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "Last date in log: "$2,$3,$4,$5,$6}' | tail -1;
     fi
-  # Minimize impact on initial scan, using last 1,000,000 lines
-  else
+
+  # Minimize impact on initial scan, using last LINECOUNT lines
+  # Search for first date at the start of the LINECOUNT
+  elif [[ -z $DAYS ]]; then
     DECOMP="tail -n $LINECOUNT";
     du -sh $1 | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
-    if [[ -n $DAYS ]]; then echo "Starting with specified date: $DATE"; fi
+    echo -ne "Searching for first date  . . . \r"
     if [[ $l == 1 ]]; then
       tac $1 | head -n $LINECOUNT | tail -n 1 | awk '{print "First date found: "$1,$2}'
-      tail -n 1 $1 | awk '{print "Last date in log: "$1,$2}'
     elif [[ $p == 1 ]]; then
       tac $1 | head -n $LINECOUNT | tail -n 1000 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/^Date:/ {print "First date found: "$2,$3,$4,$5,$6}' | tail -1
+    fi
+
+  # Use speficied date as starting point
+  elif [[ -n $DAYS ]]; then
+    DECOMP="tail -n $LINECOUNT";
+    du -sh $1 | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
+    echo "Starting with specified date: $DATE"
+  fi
+
+  # If log is not compressed, read the last date from the file
+  if [[ ! $(file -b $1) =~ zip ]]; then
+    if [[ $l == 1 ]]; then
+      tail -n 1 $1 | awk '{print "Last date in log: "$1,$2}'
+    elif [[ $p == 1 ]]; then
       tail -n 1000 $1 | perl -pe 's/.*(Date:.*?)\ Ret.*/\1/g' | awk '/Date:/ {print "Last date in log: "$2,$3,$4,$5,$6}' | tail -1
     fi
   fi
@@ -210,7 +234,6 @@ mail_logs(){
 # steps of finding any malware/scripts that are sending mail and their origins
 
 date_lookup $LOGFILE
-
 echo; set_decomp $LOGFILE;
 
 ## Count of messages sent by scripts
