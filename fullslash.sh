@@ -16,11 +16,11 @@ shopt -s extglob
 PARTLIST=$(df -h | awk -F/ 'NR>2 {printf "%s|",$NF}' | sed 's/|$/|proc/g';)
 
 # Summarize disk usage for all non-partition directories in '/'
-du --max-depth 3 -h /!($PARTLIST) | grep --color -E '[0-9]{3}M|[0-9]G'
+du --max-depth 3 -h /!($PARTLIST) | grep --color -E '^[0-9]{3}M|^[0-9\.]*G'
 
 
 ## Oneliner-version
 #
-# shopt -s extglob; du --max-depth 3 -h /!($(df -h | awk -F/ 'NR>2 {printf "%s|",$NF}' | sed 's/|$/|proc/g';)) | grep --color -E '[0-9]{3}M|[0-9]G'
+# shopt -s extglob; du --max-depth 3 -h /!($(df -h | awk -F/ 'NR>2 {printf "%s|",$NF}' | sed 's/|$/|proc/g';)) | grep --color -E '^[0-9]{3}M|^[0-9\.]*G'
 #
 ##
