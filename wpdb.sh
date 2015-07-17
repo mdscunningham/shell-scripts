@@ -11,6 +11,18 @@
 # http://wordpress.org/plugins/wp-multi-network/
 # http://codex.wordpress.org/images/9/97/WP3.8-ERD.png
 
+# Taste the rainbow
+      BLACK=$(tput setaf 0);        RED=$(tput setaf 1)
+      GREEN=$(tput setaf 2);     YELLOW=$(tput setaf 3)
+       BLUE=$(tput setaf 4);     PURPLE=$(tput setaf 5)
+       CYAN=$(tput setaf 6);      WHITE=$(tput setaf 7)
+
+     BRIGHT=$(tput bold);        NORMAL=$(tput sgr0)
+      BLINK=$(tput blink);      REVERSE=$(tput smso)
+  UNDERLINE=$(tput smul)
+
+getusr(){ pwd | sed 's:^/chroot::' | cut -d/ -f3; }
+
 echo; runonce=0;
 if [[ $1 =~ ^-.*$ ]]; then SITEPATH='.'; opt="$1"; shift; param="$@";
 else SITEPATH="$1"; opt="$2"; shift; shift; param="$@"; fi;
@@ -42,6 +54,7 @@ _wpdbusage(){ echo " Usage: wpdb [<path>] <option> [<query>]
     -l | --login ..... Log into database using user credentials
     -m | --multi ..... Display MultiSite information (IDs/domains/paths)
     -P | --password .. Update or reset password for a user ${CYAN}(New)${NORMAL}
+    -p | --plugins ... List plugin directories in wp-content
     -s | --swap ...... Temporarily swap out user password ${RED}${BRIGHT}(BETA!)${NORMAL}
     -u | --users ..... Show users configured within the database
 
@@ -102,6 +115,8 @@ case $opt in
 	elif [[ -z $param || $param == '-h' || $param == '--help' ]]; then
 	  echo -e " Usage: wpdb [<path>] <option> <username> <password>"
 	fi ;;
+
+-p | --plugins) find $SITEPATH/wp-content/plugins/ -maxdepth 1 -type d -print | awk -F/ 'BEGIN{printf "Plugins:"} {printf "%s, ",$NF} END{print ""}' ;;
 
 -s | --swap )
 	user_login=$(_wpdbconnect -e "SELECT user_login FROM ${prefix}users ORDER BY id LIMIT 1;" | tail -1)
