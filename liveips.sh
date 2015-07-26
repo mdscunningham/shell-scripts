@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2013-12-12
-# Updated: 2015-04-23
+# Updated: 2015-07-26
 #
 #
 #!/bin/bash
@@ -38,9 +38,9 @@ else # Not CentOS 4
     fi
   else # IPv4
     if [[ $q == 1 ]]; then # Established Connections
-      watch -n0.1 "ss -ant | awk '/EST/ && (\$4 ~ /:${port}/) {print \$4,\"<--\",\$5}' | sed \"s/:${port}//g; s/:.*$//g\" | column -t | sort | uniq -c | sort -rn"
+      watch -n0.1 "ss -ant | awk '/EST/ && (\$4 ~ /:${port}/) {print \$4\":\"\$5}' | awk -F: '{print \$1,\"<--\",\$3}' | sort | uniq -c | column -t | sort -rn"
     else # Verbose (EST and WAIT Connections)
-      watch -n0.1 "ss -ant | awk '(\$4 ~ /:${port}/) {print \$4,\"<--\",\$5}' | sed \"s/:${port}//g; s/:.*$//g\" | column -t | sort | uniq -c | sort -rn"
+      watch -n0.1 "ss -ant | awk '(\$4 ~ /:${port}/) {print \$4\":\"\$5}' | awk -F: '{print \$1,\"<--\",\$3}' | sort | uniq -c | column -t | sort -rn"
     fi
   fi
 fi
@@ -48,3 +48,4 @@ fi
 ## CentOS 4 started acting funny and showing only IPv6 addresses and not IPv4
 ## Also changed default from only showing established connections, to showing
 ## all connections and a 'quiet' option to only shoe established connections.
+
