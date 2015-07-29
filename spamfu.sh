@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-07-03
+# Updated: 2015-07-28
 #
 #
 #!/bin/bash
@@ -107,7 +107,7 @@ line_count_menu(){
       "Last 10,000 lines") LINECOUNT=10000; break ;;
       "Last 100,000 lines") LINECOUNT=100000; break ;;
       "Last 1,000,000 lines") LINECOUNT=1000000; break ;;
-      *) if [[ ${REPLY} =~ ([0-9]) ]]; then LINECOUNT=${REPLY}; break;
+      *) if [[ ${REPLY} =~ [0-9] ]]; then LINECOUNT=${REPLY}; break;
          else echo "Invalid input, using defaults."; break; fi ;;
     esac
   done
@@ -118,7 +118,7 @@ line_count_menu(){
 results_prompt(){
   if [[ $1 != '0' ]]; then
     echo; read -p "How many results do you want? [10]: " NEWCOUNT;
-    if [[ $NEWCOUNT =~ ([0-9]) ]]; then RESULTCOUNT=$NEWCOUNT;
+    if [[ -n $NEWCOUNT && $NEWCOUNT =~ [0-9] ]]; then RESULTCOUNT=$NEWCOUNT;
       elif [[ -z $NEWCOUNT ]]; then echo "Continuing with defaults.";
       else echo "Invalid input, using defaults."; fi;
   fi
@@ -294,7 +294,7 @@ $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*T=\"(.*?)\".*/\1/g'\
 
 # Count of Bouncebacks by address
 section_header "Bouncebacks (address)"
-$DECOMP $LOGFILE | grep '<= <>' | perl -pe 's/.*\".*for\ (.*$)/\1/g'\
+$DECOMP $LOGFILE | grep '<= <>.*\ for\ ' | perl -pe 's/.*\".*for\ (.*$)/\1/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
 
