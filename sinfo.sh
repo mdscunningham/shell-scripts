@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-08-24
-# Updated: 2015-02-07
+# Updated: 2015-08-16
 #
 # Based on work by Ted Wells
 #
@@ -53,7 +53,7 @@ _phpversion /usr/bin/php;
 # if [[ -f /opt/nexcess/php54u/root/usr/bin/php ]]; then for x in /opt/nexcess/*/root/usr/bin/php; do _phpversion $x; done; fi
 
 # Modsec Version and Ruleset
-modsecv=$(rpm -qi mod_security | awk '/Version/ {print $3}' 2> /dev/null)
+modsecv=$(grep -rh Mod.Security /usr/local/cpanel/logs/easy/apache/ 2>/dev/null | tail -1 | cut -d\' -f2)
 modsecr=$(awk -F\" '/SecComp.*\"$/ {print "("$2")"}' /etc/httpd/modsecurity.d/*_crs_10_*.conf 2> /dev/null)
 printf "$FMT" "ModSecurity" "${modsecv:-No ModSecurity} ${modsecr}"
 
