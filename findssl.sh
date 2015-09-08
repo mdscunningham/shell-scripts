@@ -3,33 +3,44 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2014-09-06
+# Updated: 2015-09-07
 #
 #
 #!/bin/bash
 
+dash(){ for ((i=1; i<=$1; i++)); do printf "$2"; done; }
+
+# Check for alternate port
 if [[ $2 == '-p' ]]; then P=$3; else P=443; fi
-if [[ $@ =~ -v ]]; then type="subject issuer"; else type="subject"; fi
 
-D=$(echo $1 | sed 's/\///g')
-echo; echo "$D:$P"; dash 80; echo;
+# Cleanup Domain input
+D=$(echo $1 | sed 's|^http:||g;s|https:||g;s|\/||g;');
 
-if [[ $(cat /etc/redhat-release) =~ [67]\.[0-9] ]]; then SNI="-servername $D"; fi;
+# Check if local version of OpenSSL has SNI support
+if [[ $(openssl version | awk '{print $2}') =~ ^1\. ]]; then SNI="-servername $D"; else SNI=''; fi
 
-for x in $type; do
-    echo | openssl s_client -nbio -connect $D:$P $SNI 2> /dev/null\
-     | grep $x | sed 's/ /_/g;s/\/\([A-Ze]\)/\n\1/g;s/=/: /g' | grep ^[A-Ze] | column -t | sed 's/_/ /g';
-    echo;
-done
+## if [[ -n $SNI ]]; then echo '(Using SNI)'; else echo '(Not using SNI)'; fi
 
-echo "SSL Return Code"; dash 80; echo
+# Print header
+echo; echo "$D:$P"; dash 40 -; echo;
+
+# Print SSL checker service URLs
+echo "https://www.sslshopper.com/ssl-checker.html#hostname=$D"
+echo "https://certlogik.com/ssl-checker/$D:$P"
+echo "https://www.ssllabs.com/ssltest/analyze.html?d=$D&latest"
+
+# Connect to the domain at port, get SSL, Decode SSL, clean up output and print
+echo | openssl s_client -connect $D:$P $SNI 2>/dev/null\
+ | awk '/-----BEGIN/,/-----END/ {print}'\
+ | openssl x509 -text -noout 2>/dev/null\
+ | egrep -i 'subject:|dns:|issuer:'\
+ | sed 's/DNS:/\nDNS:/;s/Subject: /\nSubject:\n/;s/Issuer: /\nIssuer:\n/;s/, /\n/g;s/[=:]/: /g;s/\/email/\nemail/g'
+echo;
+
+# Check for common SSL issues, and their error messages.
+echo "SSL Return Code"; dash 40 -; echo
 rcode=$(echo | openssl s_client -nbio -connect $D:$P $SNI 2>/dev/null | grep Verify.*)
 echo $rcode
 if [[ $(echo $rcode | awk '{print $4}') =~ [0-9]{2} ]]; then
   curl -s https://www.openssl.org/docs/apps/verify.html | grep -A4 "$(echo $rcode | awk '{print $4}') X509" | grep -v X509 | sed 's/<[^>]*>//g' | tr '\n' ' '; echo;
 fi; echo
-
-# Try to find any additional domains that the certificate is good for (multidomain)
-# echo "Domains: "
-# echo | openssl s_client -connect $D:$P -nbio 2> /dev/null | grep 'DNS:' | sed 's/, /\n/g' | sed 's/.*DNS:/DNS = /g'
-# echo;
