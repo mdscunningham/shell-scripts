@@ -35,7 +35,10 @@ echo | openssl s_client -connect $D:$P $SNI 2>/dev/null\
  | openssl x509 -text -noout 2>/dev/null\
  | egrep -i 'subject:|dns:|issuer:'\
  | sed 's/DNS:/\nDNS:/;s/Subject: /\nSubject:\n/;s/Issuer: /\nIssuer:\n/;s/, /\n/g;s/[=:]/: /g;s/\/email/\nemail/g;s/\/busi/\nBusi/g;s/\/seri/\nSeri/g;s/\/1\.3\.6\./\n1\.3\.6\./g';
-echo | openssl s_client -connect $D:$P $SNI 2>/dev/null | openssl x509 -text -noout | grep Signature.Algorithm | head -1 | sed 's/.*Sig/\nSig/g'
+
+echo | openssl s_client -connect $D:$P $SNI 2>/dev/null | openssl x509 -text -noout | grep Signature.Algorithm | head -1 | sed 's/.*Sig.*:/\nSignature:/g'
+echo | openssl s_client -connect $D:$P $SNI 2>/dev/null | openssl x509 -text -noout | grep Not.After | sed 's/.*Not.After./Expires/g'
+
 echo;
 
 # Check for common SSL issues, and their error messages.
