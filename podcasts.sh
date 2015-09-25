@@ -19,6 +19,8 @@
 echo -e "\nList of RSS Feeds:\n"
 RSS=(
 http://theadamcarollashow.libsyn.com/rss
+http://feeds.feedburner.com/CarollaReasonableDoubt
+http://www.pc1.io/playlist/carolla-miller.rss
 http://alisonrosen.com/category/podcast/feed/
 http://files.libertyfund.org/econtalk/EconTalk.xml
 http://feeds.feedburner.com/PennSundaySchool
@@ -27,10 +29,13 @@ http://www.theskepticsguide.org/feed
 http://skeptoid.com/podcast.xml
 http://www.quackcast.com/spodcasts/files/mp3rss.xml
 http://feeds.twit.tv/twit
-http://feeds.twit.tv/floss
+http://twit.tv/show/floss-weekly/feed
 http://www.npr.org/rss/podcast.php?id=35
 http://www.theovernightscape.com/feed
 )
+
+url_count=30
+nam_count=32
 
 # Print out the list of feeds in the array above.
 for (( i=0 ; i<${#RSS[@]} ; i++ )); do echo "[$i] ${RSS[$i]}"; done | column -t;
@@ -42,28 +47,28 @@ if [[ $x != q* ]]; then
   clear;
 
 # If feed is Adam Carolla Show
-  if [[ ${RSS[$x]} =~ "carolla" ]]; then
-    URL=($(wget -q -O - ${RSS[$x]} | egrep -io 'url=.*\.mp3' | head -15 | cut -d\" -f2 ));
-    PUB=($(wget -q -O - ${RSS[$x]} | egrep -io 'pubDate.*pubDate' | head -15 | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
-    NAM=($(wget -q -O - ${RSS[$x]} | egrep -io 'title.*/title' | head -17 | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))
+  if [[ ${RSS[$x]} =~ "adamcarolla" ]]; then
+    URL=($(wget -q -O - ${RSS[$x]} | egrep -io 'url=.*\.mp3' | head -$url_count | cut -d\" -f2 ));
+    PUB=($(wget -q -O - ${RSS[$x]} | egrep -io 'pubDate.*pubDate' | head -$url_count | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
+    NAM=($(wget -q -O - ${RSS[$x]} | egrep -io 'title.*/title' | head -$nam_count | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))
 
 # If feed is minified feedburner
-  elif [[ ${RSS[$x]} =~ "feedburner"  ]]; then
-    URL=($(wget -q -O - ${RSS[$x]} | sed 's/></>\n</g' | egrep -io 'url.*http.*\.mp3' | head -15 | cut -d\" -f2 ));
-    PUB=($(wget -q -O - ${RSS[$x]} | sed 's/></>\n</g' | egrep -io 'pubDate.*pubDate' | head -15 | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
-    NAM=($(wget -q -O - ${RSS[$x]} | sed 's/></>\n</g' | egrep -io 'title.*/title' | head -17 | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))
+  elif [[ ${RSS[$x]} =~ (feedburner|pc1.io) ]]; then
+    URL=($(wget -q -O - ${RSS[$x]} | sed 's/></>\n</g' | egrep -io 'url.*http.*\.mp3' | head -$url_count | cut -d\" -f2 ));
+    PUB=($(wget -q -O - ${RSS[$x]} | sed 's/></>\n</g' | egrep -io 'pubDate.*pubDate' | head -$url_count | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
+    NAM=($(wget -q -O - ${RSS[$x]} | sed 's/></>\n</g' | egrep -io 'title.*/title' | head -$nam_count | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))
 
 # If feed is gzip compressed
   elif [[ $(wget -q -O feed.tmp ${RSS[$x]} && file -b feed.tmp && rm feed.tmp) =~ "gzip" ]]; then
-    URL=($(wget -q -O - ${RSS[$x]} | gunzip -c | egrep -io 'url.*http.*\.mp3' | uniq | head -15 | cut -d\" -f2 ));
-    PUB=($(wget -q -O - ${RSS[$x]} | gunzip -c | egrep -io 'pubDate.*pubDate' | head -15 | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
-    NAM=($(wget -q -O - ${RSS[$x]} | gunzip -c | egrep -io 'title.*/title' | head -17 | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))
+    URL=($(wget -q -O - ${RSS[$x]} | gunzip -c | egrep -io 'url.*http.*\.mp3' | uniq | head -$url_count | cut -d\" -f2 ));
+    PUB=($(wget -q -O - ${RSS[$x]} | gunzip -c | egrep -io 'pubDate.*pubDate' | head -$url_count | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
+    NAM=($(wget -q -O - ${RSS[$x]} | gunzip -c | egrep -io 'title.*/title' | head -$nam_count | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))
 
 # Everything else
   else
-    URL=($(wget -q -O - ${RSS[$x]} | egrep -io 'url.*http.*\.mp3' | uniq | head -15 | cut -d\" -f2 ));
-    PUB=($(wget -q -O - ${RSS[$x]} | egrep -io 'pubDate.*pubDate' | head -15 | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
-    NAM=($(wget -q -O - ${RSS[$x]} | egrep -io 'title.*/title' | head -17 | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))
+    URL=($(wget -q -O - ${RSS[$x]} | egrep -io 'url.*http.*\.mp3' | uniq | head -$url_count | cut -d\" -f2 ));
+    PUB=($(wget -q -O - ${RSS[$x]} | egrep -io 'pubDate.*pubDate' | head -$url_count | cut -d\> -f2 | cut -d\< -f1 | awk '{print $4"-"$3"-"$2}' ));
+    NAM=($(wget -q -O - ${RSS[$x]} | egrep -io 'title.*/title' | head -$nam_count | sed s/' '/./g | cut -d\> -f2 | cut -d\< -f1 ))
   fi
 
 # Try to remove This week in Rage from Carolla feed. Not working yet.
