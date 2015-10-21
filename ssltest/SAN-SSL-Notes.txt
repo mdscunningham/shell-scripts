@@ -29,8 +29,10 @@ commonName = Internet Widgits Ltd
 commonName_max = 64
 
 [ v3_req ]
+# subjectKeyIdentifier=hash	## selfie ssl stuff
+# authorityKeyIdentifier=keyid	## selfie ssl stuff
 basicConstraints = CA:FALSE
-keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+# keyUsage = nonRepudiation, digitalSignature, keyEncipherment ## Removed for cPanel
 subjectAltName = @alt_names
 
 [alt_names]
@@ -52,8 +54,10 @@ openssl x509 -req -days 3650 -in ${domain}.csr -signkey ${domain}.priv.key -out 
 ################################################################################
 
 [ v3_req ]
+subjectKeyIdentifier=hash	## selfie ssl stuff
+authorityKeyIdentifier=keyid	## selfie ssl stuff
 basicConstraints = CA:FALSE
-keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+# keyUsage = nonRepudiation, digitalSignature, keyEncipherment ## Removed for cPanel
 subjectAltName = @alt_names
 
 [alt_names]
