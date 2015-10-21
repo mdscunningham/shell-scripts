@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-03-09
-# Updated: 2015-04-12
+# Updated: 2015-10-08
 #
 #
 #!/bin/bash
@@ -70,10 +70,13 @@ for ipaddr in $ip_list; do
   echo -e "\n$(dash 80 =)\n${WHITE}  Swaks Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
 
   # Send test emails with swaks to check for errors
-  for x in live.com att.net earthlink.com gmail.com yahoo.com comcast.net; do
-    result=$(swaks -4 -t postmaster@${x} -q RCPT -li $ipaddr 2>&1 | egrep ' 421| 521| 450| 550| 554| 571';)
+  for domain in aol.com live.com att.net gmail.com earthlink.com yahoo.com comcast.net; do
+    mx=$(dig mx +short ${domain} | awk 'NR<2 {print $2}')
+    if [[ $domain =~ gmail.com ]]; then emailAddress="no-reply@gmail.com"; else emailAddress="postmaster@${domain}"; fi
+    result=$(swaks -4 -q RCPT --server $mx -t $emailAddress -li $ipaddr 2>&1 | egrep ' 421| 521| 450| 550| 554| 571';)
     if [[ $verb == "1" || -n $result ]]; then
-      echo -e "\n=> $x <=\n$(dash 80 -)\n${result}";
+      printf "\n%-40s  %-40s\n" "${CYAN}Domain:${NORMAL} $domain" "${CYAN}Server:${NORMAL} $mx"
+      echo -e "$(dash 80 -)\n${result:-No Reported Errors}";
     fi
   done; echo
 done
