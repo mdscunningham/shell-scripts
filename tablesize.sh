@@ -3,17 +3,21 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-10-27
-# Updated: 2014-10-27
+# Updated: 2015-11-04
 #
 #
 #!/bin/bash
+
+dash(){ for ((i=1;i<=$1;i++)); do printf "-"; done; }
+
+m(){ mysql "$@"; }
 
 tablesize(){
 if [[ -z $1 || $1 == '-h' || $1 = '--help' ]]; then
   echo -e "\n  Usage: tablesize [dbname] [option] [linecount]\n\n  Options:\n    -r ... Sort by most Rows\n    -d ... Sort by largest Data_Size\n    -i ... Sort by largest Index_Size\n"; return 0; fi
 
 if [[ $1 == '.' ]]; then dbname=$(finddb); shift;
-  elif [[ $1 =~ ^[a-z]{1,}_.*$ ]]; then dbname="$1"; shift;
+  elif [[ $1 =~ ^[A-Za-z]{1,}_.*$ ]]; then dbname="$1"; shift;
   else read -p "Database: " dbname; fi
 
 case $1 in
