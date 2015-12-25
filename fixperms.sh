@@ -9,9 +9,9 @@ echo; read -p "Are you sure you want to update permissions for $SITEPATH? [y/n]:
 if [[ $yn == 'y' ]]; then echo -e '\nStarting operation ...'; else echo -e '\nOperation aborted!\n'; return 1; fi
 
 if [[ $(grep -i ^loadmodule.*php[0-9]_module /etc/httpd/conf.d/php.conf) ]]; then perms="664"; else perms="644"; fi
-printf "\nFixing File Permissions ($perms)... "; find $SITEPATH -type f -exec chmod $perms {} \;
+printf "\nFixing File Permissions ($perms)... "; find $SITEPATH -type f -not -perm $perms -print0 | xargs -r0 chmod $perms;
 if [[ $(grep -i ^loadmodule.*php[0-9]_module /etc/httpd/conf.d/php.conf) ]]; then perms="2775"; else perms="2755"; fi
-printf "Fixing Directory Permissions ($perms) ... "; find $SITEPATH -type d -exec chmod $perms {} \;
+printf "Fixing Directory Permissions ($perms) ... "; find $SITEPATH -type d -not -perm $perms -print0 | xargs -r0 chmod $perms;
 printf "Operation Completed.\n\n";
 }
 fixperms "$@"
