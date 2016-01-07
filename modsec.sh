@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-01-01
-# Updated: 2015-08-16
+# Updated: 2016-01-07
 #
 #
 #!/bin/bash
@@ -14,7 +14,7 @@ dash(){ for ((i=1;i<=$1;i++)); do printf "-"; done; }
 
 modsec(){
     local OPTIND
-    while getopts d:D:hi:l:n:qv option; do
+    while getopts d:D:hi:f:n:qv option; do
       case "${option}" in
         q) QUIET=1 ;;
         v) VERBOSE=1 ;;
@@ -22,14 +22,14 @@ modsec(){
 	   echo; date --date="-${OPTARG} days" +"%A, %B %d, %Y -- %Y.%m.%d" ;;
 	D) DOMAIN=${OPTARG} ;;
         i) IP=${OPTARG} ;;
-	l) LOGFILE=${OPTARG} ;;
+	f) LOGFILE=${OPTARG} ;;
         n) COUNT=${OPTARG} ;;
         h) echo -e "\n Usage: $0 [OPTIONS]\n
     -d ... <days ago> (1-9...) otherwise assumes today
     -D ... <domain> to specify when searching errors
     -h ... display this help output and quit
     -i ... <ipaddress> (can be full IP or regex)
-    -l ... <logfile> (set alternate log file)
+    -f ... <logfile> (set alternate log file)
     -n ... <linecount> (number of results to print)
     -q ... quiet, don't print error message
     -v ... verbose debugging output\n";
