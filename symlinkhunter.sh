@@ -21,9 +21,9 @@ trap cleanup SIGINT SIGTERM
 
 # Resume a partial scan
 resume(){
-  resume=1;
-  log=$(ls -1t ${logdir}/symlinkhunter_*.log| head -1);
-  echo "Info :: Resuming Scan :: Continuing Scan_ID ($(basename $log .log | cut -d_ -f3))";
+  resuming=1;
+  log=$(ls -1t ${logdir}/symlinkhunter_*.log | head -1);
+  echo -e "Info :: Resuming Scan :: Continuing Scan_ID ($(basename $log .log | cut -d_ -f3))\n\n";
   }
 
 # Output help and usage information
@@ -62,7 +62,10 @@ echo; while getopts fht:u: option; do
 done; echo
 
 # Check if a previous scan was running, and resume
-if [[ -f $(ls ${logdir}/*.user | head -1) ]]; then resume; fi
+if [[ -f $(ls ${logdir}/*.user 2>/dev/null | head -1) ]]; then
+  read -p "Interrupted scan detected. Continue previous scan? [yes/no]: " yn;
+  if [[ $yn =~ y ]]; then resume; else rm -f ${logdir}/*.user; fi;
+fi
 
 # Start new log only if not resuming a previous scan
 if [[ $resuming != '1' ]]; then
