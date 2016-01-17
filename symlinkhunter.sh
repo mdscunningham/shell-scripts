@@ -39,6 +39,12 @@ usage(){
   "; exit;
   }
 
+# Check for other running instances, and abort
+if [[ $(ps aux | grep -c symlinkhunter.sh) -gt 2 ]]; then
+  echo -e "\n  It looks like another scan is running.\n  Aborting to prevent logging conflicts.\n"
+  exit;
+fi
+
 # Initialize and count the number of /home/dirs
 i=0; min=1; resuming=0; t=$(ls -d /home*/*/public_html/ | wc -l); userlist="/home*/*/public_html/";
 
