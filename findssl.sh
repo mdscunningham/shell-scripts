@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2016-01-10
+# Updated: 2016-01-19
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -19,6 +19,9 @@ I=$(dig +short $D | grep [0-9])
 
 # Check if local version of OpenSSL has SNI support
 if [[ $(openssl version | awk '{print $2}') =~ ^1\. ]]; then SNI="-servername $D"; else SNI=''; fi
+
+if [[ $P == 587 ]]; then SNI="$SNI -starttls smtp";
+elif [[ $P == 21 ]]; then SNI="$SNI -starttls ftp"; fi
 
 ## if [[ -n $SNI ]]; then echo '(Using SNI)'; else echo '(Not using SNI)'; fi
 
