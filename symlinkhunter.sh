@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-12-21
-# Updated: 2016-01-14
+# Updated: 2016-01-22
 #
 # Purpose: Find accounts full of symlinks (indicating symlink hacks)
 #
@@ -14,16 +14,17 @@ dash(){ for ((i=1;i<=$1;i++)); do printf $2; done; }
 
 # trap command to capture ^C and cleanup function
 cleanup(){
-  echo -e "\n\nClosing out scan and exiting.\nTo resume rerun: $0\n";
-  rm -f $tmplog; exit;
+  echo -e "\n\nAlert :: Closing Scan :: Cleaning up and exiting.\n Info :: To Resume Run ::  $0\n";
+  rm -f $tmplog $pidfile; exit;
   }
 trap cleanup SIGINT SIGTERM
 
 # Resume a partial scan
 resume(){
   resuming=1;
-  log=$(ls -1t ${logdir}/symlinkhunter_*.log | head -1);
-  echo -e "Info :: Resuming Scan :: Continuing Scan_ID ($(basename $log .log | cut -d_ -f3))\n\n";
+  log=$(tail -1 $lockfile);
+  scanid=$(head -1 $lockfile)
+  echo -e "\n Info :: Resuming Scan :: Continuing Scan_ID ($scanid)\n\n";
   }
 
 # Output help and usage information
@@ -39,28 +40,33 @@ usage(){
   "; exit;
   }
 
+# ps aux | grep symlinkhunter.sh
 # Check for other running instances, and abort
-if [[ $(ps aux | grep -c symlinkhunter.sh) -gt 2 ]]; then
-  echo -e "\n  It looks like another scan is running.\n  Aborting to prevent logging conflicts.\n"
-  exit;
+pidfile="/var/run/symlinkhunter.pid"
+if [[ -f $pidfile ]]; then
+  echo -e "\n  It looks like another scan [$(cat $pidfile)] is running.\n  Aborting to prevent logging conflicts.\n"; exit;
+else
+  echo "$$" > $pidfile;
 fi
 
 # Initialize and count the number of /home/dirs
-i=0; min=1; resuming=0; t=$(ls -d /home*/*/public_html/ | wc -l); userlist="/home*/*/public_html/";
+i=0; min=1; resuming=0;
+userlist="/home*/*/public_html/";
+t=$(echo $userlist | wc -w);
 
 # /usr/local/maldetect/sess/session.160111-0004.20837 (for reference)
 logdir="/usr/local/symdetect"
 tmplog="${logdir}/symlinkhunter.tmplog"
-log="${logdir}/symlinkhunter_$(date +%F_%s).log"
+log="${logdir}/symlinkhunter_$(date +%F)_$(cat $pidfile).log"
 if [[ ! -d $logdir ]]; then mkdir -p $logdir; fi
 
 # Argument parsing
 echo; while getopts fht:u: option; do
   case "${option}" in
     f) maxdepth="-maxdepth 3";
-	echo "Info :: Fast Mode Enabled :: Setting link search depth to 3" ;;
+	echo " Info :: Fast Mode Enabled :: Setting link search depth to 3" ;;
     t) min="${OPTARG}";
-	echo "Info :: Min Threshold Set :: Setting logging threshold to ${OPTARG} links" ;;
+	echo " Info :: Min Threshold Set :: Setting logging threshold to ${OPTARG} links" ;;
     u) userlist="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /home*/${x}/public_html/; done)" ;
 	t=$(echo $userlist | wc -w) ;;
     h) usage ;;
@@ -68,9 +74,13 @@ echo; while getopts fht:u: option; do
 done; echo
 
 # Check if a previous scan was running, and resume
-if [[ -f $(ls ${logdir}/*.user 2>/dev/null | head -1) ]]; then
-  read -p "Interrupted scan detected. Continue previous scan? [yes/no]: " yn;
+lockfile="/var/run/symlinkhunter.lock"
+if [[ -f $lockfile ]]; then
+  echo -e "Alert :: Lock File Exists :: Interrupted scan detected.\n Info :: Log File Found :: $(basename $(awk '/log/ {print}' $lockfile))"
+  read -p "  Continue previous scan? [yes/no]: " yn;
   if [[ $yn =~ y ]]; then resume; else rm -f ${logdir}/*.user; fi;
+else
+  echo -e "$$\n$log" > $lockfile
 fi
 
 # Start new log only if not resuming a previous scan
@@ -121,5 +131,5 @@ echo -e "  END_SCAN: $(date +%F_%T)\n" >> $log
 echo -e "\n$(dash 80 -)\n  Scan log: $log\n$(dash 40 -)\n"
 
 # Final log and variable cleanup
-rm -f $tmplog ${logdir}/*.user
+rm -f $tmplog ${logdir}/*.user $pidfile $lockfile
 unset logdir tmplog log userlist username homedir maxdepth count
