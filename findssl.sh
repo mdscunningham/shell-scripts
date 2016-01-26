@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2016-01-19
+# Updated: 2016-01-25
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -29,7 +29,7 @@ elif [[ $P == 21 ]]; then SNI="$SNI -starttls ftp"; fi
 echo; echo "$D:$P :: $I:$P"; echo "$(dash 60 -)";
 
 # Print SSL checker service URLs
-echo "https://www.sslshopper.com/ssl-checker.html#hostname=$D"
+echo "https://www.sslshopper.com/ssl-checker.html#hostname=$D:$P"
 echo "https://certlogik.com/ssl-checker/$D:$P"
 echo "https://www.ssllabs.com/ssltest/analyze.html?d=${D}&s=${I}&latest"
 
