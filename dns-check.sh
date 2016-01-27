@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2013-12-05
-# Updated: 2013-12-19
+# Updated: 2016-01-27
 #
 #
 #!/bin/bash
@@ -151,9 +151,9 @@ for domain in "$@"; do
 	# Iterate through the array of nameservers
 	i=0; for (( $i; i<$namLen; i++ )); do
 		if [[ $linetwo = 1 ]]; then
-		result=$(dig +time=2 +tries=2 +short $verbose "$recordType" "$domain" @"${ipaddress[i]}" | head -n2 | tail -n1 | grep -v \;)
+		result=$(dig +time=2 +tries=2 +short $verbose "$recordType" "$domain" @"${ipaddress[i]}" | head -n2 | tail -n1 | grep -v '^;;')
 		else
-		result=$(dig +time=2 +tries=2 +short $verbose "$recordType" "$domain" @"${ipaddress[i]}" | head -n1 | grep -v \;)
+		result=$(dig +time=2 +tries=2 +short $verbose "$recordType" "$domain" @"${ipaddress[i]}" | head -n1 | grep -v '^;;')
 		fi
 		if [[ $highlight = 1 && $result = $newResult ]]; then
 		printf "${BLUE}%-30s ${NORMAL}: ${BLUE}%-26s ${NORMAL}: ${RED}%s\n${NORMAL}" "${nameserver[i]}" "$(echo ${location[i]} | sed s/_/\ /g)" "$result"
