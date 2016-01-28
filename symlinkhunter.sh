@@ -30,7 +30,7 @@ resume(){
   resuming=1;
   log=$(tail -1 $lockfile);
   scanid=$(head -1 $lockfile)
-  echo -e "\n Info :: Resuming Scan :: Continuing Scan_ID ($scanid)\n\n";
+  echo -e "\n Info :: Resuming Scan :: Continuing Scan_ID [${scanid}]\n\n";
   }
 
 # Output help and usage information
@@ -47,7 +47,6 @@ usage(){
   scan_complete; exit;
   }
 
-# ps aux | grep symlinkhunter.sh
 # Check for other running instances, and abort
 pidfile="/var/run/symlinkhunter.pid"
 if [[ -f $pidfile ]]; then
@@ -64,7 +63,7 @@ t=$(echo $userlist | wc -w);
 # /usr/local/maldetect/sess/session.160111-0004.20837 (for reference)
 logdir="/usr/local/symdetect"
 tmplog="${logdir}/symlinkhunter.tmplog"
-log="${logdir}/symlinkhunter_$(date +%F)_$(cat $pidfile).log"
+log="${logdir}/symlinkhunter.$(date +%y%m%d-%H%M).$(cat $pidfile).log"
 if [[ ! -d $logdir ]]; then mkdir -p $logdir; fi
 
 # Argument parsing
@@ -78,16 +77,16 @@ echo; while getopts fht:u: option; do
 	t=$(echo $userlist | wc -w) ;;
     h) usage ;;
   esac
-done; echo
+done;
 
 # Check if a previous scan was running, and resume
 lockfile="/var/run/symlinkhunter.lock"
 if [[ -f $lockfile ]]; then
-  echo -e "Alert :: Lock File Exists :: Interrupted scan detected.\n Info :: Log File Found :: $(basename $(tail -1 $lockfile))"
-  read -p "  Continue previous scan? [yes/no]: " yn;
-  if [[ $yn =~ y ]]; then resume; else rm -f ${logdir}/*.user; fi;
+  echo -e "Alert :: Lock File Exists :: Interrupted scan detected.\n Info :: Log File Found :: $(basename $(tail -1 $lockfile))\n"
+  read -p "  Continue previous scan? [Y/n]: " yn;
+  if [[ $yn =~ [yY] ]]; then resume; else rm -f ${logdir}/*.user; fi;
 else
-  echo -e "$$\n$log" > $lockfile
+  echo -e "$$\n$log" > $lockfile;
 fi
 
 # Start new log only if not resuming a previous scan
@@ -101,7 +100,7 @@ if [[ $resuming != '1' ]]; then
 
   # Start Symlink Hunting
   echo -e "\n$(dash 80 -)\n  Symlink Search Results\n$(dash 40 -)\n" | tee -a $log;
-  echo -e "START_SCAN: $(date +%F_%T)\n" >> $log
+  echo -e "START_SCAN: $(date +%F_%T)\n" >> $log;
 fi
 
 # Loop through the homedirs
@@ -109,18 +108,18 @@ for homedir in $userlist; do
   # Print scanning progress
   count=0; i=$(($i+1));
   username="$(echo $homedir | cut -d/ -f3)"
-  printf "%-80s\r" "Scanning :: [$i/$t] $username ..."
+  printf "%-80s\r" "[$i/$t] :: $username :: Scanning"
 
   # Actually search symlinks and count them
   if [[ ! -f ${logdir}/${username}.user ]]; then
-    find $homedir $maxdepth -type l -print > $tmplog
+    find $homedir $maxdepth -type l -print > $tmplog;
     count=$(wc -l < $tmplog)
 
     # Only print the results above the $min threshold
     if [[ $count -ge $min ]]; then
       # Count per subdirectory (verbose output sent to log)
       printf "%8s :: %-80s\n" "$count" "$homedir" | tee -a $log;
-      printf "%-80s\r" "Generating Report :: $username ..."
+      printf "%-80s\r" "[$i/$t] :: $username :: Generating Report"
       awk -F/ '$NF=""; {freq[$0]++} END {for (x in freq) {printf "%8s :: {SYM} ::%s\n",freq[x],x}}' $tmplog\
         | sed 's/\b /\//g; s/ home/ \/home/g; s/\/:/ :/g;' >> $log;
       echo >> $log;
@@ -129,10 +128,10 @@ for homedir in $userlist; do
     fi
     echo $i > ${logdir}/${username}.user
   fi
-done;
+done
 
 printf "%-80s\r" " ";
-echo -e "  END_SCAN: $(date +%F_%T)\n" >> $log
+echo -e "  END_SCAN: $(date +%F_%T)\n" >> $log;
 
 # Finish and print footer
 echo -e "\n$(dash 80 -)\n  Scan log: $log\n$(dash 40 -)\n"
