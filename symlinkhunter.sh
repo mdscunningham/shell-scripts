@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-12-21
-# Updated: 2016-01-22
+# Updated: 2016-01-27
 #
 # Purpose: Find accounts full of symlinks (indicating symlink hacks)
 #
@@ -18,6 +18,12 @@ cleanup(){
   rm -f $tmplog $pidfile; exit;
   }
 trap cleanup SIGINT SIGTERM
+
+scan_complete(){
+# Final log and variable cleanup
+rm -f $tmplog ${logdir}/*.user $pidfile $lockfile
+unset logdir tmplog log userlist username homedir maxdepth count
+}
 
 # Resume a partial scan
 resume(){
@@ -37,7 +43,8 @@ usage(){
   -u ... User list: <usr1,usr2,usr3...>
 
   -h ... Print this help information and quit.
-  "; exit;
+  ";
+  scan_complete; exit;
   }
 
 # ps aux | grep symlinkhunter.sh
@@ -76,7 +83,7 @@ done; echo
 # Check if a previous scan was running, and resume
 lockfile="/var/run/symlinkhunter.lock"
 if [[ -f $lockfile ]]; then
-  echo -e "Alert :: Lock File Exists :: Interrupted scan detected.\n Info :: Log File Found :: $(basename $(awk '/log/ {print}' $lockfile))"
+  echo -e "Alert :: Lock File Exists :: Interrupted scan detected.\n Info :: Log File Found :: $(basename $(tail -1 $lockfile))"
   read -p "  Continue previous scan? [yes/no]: " yn;
   if [[ $yn =~ y ]]; then resume; else rm -f ${logdir}/*.user; fi;
 else
@@ -130,6 +137,5 @@ echo -e "  END_SCAN: $(date +%F_%T)\n" >> $log
 # Finish and print footer
 echo -e "\n$(dash 80 -)\n  Scan log: $log\n$(dash 40 -)\n"
 
-# Final log and variable cleanup
-rm -f $tmplog ${logdir}/*.user $pidfile $lockfile
-unset logdir tmplog log userlist username homedir maxdepth count
+# Run final cleanup after complete scan
+scan_complete; exit;
