@@ -49,14 +49,14 @@ usage(){
 
 # Check for other running instances, and abort
 pidfile="/var/run/symlinkhunter.pid"
-if [[ -f $pidfile ]]; then
+if [[ -f $pidfile && -d /proc/$(cat $pidfile) ]]; then
   echo -e "\n  It looks like another scan [$(cat $pidfile)] is running.\n  Aborting to prevent logging conflicts.\n"; exit;
 else
   echo "$$" > $pidfile;
 fi
 
 # Initialize and count the number of /home/dirs
-i=0; min=1; resuming=0;
+i=0; min=1; resuming='';
 userlist="/home*/*/public_html/";
 t=$(echo $userlist | wc -w);
 
@@ -75,7 +75,7 @@ echo; while getopts fht:u: option; do
 	echo " Info :: Min Threshold Set :: Setting logging threshold to ${OPTARG} links" ;;
     u) userlist="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /home*/${x}/public_html/; done)" ;
 	t=$(echo $userlist | wc -w) ;;
-    h) usage ;;
+  *|h) usage ;;
   esac
 done;
 
@@ -90,7 +90,7 @@ else
 fi
 
 # Start new log only if not resuming a previous scan
-if [[ $resuming != '1' ]]; then
+if [[ ! $resuming ]]; then
   # Check last runs of EA to see if Symlink Protection is enabled
   echo -e "$(dash 80 -)\n  Symlink Protection Status\n$(dash 40 -)\n" | tee $log;
   for logfile in /var/cpanel/easy/apache/runlog/build.*; do
@@ -106,7 +106,7 @@ fi
 # Loop through the homedirs
 for homedir in $userlist; do
   # Print scanning progress
-  count=0; i=$(($i+1));
+  count=0; ((i++));
   username="$(echo $homedir | cut -d/ -f3)"
   printf "%-80s\r" "[$i/$t] :: $username :: Scanning"
 
