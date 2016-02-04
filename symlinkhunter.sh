@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-12-21
-# Updated: 2016-01-27
+# Updated: 2016-02-04
 #
 # Purpose: Find accounts full of symlinks (indicating symlink hacks)
 #
@@ -14,7 +14,7 @@ dash(){ for ((i=1;i<=$1;i++)); do printf $2; done; }
 
 # trap command to capture ^C and cleanup function
 cleanup(){
-  echo -e "\n\nAlert :: Closing Scan :: Cleaning up and exiting.\n Info :: To Resume Run ::  $0\n";
+  echo -e "\n\nAlert :: Closing Scan  :: Cleaning up and exiting.\n Info :: To Resume Run ::  $0\n";
   rm -f $tmplog $pidfile; exit;
   }
 trap cleanup SIGINT SIGTERM
@@ -49,10 +49,15 @@ usage(){
 
 # Check for other running instances, and abort
 pidfile="/var/run/symlinkhunter.pid"
-if [[ -f $pidfile && -d /proc/$(cat $pidfile) ]]; then
-  echo -e "\n  It looks like another scan [$(cat $pidfile)] is running.\n  Aborting to prevent logging conflicts.\n"; exit;
+if [[ -f $pidfile ]]; then scanid=$(cat $pidfile); fi
+if [[ -f $pidfile && -d /proc/${scanid} ]]; then
+  echo -e "
+  It looks like another scan [${scanid}] is running.
+  Started ::  $(ps -o lstart --pid=${scanid} | tail -1)
+  Aborting to prevent logging conflicts.
+  "; exit;
 else
-  echo "$$" > $pidfile;
+  echo "$$" > $pidfile; scanid="$$"
 fi
 
 # Initialize and count the number of /home/dirs
@@ -63,7 +68,7 @@ t=$(echo $userlist | wc -w);
 # /usr/local/maldetect/sess/session.160111-0004.20837 (for reference)
 logdir="/usr/local/symdetect"
 tmplog="${logdir}/symlinkhunter.tmplog"
-log="${logdir}/symlinkhunter.$(date +%y%m%d-%H%M).$(cat $pidfile).log"
+log="${logdir}/symlinkhunter.$(date +%y%m%d-%H%M).${scanid}.log"
 if [[ ! -d $logdir ]]; then mkdir -p $logdir; fi
 
 # Argument parsing
@@ -82,11 +87,11 @@ done;
 # Check if a previous scan was running, and resume
 lockfile="/var/run/symlinkhunter.lock"
 if [[ -f $lockfile ]]; then
-  echo -e "Alert :: Lock File Exists :: Interrupted scan detected.\n Info :: Log File Found :: $(basename $(tail -1 $lockfile))\n"
+  echo -e "Alert :: Lock File Exists :: Interrupted scan detected.\n Info :: Scan Started On  ::  $(sed -n 2p < $lockfile)\n Info :: Log File Found   :: $(basename $(tail -1 $lockfile))\n"
   read -p "  Continue previous scan? [Y/n]: " yn;
   if [[ $yn =~ [yY] ]]; then resume; else rm -f ${logdir}/*.user; fi;
 else
-  echo -e "$$\n$log" > $lockfile;
+  echo -e "$$\n$(ps -o lstart --pid=$$ | tail -1)\n${log}" > $lockfile;
 fi
 
 # Start new log only if not resuming a previous scan
@@ -130,6 +135,7 @@ for homedir in $userlist; do
   fi
 done
 
+# Close out log file
 printf "%-80s\r" " ";
 echo -e "  END_SCAN: $(date +%F_%T)\n" >> $log;
 
