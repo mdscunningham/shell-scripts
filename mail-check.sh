@@ -70,10 +70,10 @@ for ipaddr in $ip_list; do
   echo -e "\n$(dash 80 =)\n${WHITE}  Swaks Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
 
   # Send test emails with swaks to check for errors
-  for domain in aol.com live.com att.net gmail.com earthlink.com yahoo.com comcast.net; do
+  for domain in aol.com att.net comcast.net earthlink.com gmail.com live.com verizon.net yahoo.com; do
     mx=$(dig mx +short ${domain} | awk 'NR<2 {print $2}')
     if [[ $domain =~ gmail.com ]]; then emailAddress="no-reply@gmail.com"; else emailAddress="postmaster@${domain}"; fi
-    result=$(swaks -4 -q RCPT --server $mx -t $emailAddress -li $ipaddr 2>&1 | egrep ' 421| 521| 450| 550| 554| 571';)
+    result=$(swaks -4 -q RCPT --server $mx -t $emailAddress -li $ipaddr 2>&1 | egrep ' 421| 521| 450| 550| 554| 553| 571';)
     if [[ $verb == "1" || -n $result ]]; then
       printf "\n%-40s  %-40s\n" "${CYAN}Domain:${NORMAL} $domain" "${CYAN}Server:${NORMAL} $mx"
       echo -e "$(dash 80 -)\n${result:-No Reported Errors}";
