@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-02-11
-# Updated: 2016-02-11
+# Updated: 2016-02-12
 #
 # Purpose: Script for mass updating database password in files
 #
@@ -17,7 +17,7 @@ backup_prompt(){
 	}
 
 backup(){
-	echo > /root/${username}.dbpass.log
+	echo -n > /root/${username}.dbpass.log
 	echo "Logging to /root/${username}.dbpass.log"
 	grep -rl $database /home/${username}/public_html/ | while read files; do
 		echo "$files -> ${files}.bak" | tee -a /root/${username}.dbpass.log
@@ -51,8 +51,8 @@ restore(){
 	echo;
 	if [[ -f /root/${username}.dbpass.log ]]; then
 		awk '{print $1}' /root/${username}.dbpass.log | while read files; do
-			echo "Removeing $files"; rm -f $files;
-			echo "Renaming $files.bak -> $files" mv $files{.bak,}
+			echo "Removing $files"; rm -f $files;
+			echo "Renaming $files.bak -> $files"; mv $files{.bak,}
 			echo;
 		done;
 	else
@@ -60,8 +60,26 @@ restore(){
 	fi
 	}
 
-echo;
-read -p "[1] Backup files? / [2] Update files? / [3] Restore backup ? [1/2/3]: " opt;
+cleanup(){
+	echo;
+        read -p "cPanel User: " username
+        echo;
+        if [[ -f /root/${username}.dbpass.log ]]; then
+                awk '{print $NF}' /root/${username}.dbpass.log | while read files; do
+                        echo "Removing ${files}"; rm -f ${files};
+                done; echo;
+        else
+                echo "Missing: /root/${username}.dbpass.log"
+        fi
+	}
+
+echo "
+[1] Backup files
+[2] Update files
+[3] Restore backup
+[4] Cleanup backup
+--------------------";
+read -p "[1-4]: " opt;
 
 if [[ $opt == 1 ]]; then
 	backup_prompt;
@@ -71,6 +89,8 @@ elif [[ $opt == 2 ]]; then
 	update;
 elif [[ $opt == 3 ]]; then
 	restore;
+elif [[ $opt == 4 ]]; then
+	cleanup;
 else
 	echo -e "\n$opt is not a valid option.";
 	echo -e "Please enter a valid slection.\n";
