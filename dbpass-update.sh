@@ -84,17 +84,21 @@ echo "
 --------------------";
 read -p "[1-4]: " opt;
 
-if [[ $opt == 1 ]]; then
-  backup_prompt;
-  backup;
-elif [[ $opt == 2 ]]; then
-  update_prompt;
-  update;
-elif [[ $opt == 3 ]]; then
-  restore;
-elif [[ $opt == 4 ]]; then
-  cleanup;
-else
-  echo -e "\n$opt is not a valid option.";
-  echo -e "Please enter a valid slection.\n";
-fi;
+case $opt in
+  1) backup_prompt; backup;
+     ;;
+
+  2) update_prompt; update;
+     ;;
+
+  3) restore;
+     ;;
+
+  4) cleanup;
+     ;;
+
+  *) echo -e "\n$opt is not a valid option.";
+     echo -e "Please enter a valid slection.\n";
+     ;;
+
+esac
