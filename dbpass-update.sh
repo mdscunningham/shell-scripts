@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-02-11
-# Updated: 2016-02-12
+# Updated: 2016-03-04
 #
 # Purpose: Script for mass updating database password in files
 #
@@ -45,6 +45,24 @@ update(){
   done; echo
   }
 
+update_interactive(){
+  grep -rl $database /home/${username}/public_html/ | grep -Ev '*.bak$' | while read files; do
+    echo $files;
+    grep $oldpass $files;
+    echo "updating to ...";
+    grep $oldpass $files | sed "s/$oldpass/$newpass/g";
+
+    read -p "Confirm change and proceed? [y/n : ]" yn
+    if [[ $yn =~ [yY] ]]; then
+      sed -i "s/$oldpass/$newpass/g" $files;
+      echo "Updated :: $files";
+    else
+      echo "Aborted :: $files";
+    fi
+    echo;
+  done; echo
+  }
+
 restore(){
   echo;
   read -p "cPanel User: " username
@@ -79,10 +97,11 @@ cleanup(){
 echo "
 [1] Backup files
 [2] Update files
-[3] Restore backup
-[4] Cleanup backup
+[3] Update files (interactive)
+[4] Restore backup
+[5] Cleanup backup
 --------------------";
-read -p "[1-4]: " opt;
+read -p "[1-5]: " opt;
 
 case $opt in
   1) backup_prompt; backup;
@@ -91,10 +110,13 @@ case $opt in
   2) update_prompt; update;
      ;;
 
-  3) restore;
+  3) update_prompt; update_interactive;
      ;;
 
-  4) cleanup;
+  4) restore;
+     ;;
+
+  5) cleanup;
      ;;
 
   *) echo -e "\n$opt is not a valid option.";
