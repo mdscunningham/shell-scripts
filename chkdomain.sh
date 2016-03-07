@@ -21,6 +21,8 @@
 
 # Setting defaults
 httpdconf=$(httpd -V 2>/dev/null | awk -F\" '/HTTPD_ROOT|SERVER_CONFIG_FILE/ {printf "/"$2}')
+notLive=0
+dnsLookup=0
 recordType="MX"
 account=".*"
 wide=40
@@ -32,13 +34,24 @@ dash(){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
 
 # Parsing input from command line flags
 #local OPTIND
-while getopts a:d:mwh option; do
+while getopts a:d:mnwh option; do
   case "${option}" in
     a) if [[ ${OPTARG} == '.' ]]; then account=$(getusr); else account=${OPTARG}; fi ;;
-    d) recordType=${OPTARG};;
+    d) recordType=${OPTARG}; dnsLookup=1;;
     m) main=1 ;;
+    n) notLive=1 ;;
     w) wide=60 ;;
-    h) echo ;;
+    h) echo "
+  ${BRIGHT}Usage:${NORMAL} $0 [OPTIONS] [ARGUMENTS]
+
+    -a ... Specify Account or use '.' for AutoDetect using \$PWD
+    -d ... DNS lookup for given record type
+    -n ... Only list domains NOT pointed to the server
+    -m ... Only list main domains for each account
+    -w ... Wide mode (60 character columns; default is 40)
+
+    -h ... Print this help and quit
+       "; exit ;;
   esac
 done
 
@@ -60,7 +73,7 @@ _remoteLocal(){
 }
 
 # Printing Column Headers
-printf "\n$FMT" " Vhost-IP" " DNS-IP" "SSL" "MailEx" " Type" " Domain" " DocumentRoot"
+printf "\n$FMT" " Vhost-IP" " DNS-IP" "SSL" "MailEx" " Type" " Domain" " Additional Info"
 printf "$FMT" "$(dash 15)" "$(dash 15)" "---" "------" "--------" "$(dash $wide)" "$(dash $wide)"
 
 # Loop through the list of domains and gather information.
@@ -74,8 +87,14 @@ for domain in $domainList; do
   # Find the IP resolving in DNS
   dnsIP=$(dig +short +time=1 +tries=1 $domain | grep [0-9] | head -1;)
 
-  # Find the DNS MX record
-  dnsRecord=$(dig $recordType +short +time=1 +tries=1 $domain | tail -1;)
+  # Find a DNS record
+  if [[ $recordType =~ [Aa] ]]; then
+    dnsRecord=""
+    dnsRecordIP=$(dig +short +time=1 +tries=1 $domain | tail -1 | grep -v 'root-server';)
+  else
+    dnsRecord=$(dig $recordType +short +time=1 +tries=1 $domain | awk 'NR<2 {print $NF}' | grep -v 'root-server';)
+    dnsRecordIP=$(dig +short +time=1 +tries=1 $dnsRecord | tail -1 | grep -v 'root-server';)
+  fi
 
   # Lookup DocRoot in  httpd.conf
   docRoot=$(grep -A5 -E "Server(Name|Alias).*\ $domain" $httpdconf | awk '/DocumentRoot/ {print $2}' | head -1)
@@ -87,11 +106,13 @@ for domain in $domainList; do
   # Get user/acct from the document root
   acct=$(echo $docRoot | sed 's:^/chroot::' | cut -d/ -f3;)
 
+  if [[ $dnsLookup == 1 ]]; then addInfo="$dnsRecordIP $dnsRecord"; else addInfo="$docRoot"; fi
+
   if [[ ($main == '1' && $domType =~ main) || ($main == 0) ]]; then
-    if [[ $vhostIP == $dnsIP ]]; then
-      printf "$FMT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$docRoot"
-    else
-      printf "$HIGHLIGHT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$docRoot"
+    if [[ ($vhostIP == $dnsIP) && ($notLive == 0) ]]; then
+      printf "$FMT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
+    elif [[ $vhostIP != $dnsIP ]]; then
+      printf "$HIGHLIGHT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
     fi
   fi
 done; echo
