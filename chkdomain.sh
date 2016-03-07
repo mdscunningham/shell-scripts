@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-11-30
-# Updated: 2016-01-07
+# Updated: 2016-03-07
 #
 # Purpose: Gather IP/DNS/Mail informaion for some or all domains on a server
 #
@@ -21,12 +21,13 @@
 
 # Setting defaults
 httpdconf=$(httpd -V 2>/dev/null | awk -F\" '/HTTPD_ROOT|SERVER_CONFIG_FILE/ {printf "/"$2}')
-notLive=0
-dnsLookup=0
+notLive=''
+dnsLookup=''
 recordType="MX"
 account=".*"
+csvMode=''
 wide=40
-main=0
+main=''
 
 # Utility Functions
 getusr(){ pwd | sed 's:^/chroot::' | cut -d/ -f3; }
@@ -34,9 +35,10 @@ dash(){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
 
 # Parsing input from command line flags
 #local OPTIND
-while getopts a:d:mnwh option; do
+while getopts a:cd:mnwh option; do
   case "${option}" in
     a) if [[ ${OPTARG} == '.' ]]; then account=$(getusr); else account=${OPTARG}; fi ;;
+    c) csvMode=1 ;;
     d) recordType=${OPTARG}; dnsLookup=1;;
     m) main=1 ;;
     n) notLive=1 ;;
@@ -45,6 +47,7 @@ while getopts a:d:mnwh option; do
   ${BRIGHT}Usage:${NORMAL} $0 [OPTIONS] [ARGUMENTS]
 
     -a ... Specify Account or use '.' for AutoDetect using \$PWD
+    -c ... Format output as CSV (use with > to file)
     -d ... DNS lookup for given record type
     -n ... Only list domains NOT pointed to the server
     -m ... Only list main domains for each account
@@ -58,6 +61,8 @@ done
 # Formatting
 FMT="%-15s %-15s %-3s %-6s %-8s %-${wide}s %-s\n"
 HIGHLIGHT="${BRIGHT}${RED}%-15s %-15s${NORMAL} %-3s %-6s %-8s ${BRIGHT}${RED}%-${wide}s${NORMAL} %-s\n"
+CSV="\"%-s\",\"%-s\",\"%-s\",\"%-s\",\"%-s\",\"%-s\",\"%-s\"\n"
+if [[ $csvMode ]]; then FMT=$CSV; HIGHLIGHT=$CSV; fi
 
 # Lookup all the domains on the server
 domainList=$(sed 's/==/: /g' < /etc/userdatadomains | sort -k2 | awk -F: "/: ${account}/"' {print $1}')
@@ -66,10 +71,17 @@ domainList=$(sed 's/==/: /g' < /etc/userdatadomains | sort -k2 | awk -F: "/: ${a
 
 # Check if mail is configured for remote or local
 _remoteLocal(){
+if [[ $csvMode ]]; then # CSV mode
+  if [[ -n $(grep $1 /etc/localdomains) ]]; then echo "Local "
+    elif [[ -n $(grep $1 /etc/remotedomains) ]]; then echo "Remote"
+    else echo "NoConf"
+  fi
+else # Print colors
   if [[ -n $(grep $1 /etc/localdomains) ]]; then echo "${GREEN}Local${NORMAL} "
     elif [[ -n $(grep $1 /etc/remotedomains) ]]; then echo "${RED}Remote${NORMAL}"
     else echo "${BRIGHT}NoConf${NORMAL}"
   fi
+fi
 }
 
 # Printing Column Headers
@@ -82,18 +94,20 @@ for domain in $domainList; do
   vhostIP=$(grep -B5 -E "Server(Name|Alias).*\ $domain" $httpdconf | awk '/<VirtualHost.*:80/ {print $2}' | cut -d: -f1 | head -1;)
 
   # Find if there is an SSL installed on the domain
-  if [[ -n $(grep -B5 -E "Server(Name|Alias).*\ $domain" $httpdconf | awk '/<VirtualHost.*:443/ {print}') ]]; then ssl="${YELLOW}SSL${NORMAL}"; else ssl=""; fi
+  if [[ -n $(grep -B5 -E "Server(Name|Alias).*\ $domain" $httpdconf | awk '/<VirtualHost.*:443/ {print}') ]]; then
+    if [[ $csvMode ]]; then ssl="SSL"; else ssl="${YELLOW}SSL${NORMAL}"; fi
+  else ssl=""; fi
 
   # Find the IP resolving in DNS
-  dnsIP=$(dig +short +time=1 +tries=1 $domain | grep [0-9] | head -1;)
+  dnsIP=$(dig +short +time=2 +tries=2 $domain | grep [0-9] | head -1;)
 
   # Find a DNS record
   if [[ $recordType =~ [Aa] ]]; then
     dnsRecord=""
-    dnsRecordIP=$(dig +short +time=1 +tries=1 $domain | tail -1 | grep -v 'root-server';)
+    dnsRecordIP=$(dig +short +time=2 +tries=2 $domain | tail -1 | grep -v 'root-server';)
   else
-    dnsRecord=$(dig $recordType +short +time=1 +tries=1 $domain | awk 'NR<2 {print $NF}' | grep -v 'root-server';)
-    dnsRecordIP=$(dig +short +time=1 +tries=1 $dnsRecord | tail -1 | grep -v 'root-server';)
+    dnsRecord=$(dig $recordType +short +time=2 +tries=2 $domain | awk 'END{print $NF}' | grep -v 'root-server';)
+    dnsRecordIP=$(dig +short +time=2 +tries=2 $dnsRecord | tail -1 | grep -v 'root-server';)
   fi
 
   # Lookup DocRoot in  httpd.conf
@@ -106,10 +120,10 @@ for domain in $domainList; do
   # Get user/acct from the document root
   acct=$(echo $docRoot | sed 's:^/chroot::' | cut -d/ -f3;)
 
-  if [[ $dnsLookup == 1 ]]; then addInfo="$dnsRecordIP $dnsRecord"; else addInfo="$docRoot"; fi
+  if [[ $dnsLookup ]]; then addInfo="$dnsRecordIP $dnsRecord"; else addInfo="$docRoot"; fi
 
-  if [[ ($main == '1' && $domType =~ main) || ($main == 0) ]]; then
-    if [[ ($vhostIP == $dnsIP) && ($notLive == 0) ]]; then
+  if [[ (-n $main && $domType =~ main) || -z $main ]]; then
+    if [[ ($vhostIP == $dnsIP) && -z $notLive ]]; then
       printf "$FMT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
     elif [[ $vhostIP != $dnsIP ]]; then
       printf "$HIGHLIGHT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
