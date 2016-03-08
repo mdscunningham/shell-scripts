@@ -73,7 +73,7 @@ for ipaddr in $ip_list; do
   for domain in aol.com att.net comcast.net earthlink.com gmail.com live.com verizon.net yahoo.com; do
     mx=$(dig mx +short ${domain} | awk 'NR<2 {print $2}')
     if [[ $domain =~ gmail.com ]]; then emailAddress="no-reply@gmail.com"; else emailAddress="postmaster@${domain}"; fi
-    result=$(swaks -4 -q RCPT --server $mx -t $emailAddress -li $ipaddr 2>&1 | egrep ' 421| 521| 450| 550| 554| 553| 571';)
+    result=$(swaks -4 -q RCPT --server $mx -t $emailAddress -li $ipaddr 2>&1 | egrep ' 4[25][01]| 5[257][0-4]';)
     if [[ $verb == "1" || -n $result ]]; then
       printf "\n%-40s  %-40s\n" "${CYAN}Domain:${NORMAL} $domain" "${CYAN}Server:${NORMAL} $mx"
       echo -e "$(dash 80 -)\n${result:-No Reported Errors}";
