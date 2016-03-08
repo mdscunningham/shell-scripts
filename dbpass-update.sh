@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-02-11
-# Updated: 2016-03-04
+# Updated: 2016-03-07
 #
 # Purpose: Script for mass updating database password in files
 #
@@ -12,14 +12,14 @@
 backup_prompt(){
   echo;
   read -p "cPanel User: " username
-  read -p "Database: " database
+  read -p "DBname/DBuser: " database
   echo;
   }
 
 backup(){
   echo -n > /root/${username}.dbpass.log
   echo "Logging to /root/${username}.dbpass.log"
-  grep -rl $database /home/${username}/public_html/ | while read files; do
+  grep -rlE $database /home/${username}/public_html/ | while read files; do
     echo "$files -> ${files}.bak" | tee -a /root/${username}.dbpass.log
     cp -a $files{,.bak};
   done; echo
@@ -28,14 +28,14 @@ backup(){
 update_prompt(){
   echo;
   read -p "cPanel User: " username
-  read -p "Database: " database
+  read -p "DBname/DBuser: " database
   read -p "Old Password: " oldpass
   read -p "New Password: " newpass
   echo;
   }
 
 update(){
-  grep -rl $database /home/${username}/public_html/ | grep -Ev '*.bak$' | while read files; do
+  grep -rlE $database /home/${username}/public_html/ | grep -Ev '*.bak$' | while read files; do
     echo $files;
     grep $oldpass $files;
     echo "updating to ...";
@@ -46,7 +46,7 @@ update(){
   }
 
 update_interactive(){
-  grep -rl $database /home/${username}/public_html/ | grep -Ev '*.bak$' | while read files; do
+  grep -rlE $database /home/${username}/public_html/ | grep -Ev '*.bak$' | while read files; do
     echo $files;
     grep $oldpass $files;
     echo "updating to ...";
