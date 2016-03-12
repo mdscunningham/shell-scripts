@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-07-10
-# Updated: 2014-08-19
+# Updated: 2016-03-12
 #
 #
 #!/bin/bash
@@ -34,7 +34,7 @@ else
 fi
 
 echo $(shuf -n1000 $wordList | grep -E ^[a-z]{$wordLength}$ | shuf -n4 )$(( ($RANDOM % 9000) + 1000 ))\
-  | sed 's/\b\([a-zA-Z]\)/\u\1/g' | sed 's/ //g'
+  | sed 's/\b\([a-zA-Z]\)/\u\1/g' | sed 's/ //g' | cut -c 1-${2}
 
 else
 # Tried to do this with $RANDOM % MAX + MIN, and this was not random enough, got passwords with only A, B, C, words
@@ -43,7 +43,7 @@ else
   n=0;  word=(); len=$(wc -l < $wordList)
   while [[ $n -lt 4 ]]; do
     rnd=$(( $(od -vAn -N4 -tu4 < /dev/urandom) % $len + 1 ));
-    word[$n]=$(sed -n "${rnd}p" $wordList | egrep "^[a-z]{4,8}$" | sed 's:\b\(.\):\u\1:');
+    word[$n]=$(sed -n "${rnd}p" $wordList | grep -E ^[a-z]{4,8}$ | sed 's:\b\(.\):\u\1:');
     if [[ -n ${word[$n]} ]]; then n=$n+1; fi;
   done;
   echo "${word[0]}${word[1]}${word[2]}${word[3]}$(( $RANDOM % 9000 + 1000 ))";
