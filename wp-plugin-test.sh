@@ -43,7 +43,7 @@ fi
 dirs=$(find $userdir/wp-content/plugins/* -maxdepth 0 -type d -print);
 
 
-if [[ ! $(ip a | grep $(dig +short $domain) 2>/dev/null) && ! $(grep $domain /etc/hosts 2>/dev/null) ]]; then
+if [[ ! $(ip a | grep $(dig +short $domain) 2>/dev/null) && ! $(grep " $domain" /etc/hosts 2>/dev/null) ]]; then
   echo -e "\n  Looks like the domain is not live on this server, make\n  sure to update /etc/hosts for testing from the server.\n"
 else
   # Disable all the plugins
