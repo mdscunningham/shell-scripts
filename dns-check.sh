@@ -1,12 +1,12 @@
-#							   +----+----+----+----+
-# 							   |    |    |    |    |
-# Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
-# 							   +----+----+----+----+
-# Created: 2013-12-05
-# Updated: 2016-01-27
-#
-#
 #!/bin/bash
+#                                                          +----+----+----+----+
+#                                                          |    |    |    |    |
+# Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
+#                                                          +----+----+----+----+
+# Created: 2013-12-05
+# Updated: 2016-03-22
+#
+#
 
 # Setup color and formatting codes
       BLACK=$(tput setaf 0)
@@ -30,6 +30,7 @@
 recordType="A"
 highlight=0
 linetwo=0
+digopts="+time=2 +tries=2 +short"
 
 # Output correct usage for bad inputs
 function usage(){
@@ -59,12 +60,13 @@ ${BRIGHT}ALLOWED RECORD TYPES:${NORMAL}
 # Source of all the dns servers used
 # http://public-dns.tk/
 
-# Read in data from remote file
-# data=($(curl -s http://nanobots.robotzombies.net/nameserver))
-
+if [[ -f nameserver ]]; then
 # Read in data from local file
-data=($(cat nameserver))
-verbose=''
+ data=($(cat nameserver))
+else
+# Read in data from remote file
+ data=($(curl -s http://sh.mdsc.info/nameserver))
+fi
 
 # Execute Getopt
 OPTIONS=$(getopt -o "hal2t:n:v" --long "help,anycast,links,secondline,type:,new:,verbose" -- "$@")
@@ -77,54 +79,56 @@ eval set -- "$OPTIONS"
 
 # Evaluate the options for their options
 while true; do
-case "$1" in
-	-h|--help)
-		usage; exit 1;;
+ case "$1" in
+  -h|--help)
+    usage; exit 1;;
 
-	-a|--anycast)
-		data=''; data=($(cat anycast));;
+  -a|--anycast)
+    data='';
+    if [[ -f anycast ]]; then
+      data=($(cat anycast))
+    else
+      data=($(curl -s sh.mdsc.info/anycast))
+    fi ;;
 
-        -l|--links)
-		#echo "$@"
-		echo
-		shift;shift;
-		for domain in "$@"; do
-		        echo "${BLUE}https://www.whatsmydns.net/${CYAN}#$(echo $recordType | sed 's/\(.*\)/\U\1/g')${NORMAL}/$domain"
-		done
-		echo
-		exit;;
-	-2|--secondline)
-		# Set response to be the second line of the record
-		linetwo=1;;
-	-t|--type)
-		# Set recordType to option parameter and check for valid input
-		recordType="$2";
-		case $recordType in
-			A|a) shift;;
-			AAAA|aaaa) shift;;
-			CNAME|cname) shift;;
-			MX|mx) shift;;
-			NS|ns) shift;;
-			TXT|txt) shift;;
-			SOA|soa) shift;;
-			PTR|ptr|RDNS|rdns|X|x) recordType="-x"; shift;;
-			*)
-			echo "$recordType is not an allowed record type"; echo
-			usage; exit 1;;
-		esac;;
-	-n|--new)
-		highlight=1
-		newResult="$2"; shift;;
-	-v|--verbose)
-		verbose="+noshort" ;;
-	--)
-		# Announce the type of record lookup
-		echo "${RED}Checking ${YELLOW}$recordType ${RED}Records for the following domain(s) ${YELLOW}...${NORMAL}"
-		shift; break;;
-	*)
-		usage; exit 1;;
-esac
-shift
+  -l|--links)
+    #echo "$@"
+    echo; shift; shift;
+      for domain in "$@"; do
+        echo "${BLUE}https://www.whatsmydns.net/${CYAN}#$(echo $recordType | sed 's/\(.*\)/\U\1/g')${NORMAL}/$domain"
+      done; echo
+    exit;;
+  -2|--secondline)
+    # Set response to be the second line of the record
+    linetwo=1;;
+  -t|--type)
+    # Set recordType to option parameter and check for valid input
+    recordType="$2";
+    case $recordType in
+      A|a) shift;;
+      AAAA|aaaa) shift;;
+      CNAME|cname) shift;;
+      MX|mx) shift;;
+      NS|ns) shift;;
+      TXT|txt) shift;;
+      SOA|soa) shift;;
+      PTR|ptr|RDNS|rdns|X|x) recordType="-x"; shift;;
+      *)
+      echo "$recordType is not an allowed record type"; echo
+      usage; exit 1;;
+    esac;;
+  -n|--new)
+    highlight=1
+    newResult="$2"; shift;;
+  -v|--verbose)
+    digopts="+time=2 +tries=2 +short +noshort" ;;
+  --)
+    # Announce the type of record lookup
+    echo "${RED}Checking ${YELLOW}$recordType ${RED}Records for the following domain(s) ${YELLOW}...${NORMAL}"
+    shift; break;;
+  *)
+    usage; exit 1;;
+ esac; shift
 done
 
 # Find length of primary array
@@ -132,9 +136,9 @@ dataLen=${#data[@]}
 
 # Create secondary arrays from primary array
 for (( i=0; i<$dataLen; i += 3 )); do
-    nameserver=("${nameserver[@]}" ${data[$i]})
-    location=("${location[@]}" ${data[($i+1)]})
-    ipaddress=("${ipaddress[@]}" ${data[($i+2)]})
+  nameserver=("${nameserver[@]}" ${data[$i]})
+  location=("${location[@]}" ${data[($i+1)]})
+  ipaddress=("${ipaddress[@]}" ${data[($i+2)]})
 done
 
 # Find length of secondary arrays
@@ -145,30 +149,30 @@ if [ $namLen = $locLen ]; then echo
 
 # Iterate through the array of domain parameters
 for domain in "$@"; do
-	echo "${WHITE}========== $domain ==========${NORMAL}"
-	echo "https://www.whatsmydns.net/#$(echo $recordType | sed 's/\(.*\)/\U\1/g')/$domain"
+  echo "${WHITE}========== $domain ==========${NORMAL}"
+  echo "https://www.whatsmydns.net/#$(echo $recordType | sed 's/\(.*\)/\U\1/g')/$domain"
 
-	# Iterate through the array of nameservers
-	i=0; for (( $i; i<$namLen; i++ )); do
-		if [[ $linetwo = 1 ]]; then
-		result=$(dig +time=2 +tries=2 +short $verbose "$recordType" "$domain" @"${ipaddress[i]}" | head -n2 | tail -n1 | grep -v '^;;')
-		else
-		result=$(dig +time=2 +tries=2 +short $verbose "$recordType" "$domain" @"${ipaddress[i]}" | head -n1 | grep -v '^;;')
-		fi
-		if [[ $highlight = 1 && $result = $newResult ]]; then
-		printf "${BLUE}%-30s ${NORMAL}: ${BLUE}%-26s ${NORMAL}: ${RED}%s\n${NORMAL}" "${nameserver[i]}" "$(echo ${location[i]} | sed s/_/\ /g)" "$result"
-		else
-		printf "${BLUE}%-30s ${NORMAL}: ${BLUE}%-26s ${NORMAL}: ${CYAN}%s\n${NORMAL}" "${nameserver[i]}" "$(echo ${location[i]} | sed s/_/\ /g)" "$result"
-		fi
-	done #end nameserver for loop
+  # Iterate through the array of nameservers
+  i=0; for (( $i; i<$namLen; i++ )); do
+    if [[ $linetwo = 1 ]]; then
+      result=$(dig $digopts "$recordType" "$domain" @"${ipaddress[i]}" | head -n2 | tail -n1 | grep -v '^;;')
+    else
+      result=$(dig $digopts "$recordType" "$domain" @"${ipaddress[i]}" | head -n1 | grep -v '^;;')
+    fi
+    if [[ $highlight = 1 && $result = $newResult ]]; then
+      printf "${BLUE}%-30s ${NORMAL}: ${BLUE}%-26s ${NORMAL}: ${RED}%s\n${NORMAL}" "${nameserver[i]}" "$(echo ${location[i]} | sed s/_/\ /g)" "$result"
+    else
+      printf "${BLUE}%-30s ${NORMAL}: ${BLUE}%-26s ${NORMAL}: ${CYAN}%s\n${NORMAL}" "${nameserver[i]}" "$(echo ${location[i]} | sed s/_/\ /g)" "$result"
+    fi
+  done #end nameserver for loop
 
-	echo
+  echo
 #Pause between domains
 #read -p "Press [Enter] to continue ..."
 
 done #end domain for loop
 
 else # Error message if sanity check not passed
-	echo "${RED}Nameserver Count = $namLen"; echo "Location Count = $locLen"
-	echo "Array Lengths Do Not Match! Quitting ...${NORMAL}"
+  echo "${RED}Nameserver Count = $namLen"; echo "Location Count = $locLen"
+  echo "Array Lengths Do Not Match! Quitting ...${NORMAL}"
 fi
