@@ -4,20 +4,14 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-03-20
-# Updated: 2016-03-21
+# Updated: 2016-03-22
 #
 # Purpose: Disable all WP pluins, then enable them one at a time, to see which
 #          one(s) may be breaking site functionality.
 #
 
-# http://inchoo.net/dev-talk/tools/git-deployment/17566/
-
-## OMG OMG OMG!
-## http://stackoverflow.com/questions/16654607/using-getopts-inside-a-bash-function
-
-#!/bin/bash
-
-while getopts d:u: option do
+# Argument Parsing
+while getopts d:u:h option; do
   case "${option}" in
     d) domain=${OPTARG};;
     u) username=${OPTARG};;
@@ -27,13 +21,17 @@ while getopts d:u: option do
     -d ... <domain>   Sepcify domain name
 
     -h ... Print this help and quit
-       "; exit ;;
+       "; exit;;
   esac
 done
 
 # Lookup user's homedir
-if [[ ! $username ]]; then
-  userdir=$PWD; else userdir="/home/$username/public_html"
+if [[ ! $username && ! $domain ]]; then
+  userdir=$PWD;
+elif [[ $username && ! $domain ]]; then
+  userdir="/home/$username/public_html"
+elif [[ $domain ]]; then
+  userdir=$(grep -C5 $domain /usr/local/apache/conf/httpd.conf | awk '/DocumentRoot/ {print $2}' | head -1)
 fi
 
 # Lookup domain name
@@ -45,7 +43,7 @@ fi
 dirs=$(find $userdir/wp-content/plugins/* -maxdepth 0 -type d -print);
 
 
-if [[ ! $(ip a | grep $(dig +short $domain)) ]]; then
+if [[ ! $(ip a | grep $(dig +short $domain) 2>/dev/null) && ! $(grep $domain /etc/hosts 2>/dev/null) ]]; then
   echo -e "\n  Looks like the domain is not live on this server, make\n  sure to update /etc/hosts for testing from the server.\n"
 else
   # Disable all the plugins
@@ -56,15 +54,15 @@ else
 
   # Re-enable each plugin individually and test the site
   for plugin in $dirs; do
-    echo -e "\nRe-Enabling :: $plugin";
+    echo -e "\nEnabling :: $plugin";
     mv $plugin{.disable,};
-    echo "Testing $domain:";
+    echo " Testing :: $(ping -c1 $domain | awk 'NR<2 {print $2,"::",$3}')";
     curl -sILk $domain | egrep --color "HTTP/1.[01] [2345][0-9]{2}";
     mv $plugin{,.disable};
   done;
 
   # Re-Enable all plugins
-  echo -e "\nRe-Enabling All Plugins";
+  echo -e "\nRe-Enabling All Plugins\n";
   for plugin in $dirs;
     do mv $plugin{.disable,};
   done
