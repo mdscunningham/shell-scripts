@@ -3,26 +3,36 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-20
-# Updated: 2014-07-04
+# Updated: 2016-04-03
 #
 #
 #!/bin/bash
 
 dash (){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
+OPTS="+time=2 +tries=2 +short +noshort"
 
 if [[ -z "$@" ]]; then
-    read -p "Domain Name: " D;
+  read -p "Domain Name: " D;
 else
-    D="$@";
+  D="$@";
 fi;
-for x in $(echo $D | sed 's/http:\/\///g;s/\// /g');
-do
-    echo -e "\nDNS Summary: $x\n$(dash 79)";
-    for y in a aaaa ns mx srv txt soa;
-    do
-        dig +time=2 +tries=2 +short $y $x +noshort;
-        if [[ $y == 'ns' ]]; then dig +time=2 +tries=2 +short $(dig +short ns $x) +noshort | grep -v root; fi
-    done;
-    dig +short -x $(dig +time=2 +tries=2 +short $x) +noshort;
-    echo;
+
+for domain in $(echo $D | sed 's/http:\/\///g;s/\// /g'); do
+  echo -e "\nDNS Summary: $x\n$(dash 79)";
+  for record in a aaaa ns mx txt soa; do
+    if [[ $record == 'ns' || $record == 'mx' ]]; then
+      dig $OPTS $record $domain | grep -v root \
+      | while read result; do echo "$result -> "$(dig +short $(echo $result | awk '{print $NF}')); done
+    else
+      dig $OPTS $record $domain
+    fi
+  done;
+
+  # Lookup SRV records for live.com
+  dig $OPTS srv _sip._tls.$domain
+  dig $OPTS srv _sipfederationtls._tcp.$domain
+
+  # Lookup rDNS/PTR for the IP
+  dig $OPTS -x $(dig +time=2 +tries=2 +short $domain)
+  echo;
 done
