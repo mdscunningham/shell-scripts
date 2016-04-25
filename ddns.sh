@@ -18,7 +18,7 @@ else
 fi;
 
 for domain in $(echo $D | sed 's/http:\/\///g;s/\// /g'); do
-  echo -e "\nDNS Summary: $x\n$(dash 79)";
+  echo -e "\nDNS Summary: $domain\n$(dash 79)";
   for record in a aaaa ns mx txt soa; do
     if [[ $record == 'ns' || $record == 'mx' ]]; then
       dig $OPTS $record $domain | grep -v root \
@@ -29,8 +29,9 @@ for domain in $(echo $D | sed 's/http:\/\///g;s/\// /g'); do
   done;
 
   # Lookup SRV records for live.com
-  dig $OPTS srv _sip._tls.$domain
-  dig $OPTS srv _sipfederationtls._tcp.$domain
+  for SRV in '_sip._tls' '_sipfederationtls._tcp'; do
+    dig $OPTS srv $SRV.$domain | grep -v 'CNAME'
+  done
 
   # Lookup rDNS/PTR for the IP
   dig $OPTS -x $(dig +time=2 +tries=2 +short $domain)
