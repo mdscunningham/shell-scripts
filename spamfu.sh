@@ -1,12 +1,14 @@
+#!/bin/bash
 #							   +----+----+----+----+
 # 							   |    |    |    |    |
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2015-07-28
+# Updated: 2016-04-24
 #
+# Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
+#          the usual suspects related to a server sending outbound spam mail.
 #
-#!/bin/bash
 
 ## Exim Cheetsheet
 # http://bradthemad.org/tech/notes/exim_cheatsheet.php
@@ -38,7 +40,7 @@ LOGFILE="/var/log/exim_mainlog"
 PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
 if [[ -n $PHPCONF ]]; then PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF); fi
 QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
-l=1; p=0; q=0; full_log=0;
+l=1; p=0; q=0; full_log=0; fast_mode='';
 LINECOUNT='1000000'
 RESULTCOUNT='10'
 DAYS=''; VERBOSE=0;
@@ -201,12 +203,13 @@ set_decomp(){
 # Process commandline flags
 arg_parse(){
   local OPTIND;
-  while getopts ac:d:f:hn:pqv OPTIONS; do
+  while getopts ac:d:f:Fhn:pqv OPTIONS; do
     case "${OPTIONS}" in
       a) full_log=1 ;;
       c) LINECOUNT=${OPTARG} ;;
       d) DAYS=${OPTARG} ;;
       f) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
+      F) fast_mode=1 ;;
       n) RESULTCOUNT=${OPTARG} ;;
       p) l=0; p=1; q=0 ;; # PHP log
       q) l=0; q=1; p=0 ;; # Analyze queue instead of log
@@ -217,6 +220,7 @@ arg_parse(){
     -c ... <#lines> to read from the end of the log
     -d ... <#days> back to read in the log (calculates linecount)
     -f ... </path/to/logfile> to use instead of default
+    -F ... FastMode (skip dumping exim queue to log)
     -n ... <#results> to show from analysis
     -p ... Look for 'X-PHP-Script' in the php mail log
     -q ... Create a queue logfile and analyze the queue
@@ -313,7 +317,7 @@ if [[ $full_log == 1 ]]; then READLIMIT="cat"; LOGLIMIT="cat"
 ## Current Queue Dump
 if [[ -f $QUEUEFILE ]]; then
   echo -e "\nFound existing queue dump ( $QUEUEFILE ).\n"
-else
+elif [[ ! $fast_mode ]]; then
   echo -e "\nCreating Queue Dump ($QUEUEFILE) to speed up analysis\n ... Thank you for your patience"
   /usr/sbin/exim -bpr | $LOGLIMIT > $QUEUEFILE
 fi
@@ -323,14 +327,14 @@ if [[ $full_log == 1 ]]; then
   DECOMP="cat";
   du -sh $QUEUEFILE | awk '{print "Using Queue Dump: "$2,"("$1")"}'
 # Minimize impact on initial scan, using last 1,000,000 lines
-else
+elif [[ ! $fast_mode ]]; then
   DECOMP="tail -n $LINECOUNT";
   du -sh $QUEUEFILE | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
 fi
 
 ## Queue Summary
+if [[ -s $QUEUEFILE && ! $fast_mode ]]; then
 section_header "Queue: Summary"
-if [[ -n $(head $QUEUEFILE) ]]; then
 $DECOMP $QUEUEFILE | /usr/sbin/exiqsumm | head -3 | tail -2;
 cat $QUEUEFILE | /usr/sbin/exiqsumm | sort -rnk1 | grep -v "TOTAL$" | head -n $RESULTCOUNT
 fi
@@ -350,6 +354,9 @@ section_header "Queue: X-PHP-Scripts"
 find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename "X-PHP.*-Script:" 2>/dev/null\
  | $READLIMIT | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
+## Print these only if not in "FastMode"
+if [[ ! $fast_mode ]]; then
+
 ## Count of (non-bounceback) Sending Addresses in queue
 section_header "Queue: Senders"
 $DECOMP $QUEUEFILE | awk '($4 ~ /<[^>]/) {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
@@ -364,6 +371,8 @@ $DECOMP $QUEUEFILE | awk '($4 ~ /<>/) {freq[$4]++} END {for (x in freq) {printf 
 section_header "Queue: Frozen (count)"
 $DECOMP $QUEUEFILE | awk '/frozen/ {freq[$4]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn  | head -n $RESULTCOUNT | sed 's/<>/*** Bounceback ***/' | tr -d '<>'
+
+fi
 
 echo
 }
