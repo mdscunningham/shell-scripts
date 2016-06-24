@@ -12,8 +12,8 @@ quiet=''
 domain=''
 DNSBL=''
 
-if [[ -f multirbl ]]; then
-  DNSBL="$(cat multirbl)" # Local
+if [[ -f rbl-ip ]]; then
+  DNSBL="$(cat rbl-ip)" # Local
   lineCount=$(wc -l < rbl-ip)
 else
   DNSBL=$(curl -s axeblade.net/rbl-ip) # Remote
