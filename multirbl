@@ -46,7 +46,7 @@ dnsbl.cyberlogic.net
 bogons.cymru.com
 tor.dan.me.uk
 torexit.dan.me.uk
-intercept.datapacket.net
+dnsrbl.org
 spam.dnsbl.anonmails.de
 virbl.dnsbl.bit.nl
 dnsbl1.dnsbl.borderware.com
@@ -144,17 +144,14 @@ dnsbl.njabl.org
 bl.nosolicitado.org
 dnsbl.openresolvers.org
 rbl.orbitrbl.com
-dnsblchile.org
 spamlist.or.kr
 dul.pacifier.net
 netblock.pedantic.org
 spam.pedantic.org
 rbl.polarcomm.net
 dnsbl.proxybl.org
-list.quorum.to
 netscan.rbl.blockedservers.com
 spam.rbl.blockedservers.com
-rbl.rbldns.ru
 c10.rbl.hk
 all.rbl.jp
 short.rbl.jp
@@ -165,6 +162,10 @@ phishing.rbl.msrbl.net
 spam.rbl.msrbl.net
 virus.rbl.msrbl.net
 web.rbl.msrbl.net
+all.rbl.webiron.net
+babl.rbl.webiron.net
+cabl.rbl.webiron.net
+stabl.rbl.webiron.net
 reputation-ip.rbl.scrolloutf1.com
 access.redhawk.org
 dnsbl.rizon.net
@@ -174,7 +175,6 @@ dnsbl.rymsho.ru
 all.s5h.net
 dyn.sbg-rbl.org
 sbg.sbg-rbl.org
-blackholes.scconsult.com
 rbl.schulte.org
 bl.scientificspam.net
 blacklist.sci.kun.nl
@@ -194,7 +194,6 @@ badnets.spameatingmonkey.net
 bl.spameatingmonkey.net
 netbl.spameatingmonkey.net
 netblockbl.spamgrouper.com
-netblockbl.spamgrouper.to
 singlebl.spamgrouper.com
 zen.spamhaus.org
 feb.spamlab.com
@@ -239,3 +238,4 @@ db.wpbl.info
 dnsbl.zapbl.net
 rbl.zenon.net
 ipbl.zeustracker.abuse.ch
+bad.psky.me
