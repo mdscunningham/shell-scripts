@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2016-04-24
+# Updated: 2016-06-22
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -343,6 +343,11 @@ fi
 section_header "Queue: Auth Users"
 find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename 'auth_id' 2>/dev/null\
  | $READLIMIT | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+
+## Queue Local Users
+section_header "Queue: Auth Local Users"
+find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | xargs grep --no-filename -A1 'authenticated_local_user' 2>/dev/null\
+ | $READLIMIT | grep -v 'authenticated_local_user' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Subjects
 section_header "Queue: Subjects"
