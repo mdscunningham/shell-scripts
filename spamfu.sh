@@ -387,7 +387,7 @@ mail_php(){
 echo -e "\n$(php -v | head -1)\n"
 date_lookup $PHPLOG
 
-if [[ -f $PHPCONF && -n $(grep '^mail.add_x_header.*On' $PHPCONF) ]]; then
+if [[ -f $PHPCONF && -n $(grep -Ei 'mail.add_x_header.*(on|1)' $PHPCONF) ]]; then
   echo "php.ini : $PHPCONF"
   echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
   echo -e "X_Header: Enabled\n"
@@ -404,6 +404,35 @@ elif [[ ! -f $PHPCONF ]]; then
   echo "Could not find php.ini file."
 else
   echo "X_Header: Disabled"
+
+  ## Prompt and configure php_maillog if confirmed.
+  read -p "Would you like to enable add_x_header and the php_maillog? " yn;
+  case $yn in
+    y|Y|yes|Yes|YES)
+      if [[ "$(php -v | grep -oP 'PHP 5.[^12]')" != '' ]]; then
+        if [[ -z $(egrep '(^mail.add_x_header|^mail.log)' $PHPCONF) ]]; then
+          cp -a $PHPCONF{,.pre_php_mail_log_addition};
+          perl -n -i -e 'print; print "mail.add_x_header = On\nmail.log = /var/log/php_maillog\n" if /(\[mail function\])/' $PHPCONF;
+          echo -e "\nVariables Added to [mail function]:\n";
+          egrep '(^mail.add_x_header = On|^mail.log = /var/log/php_maillog)' $PHPCONF;
+
+          touch /var/log/php_maillog && chmod 666 /var/log/php_maillog; echo -e "\nLog File Created:";
+          ls -l /var/log/php_maillog | awk '{print $1,$NF}';
+
+          echo -e "/var/log/php_maillog {\n\tcompress\n\tcreate\n\tweekly\n\tmissingok\n\trotate 4\n\tpostrotate\n\t/usr/sbin/httpd graceful\n\tendscript\n}" > /etc/logrotate.d/php_maillog
+          echo -e "\nLogrotate configured for/var/log/php_maillog"
+
+          echo -e "\nRestarting httpd Service"
+          if [[ -d /etc/systemd ]]; then systemctl restart httpd 2>/dev/null; else /etc/init.d/httpd restart 2>/dev/null; fi
+        else
+          echo -e "\nNothing Done.\nCheck /usr/local/lib/php.ini:\n";
+          egrep -n '(mail.add_x_header|mail.log)' $PHPCONF;
+        fi;
+      else
+        echo -e "\nNothing Done.\nThis only works with 5.3 or higher";
+      fi ;;
+    *) echo "Okay, quitting for now." ;;
+  esac
 fi
 }
 
