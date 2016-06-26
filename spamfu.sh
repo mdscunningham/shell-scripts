@@ -37,8 +37,8 @@ section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 #-----------------------------------------------------------------------------#
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
-PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}' | tail -1);
-if [[ -n $PHPCONF ]]; then PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF); fi
+PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
+if [[ -n $PHPCONF ]]; then PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF | tail -1); fi
 QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
 l=1; p=0; q=0; full_log=0; fast_mode='';
 LINECOUNT='1000000'
