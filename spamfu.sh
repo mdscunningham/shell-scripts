@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2016-06-22
+# Updated: 2016-06-26
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -61,7 +61,7 @@ select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Qu
       results_prompt $l; break ;;
 
     "Analyze PHP Logs")
-      l=0; p=1; q=0; log_select_menu "${PHPLOG}";
+      l=0; p=1; q=0; log_select_menu ${PHPLOG};
       if [[ $p != '0' && -f $PHPLOG && ! $(file -b $PHPLOG) =~ zip ]]; then line_count_menu; fi
       results_prompt $p; break;;
 
