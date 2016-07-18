@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2016-06-26
+# Updated: 2016-07-17
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -37,8 +37,8 @@ section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 #-----------------------------------------------------------------------------#
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
-PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}');
-if [[ -n $PHPCONF ]]; then PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF | tail -1); fi
+PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}' | head -1);
+if [[ -n $PHPCONF ]]; then PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF | tail -1 | tr -d \"\'); fi
 QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
 l=1; p=0; q=0; full_log=0; fast_mode='';
 LINECOUNT='1000000'
