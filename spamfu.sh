@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2016-07-17
+# Updated: 2016-07-31
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -242,8 +242,8 @@ echo; set_decomp $LOGFILE;
 
 ## Count of messages sent by scripts
 section_header "Directories"
-$DECOMP $LOGFILE | grep 'cwd=' | grep -v 'exim -bp' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g'\
- | awk '!/spool|error/ {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
+$DECOMP $LOGFILE | grep 'cwd=' | grep -Eiv 'spool|error|exim' | perl -pe 's/.*cwd=(\/.*?)\ .*/\1/g'\
+ | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT
 
 # Count of messages per "Account/Domains"
