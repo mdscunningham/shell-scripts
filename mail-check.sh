@@ -48,8 +48,8 @@ while getopts af:i:qvh option; do
 
     # Help Output and quit
     h|*)
-      echo -e "\n  Usage: mailcheck [options]\n
-    -a ... check all public IPs on server;
+      echo -e "\n  ${BRIGHT}Usage:${NORMAL} mailcheck [options] [arguments]\n
+    -a ... check all public IPs on server
     -f ... Set the <FROM> address for testing
     -i ... Comma separated list of <IPs> for testing
     -q ... Quiet (don't print web links)
@@ -68,7 +68,7 @@ fi
 # Check to see if using NAT IPs behind HW Firewall
 if [[ $ip_list =~ ^172\. ]]; then
   ipaddr=$(curl -s http://ip.robotzombies.net);
-  echo -e "\nServer appears to be NAT'd behind a firewall.\nThe public IP appears to be: $ipaddr\n";
+  echo -e "\nServer appears to be NAT'd behind a firewall.\nThe public IP appears to be: $ipaddr";
 fi
 
 for ipaddr in $ip_list; do
