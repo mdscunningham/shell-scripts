@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-11-30
-# Updated: 2016-03-07
+# Updated: 2016-08-07
 #
 # Purpose: Gather IP/DNS/Mail informaion for some or all domains on a server
 #
@@ -126,6 +126,9 @@ for domain in $domainList; do
     if [[ ($vhostIP == $dnsIP) && -z $notLive ]]; then
       printf "$FMT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
     elif [[ $vhostIP != $dnsIP ]]; then
+      # Check if the domain is using a masking service and then report that
+      masking=$(curl -s ipinfo.io/$dnsIP | grep -Eio 'cloudflare|incapsula')
+      if [[ $masking ]]; then dnsIP=$masking; fi
       printf "$HIGHLIGHT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
     fi
   fi
