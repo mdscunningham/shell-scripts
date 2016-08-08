@@ -127,7 +127,7 @@ for domain in $domainList; do
       printf "$FMT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
     elif [[ $vhostIP != $dnsIP ]]; then
       # Check if the domain is using a masking service and then report that
-      masking=$(curl -s ipinfo.io/$dnsIP | grep -Eio 'cloudflare|incapsula')
+      masking=$(curl -s ipinfo.io/$dnsIP | grep -Eio 'cloudflare|incapsula|sucuri')
       if [[ $masking ]]; then dnsIP=$masking; fi
       printf "$HIGHLIGHT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
     fi
