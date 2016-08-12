@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-20
-# Updated: 2016-04-03
+# Updated: 2016-08-12
 #
 #
 #!/bin/bash
@@ -30,7 +30,7 @@ for domain in $(echo $D | sed 's/http:\/\///g;s/\// /g'); do
 
   # Lookup SRV records for live.com
   for SRV in '_sip._tls' '_sipfederationtls._tcp'; do
-    dig $OPTS srv $SRV.$domain | grep -v 'CNAME'
+    dig $OPTS srv $SRV.$domain | grep 'SRV'
   done
 
   # Lookup rDNS/PTR for the IP
