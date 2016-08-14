@@ -3,28 +3,42 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-20
-# Updated: 2016-08-12
+# Updated: 2016-08-14
 #
 #
 #!/bin/bash
 
 dash (){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
 OPTS="+time=2 +tries=2 +short +noshort"
+verbose=''
 
+# Check for verbose flag
+if [[ $1 == '-v' ]]; then verbose=1; shift; fi
+
+# Prompt for input if none provided
 if [[ -z "$@" ]]; then
   read -p "Domain Name: " D;
 else
   D="$@";
 fi;
 
-for domain in $(echo $D | sed 's/http:\/\///g;s/\// /g'); do
-  echo -e "\nDNS Summary: $domain\n$(dash 79)";
+# Clean up inputs and start loop
+for domain in $(echo $D | sed 's/\///g;s/http://g;s/https://g'); do
+  echo -e "\nDNS Summary: $domain\nIntoDNS: http://www.intodns.com/$domain"
+
+  # Attempt to check whois for nameservers and registrar if verbose
+  if [[ $verbose ]]; then
+    echo -ne "Whois-NS: ...working...\r"
+    whois $domain | awk 'BEGIN{printf "Whois-NS: "};($NF !~ /.ervers?:/) && /.ame.?.erver|DNS:/{printf $NF" "};/egistrar:/ {registrar=$0}; END{printf "\n%s\n",registrar}'
+  fi
+
+  echo -e "$(dash 80)";
   for record in a aaaa ns mx txt soa; do
     if [[ $record == 'ns' || $record == 'mx' ]]; then
       dig $OPTS $record $domain | grep -v root \
-      | while read result; do echo "$result -> "$(dig +short $(echo $result | awk '{print $NF}')); done
+      | while read result; do echo "$result -> "$(dig +short $(echo $result | awk '{print $NF}')); done | sort -k5
     else
-      dig $OPTS $record $domain
+      dig $OPTS $record $domain | grep -v '^;;'
     fi
   done;
 
@@ -34,6 +48,7 @@ for domain in $(echo $D | sed 's/http:\/\///g;s/\// /g'); do
   done
 
   # Lookup rDNS/PTR for the IP
-  dig $OPTS -x $(dig +time=2 +tries=2 +short $domain)
-  echo;
+  dig $OPTS -x $(dig +time=2 +tries=2 +short $domain) 2>/dev/null
+
 done
+echo;
