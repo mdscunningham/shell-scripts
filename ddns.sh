@@ -24,12 +24,16 @@ fi;
 
 # Clean up inputs and start loop
 for domain in $(echo $D | sed 's/\///g;s/http://g;s/https://g'); do
-  echo -e "\nDNS Summary: $domain\nIntoDNS: http://www.intodns.com/$domain"
+  echo -e "\nDNS Summary: $domain\nIntoDNS: http://www.intodns.com/check/?domain=$domain"
 
   # Attempt to check whois for nameservers and registrar if verbose
   if [[ $verbose ]]; then
     echo -ne "Whois-NS: ...working...\r"
-    whois $domain | awk 'BEGIN{printf "Whois-NS: "};($NF !~ /.ervers?:/) && /.ame.?.erver|DNS:/{printf $NF" "};/egistrar:/ {registrar=$0}; END{printf "\n%s\n",registrar}'
+    if [[ $domain =~ \.edu$ ]]; then
+      echo -ne "Whois-NS: "; whois $domain | awk '/.ame.?.erver.?/,/^$/ {print}' | tail -n+2 | awk '{printf $1" "}'; echo
+    else
+      whois $domain | awk 'BEGIN{printf "Whois-NS: "}; ($NF !~ /.ervers?:/) && /.ame.?.erver|DNS:/{printf $NF" "}; /egistrar:/ {registrar=$0}; END{printf "\n%s\n",registrar}' | tr -d '\r'
+    fi
   fi
 
   echo -e "$(dash 80)";
