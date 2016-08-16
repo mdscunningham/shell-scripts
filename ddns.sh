@@ -10,6 +10,7 @@
 
 dash (){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
 OPTS="+time=2 +tries=2 +short +noshort"
+OPTS2="+time=2 +tries=2 +short"
 localns=$(awk '/nameserver/ {print $2}' /etc/resolv.conf | head -1)
 all=''
 fullwhois=''
@@ -60,7 +61,12 @@ if [[ ! $fullwhois ]]; then
 
   # Use predefined list of resolvers for lookups (all option)
   if [[ $all ]]; then
-    nameserver="@$localns @google-public-dns-a.google.com @$(dig ns +short $domain | head -1) @$(dig ns +short $domain | tail -1) @ns1.liquidweb.com";
+    nameserver="@$localns @google-public-dns-a.google.com @ns1.liquidweb.com";
+    # Check resolvers listed as nameservers in DNS except ns/ns1.liquidweb.com
+    if [[ -n $(dig ns $OPTS $domain | grep -Ev 'liquidweb.com|sourcedns.com') ]]; then
+      nameserver+=" @$(dig ns $OPTS2 $domain | sort | head -1)"
+      nameserver+=" @$(dig ns $OPTS2 $domain | sort | tail -1)"
+    fi
   fi
 
   # Use locally defined resolver if none specified
@@ -90,7 +96,7 @@ if [[ ! $fullwhois ]]; then
     done;
 
     # Lookup rDNS/PTR for the IP
-    dig $OPTS -x $(dig +time=2 +tries=2 +short $domain) $resolver 2>/dev/null | grep -v '^;;'
+    dig $OPTS -x $(dig $OPTS2 $domain) $resolver 2>/dev/null | grep -v '^;;'
   done;
 
 else
