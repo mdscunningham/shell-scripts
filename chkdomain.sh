@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-11-30
-# Updated: 2016-08-07
+# Updated: 2016-08-16
 #
 # Purpose: Gather IP/DNS/Mail informaion for some or all domains on a server
 #
@@ -52,8 +52,21 @@ while getopts a:cd:mnwh option; do
     -n ... Only list domains NOT pointed to the server
     -m ... Only list main domains for each account
     -w ... Wide mode (60 character columns; default is 40)
-
     -h ... Print this help and quit
+
+  Examples:
+
+  Show main domains only
+    $0 -m
+
+  Show only domains not pointed to the server
+    $0 -n
+
+  Perform additional DNS lookup (for mx records)
+    $0 -d mx
+
+  Output in CSV format (and send to file, for use as spreadsheet)
+    $0 -c > domains-report-\$(hostname)-\$(date +%F).csv
        "; exit ;;
   esac
 done

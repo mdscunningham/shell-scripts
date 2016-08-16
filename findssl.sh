@@ -28,8 +28,17 @@ case $1 in
     -i ... <ipaddress> for SSL connections
     -l ... Print just web links
     -q ... Hide web links
-    -p ... <port> for SSL connections\n
-    -h ... Print this help and quit\n"; exit;;
+    -p ... <port> for SSL connections
+    -h ... Print this help and quit\n
+  Examples:\n
+  Check SSL loading for https (multiple domains)
+    $0 <dom1> <dom2> <dom3> ...\n
+  Check SSL for domain at specified port
+    $0 -p <port> <domain>\n
+  Check SSL for domain at specified IP address
+    $0 -i <ipaddress> <domain>\n
+  Print just web links (and just one checker service)
+    $0 -l <dom1> <dom2> <dom3> | grep shopper\n"; exit;;
 esac;
 shift;
 done

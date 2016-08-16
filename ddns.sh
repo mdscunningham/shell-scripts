@@ -1,12 +1,12 @@
-#							   +----+----+----+----+
+#!/bin/bash						   +----+----+----+----+
 # 							   |    |    |    |    |
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-20
-# Updated: 2016-08-15
+# Updated: 2016-08-16
 #
 #
-#!/bin/bash
+# Purpose: Quick DNS Summary for domain to confirm server/mail/rdns/ns/etc
 
 dash (){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
 OPTS="+time=2 +tries=2 +short +noshort"
@@ -31,8 +31,15 @@ while true; do
     -a ... Check DNS records at default list of resolvers
     -n ... <ns1,ns2,ns3...> to us for DNS records lookups
     -v ... Lookup DNS records and Whois Nameservers/Registrar
-    -w ... Provide a whois summary instead of DNS records\n
-    -h ... Print this help and quit\n"; exit ;;
+    -w ... Provide a whois summary instead of DNS records
+    -h ... Print this help and quit\n
+  Examples:\n
+  DNS Summary with additional WHOIS information
+    $0 -v <dom1>\n
+  DNS Summary from specified resolver for multiple domains
+    $0 -n 8.8.8.8 <dom1> <dom2>\n
+  WHOIS Summary for multiple domains
+    $0 -w <dom1> <dom2>\n"; exit ;;
   esac;
   shift;
 done;
