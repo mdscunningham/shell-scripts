@@ -3,17 +3,38 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-20
-# Updated: 2016-08-14
+# Updated: 2016-08-15
 #
 #
 #!/bin/bash
 
 dash (){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
 OPTS="+time=2 +tries=2 +short +noshort"
+localns=$(awk '/nameserver/ {print $2}' /etc/resolv.conf | head -1)
+all=''
+fullwhois=''
+nameserver=''
 verbose=''
 
-# Check for verbose flag
-if [[ $1 == '-v' ]]; then verbose=1; shift; fi
+# Argument parsing with getopt
+OPTIONS=$(getopt -o "an:vwh" -- "$@")
+eval set -- "$OPTIONS"
+while true; do
+  case $1 in
+    -a) all=1 ;;
+    -n) nameserver=$(echo $2 | sed "s/^\(.\)/@\1/g;s/,/ @/g"); shift ;;
+    -v) verbose=1 ;;
+    -w) fullwhois=1 ;;
+    --) shift; break ;;
+    -h) echo -e "\n  Usage: $0 [options] [arguments]
+    -a ... Check DNS records at default list of resolvers
+    -n ... <ns1,ns2,ns3...> to us for DNS records lookups
+    -v ... Lookup DNS records and Whois Nameservers/Registrar
+    -w ... Provide a whois summary instead of DNS records\n
+    -h ... Print this help and quit\n"; exit ;;
+  esac;
+  shift;
+done;
 
 # Prompt for input if none provided
 if [[ -z "$@" ]]; then
@@ -23,36 +44,59 @@ else
 fi;
 
 # Clean up inputs and start loop
-for domain in $(echo $D | sed 's/\///g;s/http://g;s/https://g'); do
+for domain in $(echo $D | sed 's/\///g;s/^http://g;s/^https://g'); do
   echo -e "\nDNS Summary: $domain\nIntoDNS: http://www.intodns.com/check/?domain=$domain"
 
+if [[ ! $fullwhois ]]; then
   # Attempt to check whois for nameservers and registrar if verbose
   if [[ $verbose ]]; then
     echo -ne "Whois-NS: ...working...\r"
     if [[ $domain =~ \.edu$ ]]; then
-      echo -ne "Whois-NS: "; whois $domain | awk '/.ame.?.erver.?/,/^$/ {print}' | tail -n+2 | awk '{printf $1" "}'; echo
+      echo -ne "Whois-NS: "; whois $domain  | tr -d '\r' | awk '/.ame.?.erver.?/,/^$/ {print}' | tail -n+2 | awk '{printf $1" "}'; echo
     else
-      whois $domain | awk 'BEGIN{printf "Whois-NS: "}; ($NF !~ /.ervers?:/) && /.ame.?.erver|DNS:/{printf $NF" "}; /egistrar:/ {registrar=$0}; END{printf "\n%s\n",registrar}' | tr -d '\r'
+      whois $domain | tr -d '\r' | awk 'BEGIN{printf "Whois-NS: "}; ($NF !~ /.ervers?:/) && /.ame.?.erver|DNS:/{printf $NF" "}; /egistrar:/ {registrar=$0}; END{printf "\n%s\n",registrar}'
     fi
   fi
 
-  echo -e "$(dash 80)";
-  for record in a aaaa ns mx txt soa; do
-    if [[ $record == 'ns' || $record == 'mx' ]]; then
-      dig $OPTS $record $domain | grep -v root \
-      | while read result; do echo "$result -> "$(dig +short $(echo $result | awk '{print $NF}')); done | sort -k5
+  # Use predefined list of resolvers for lookups (all option)
+  if [[ $all ]]; then
+    nameserver="@$localns @google-public-dns-a.google.com @$(dig ns +short $domain | head -1) @$(dig ns +short $domain | tail -1) @ns1.liquidweb.com";
+  fi
+
+  # Use locally defined resolver if none specified
+  if [[ ! $nameserver ]]; then nameserver=$localns; fi
+
+  for resolver in $nameserver; do
+    # Print dividers between headers and dns results
+    if [[ ! $nameserver == $localns ]]; then
+      echo -e "\n$(dash 80)\nDNS Records from :: $resolver\n$(dash 60)";
     else
-      dig $OPTS $record $domain | grep -v '^;;'
+      echo -e "$(dash 80)";
     fi
+
+    # Loop through DNS record lookups
+    for record in a aaaa ns mx txt soa; do
+      if [[ $record == 'ns' || $record == 'mx' ]]; then
+        dig $OPTS $record $domain $resolver | grep -v root \
+        | while read result; do echo "$result -> "$(dig +short $(echo $result | awk '{print $NF}') $resolver); done | sort -k5
+      else
+        dig $OPTS $record $domain $resolver
+      fi
+    done;
+
+    # Lookup SRV records for live.com
+    for SRV in '_sip._tls' '_sipfederationtls._tcp'; do
+      dig $OPTS srv $SRV.$domain $resolver | grep 'SRV'
+    done;
+
+    # Lookup rDNS/PTR for the IP
+    dig $OPTS -x $(dig +time=2 +tries=2 +short $domain) $resolver 2>/dev/null | grep -v '^;;'
   done;
 
-  # Lookup SRV records for live.com
-  for SRV in '_sip._tls' '_sipfederationtls._tcp'; do
-    dig $OPTS srv $SRV.$domain | grep 'SRV'
-  done
+else
+  echo -e "$(dash 80)";
+  whois $domain | tr -d '\r' | grep -Ei 'Name.?Server:|DNS:|Registrar:|Status:|Expir.*:|Updated';
+fi
 
-  # Lookup rDNS/PTR for the IP
-  dig $OPTS -x $(dig +time=2 +tries=2 +short $domain) 2>/dev/null
-
-done
+done;
 echo;
