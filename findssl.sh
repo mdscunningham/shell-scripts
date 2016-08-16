@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2016-01-25
+# Updated: 2016-08-16
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -25,10 +25,10 @@ case $1 in
   -p ) P=$2; shift ;;
   -- ) shift; break ;; # More Magic
   -h|* ) echo -e "\n  Usage: $0 [options] <dom1> <dom2> ...
-    -i ... <ipaddress>
+    -i ... <ipaddress> for SSL connections
     -l ... Print just web links
-    -q ... Don't print web links
-    -p ... <port>\n
+    -q ... Hide web links
+    -p ... <port> for SSL connections\n
     -h ... Print this help and quit\n"; exit;;
 esac;
 shift;
