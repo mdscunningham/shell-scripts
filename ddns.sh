@@ -1,4 +1,5 @@
-#!/bin/bash						   +----+----+----+----+
+#!/bin/bash
+#							   +----+----+----+----+
 # 							   |    |    |    |    |
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
