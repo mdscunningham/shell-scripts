@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-20
-# Updated: 2016-08-16
+# Updated: 2016-08-18
 #
 #
 # Purpose: Quick DNS Summary for domain to confirm server/mail/rdns/ns/etc
@@ -30,7 +30,7 @@ while true; do
     --) shift; break ;;
     -h) echo -e "\n  Usage: $0 [options] [arguments]
     -a ... Check DNS records at default list of resolvers
-    -n ... <ns1,ns2,ns3...> to us for DNS records lookups
+    -n ... <ns1,ns2,ns3...> to use for DNS records lookups
     -v ... Lookup DNS records and Whois Nameservers/Registrar
     -w ... Provide a whois summary instead of DNS records
     -h ... Print this help and quit\n
@@ -38,7 +38,7 @@ while true; do
   DNS Summary with additional WHOIS information
     $0 -v <dom1>\n
   DNS Summary from specified resolver for multiple domains
-    $0 -n 8.8.8.8 <dom1> <dom2>\n
+    $0 -n 8.8.8.8,4.2.2.2 <dom1> <dom2>\n
   WHOIS Summary for multiple domains
     $0 -w <dom1> <dom2>\n"; exit ;;
   esac;
