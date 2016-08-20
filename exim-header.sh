@@ -1,3 +1,14 @@
+#!/bin/bash
+#                                                          +----+----+----+----+
+#                                                          |    |    |    |    |
+# Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
+#                                                          +----+----+----+----+
+# Created: 2016-05-24
+# Updated: 2015-06-21
+#
+# Purpose: Count destination addresses for mail in queue, finding bulk senders
+#          To be included in the queue processesing for spamfu, but very slow
+
 ## Queue Bulk Senders
 
 # section_header "Queue: Bulk-Senders"
