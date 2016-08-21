@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-20
-# Updated: 2016-08-18
+# Updated: 2016-08-21
 #
 #
 # Purpose: Quick DNS Summary for domain to confirm server/mail/rdns/ns/etc
@@ -97,6 +97,9 @@ if [[ ! $fullwhois ]]; then
         dig $OPTS $record $domain $resolver
       fi
     done;
+
+    # Check for default DKIM records
+    dig $OPTS txt default._domainkey.$domain $resolver | grep 'TXT'
 
     # Lookup SRV records for live.com
     for SRV in '_sip._tls' '_sipfederationtls._tcp'; do
