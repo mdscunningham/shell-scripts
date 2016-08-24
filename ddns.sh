@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-20
-# Updated: 2016-08-21
+# Updated: 2016-08-23
 #
 #
 # Purpose: Quick DNS Summary for domain to confirm server/mail/rdns/ns/etc
@@ -53,7 +53,7 @@ else
 fi;
 
 # Clean up inputs and start loop
-for domain in $(echo $D | sed 's/\///g;s/^http://g;s/^https://g'); do
+for domain in $(echo $D | sed 's/\///g;s/http://g;s/https://g'); do
   echo -e "\nDNS Summary: $domain\nIntoDNS: http://www.intodns.com/check/?domain=$domain"
 
 if [[ ! $fullwhois ]]; then
