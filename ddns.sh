@@ -98,6 +98,7 @@ if [[ ! $fullwhois ]]; then
       fi
     done;
 
+  if [[ $verbose ]]; then
     # Check for default DKIM records
     dig $OPTS txt default._domainkey.$domain $resolver | grep 'TXT'
 
@@ -105,6 +106,7 @@ if [[ ! $fullwhois ]]; then
     for SRV in '_sip._tls' '_sipfederationtls._tcp'; do
       dig $OPTS srv $SRV.$domain $resolver | grep 'SRV'
     done;
+  fi
 
     # Lookup rDNS/PTR for the IP
     dig $OPTS -x $(dig $OPTS2 $domain) $resolver 2>/dev/null | grep -v '^;;'
