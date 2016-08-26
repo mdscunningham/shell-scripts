@@ -16,7 +16,7 @@
 if [[ -n $1 && $1 != "-h" ]]; then
   if [[ -z $2 ]]; then read -p "Hostname: " host; else host=$2; fi
   if [[ -z $3 ]]; then read -p "Email Address: " emailaddr; else emailaddr=$3; fi
-  if [[ -z $4 ]]; then read -p "Password: " emailpass; else emailpass=$4; fi
+  if [[ -z $4 ]]; then read -sp "Password: " emailpass; else emailpass=$4; fi
 fi
 
 echo
@@ -35,7 +35,8 @@ case $1 in
 	expect completed
 	  send \"tag LOGOUT\r\"
 	interact
-        ";;
+        " 2> /dev/null ;;
+
   -p|--pop    )
 	#echo -e "\n  1) USER <address>\n  2) PASS <password>\n  3) STAT\n  4) LIST\n  5) RETR 1\n  6) QUIT\n";
 	echo | openssl s_client -connect $host:995 -cipher "EDH" 2>/dev/null | grep "Server Temp Key"; echo
@@ -52,7 +53,8 @@ case $1 in
         expect .
           send \"QUIT\r\"
 	interact
-        ";;
+        " 2> /dev/null ;;
+
   -s|--smtp   )
 	#echo -e "\n  1) HELO $host\n  2) MAIL FROM:<address>\n  3) RCPT TO:<address>\n  4) DATA\n  5) .\n  6) QUIT\n";
 	echo | openssl s_client -starttls smtp -connect $host:587 -cipher "EDH" 2>/dev/null | grep "Server Temp Key"; echo
@@ -71,13 +73,13 @@ case $1 in
 	expect 235
 	  send \"QUIT\r\"
 	interact
-	"
-	;;
+	" 2> /dev/null ;;
+
   -h|--help|* ) echo -e "
  Usage: _emailtest [option] [hostname] [address] [password]\n
     -i|--imap ... Test IMAP-SSL to [hostname]
     -p|--pop .... Test POP3-SSL to [hostname]
-    -s|--smtp ... Test SMTP-TLS to [hostname]"
-    ;;
+    -s|--smtp ... Test SMTP-TLS to [hostname]" ;;
+
 esac
 echo
