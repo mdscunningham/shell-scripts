@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-11-01
-# Updated: 2015-11-03
+# Updated: 2016-08-26
 #
 #
 # Check/Repair/Optimize all tables in either one or more databases.
@@ -27,7 +27,7 @@ case $1 in
   Options:
     -a ... Repeat for all dbs (Excludes 'mysql' and 'schema' datbases)
     -c ... Check tables of db
-    -o ... Optimie tables of db
+    -o ... Optimize tables of db
     -r ... Repair tables of db
     -h ... Print help and quit
 "; exit ;; # Print help info
