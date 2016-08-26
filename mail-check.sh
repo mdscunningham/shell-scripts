@@ -1,18 +1,14 @@
+#!/bin/bash
 #                                                          +----+----+----+----+
 #                                                          |    |    |    |    |
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-03-09
-# Updated: 2016-07-31
+# Updated: 2016-08-23
 #
-#
-#!/bin/bash
-
-###
+# Purpose: Checking blacklists both public and private by sending SMTP connections
 #
 # Original concept, Brian Nelson; greatly expanded by me.
-#
-###
 
 # Taste the rainbow
       BLACK=$(tput setaf 0);        RED=$(tput setaf 1)
@@ -48,7 +44,7 @@ while getopts af:i:qvh option; do
 
     # Help Output and quit
     h|*)
-      echo -e "\n  ${BRIGHT}Usage:${NORMAL} mailcheck [options] [arguments]\n
+      echo -e "\n  ${BRIGHT}Usage:${NORMAL} $0 [options] [arguments]\n
     -a ... check all public IPs on server
     -f ... Set the <FROM> address for testing
     -i ... Comma separated list of <IPs> for testing
@@ -88,7 +84,7 @@ for ipaddr in $ip_list; do
   echo -e "\n$(dash 80 =)\n${WHITE}  Swaks Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
 
   # Send test emails with swaks to check for errors
-  for domain in aol.com att.net comcast.net earthlink.com gmail.com live.com verizon.net yahoo.com; do
+  for domain in aol.com att.net comcast.net earthlink.com gmail.com live.com rr.com verizon.net yahoo.com; do
     mx=$(dig mx +short ${domain} | awk 'END {print $NF}')
     if [[ $domain =~ gmail.com ]]; then emailAddress="no-reply@gmail.com"; else emailAddress="postmaster@${domain}"; fi
     result=$(swaks -4 -q RCPT --server $mx -t $emailAddress $from_addr -li $ipaddr 2>&1 | egrep ' 4[25][01]| 5[257][0-4]';)
