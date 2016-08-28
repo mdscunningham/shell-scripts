@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-02-08
-# Updated: 2016-01-27
+# Updated: 2016-08-28
 #
 #
 #!/bin/bash
@@ -55,14 +55,14 @@ case $1 in
 	interact
         " 2> /dev/null ;;
 
-  -s|--smtp   )
+  -s|--smtp-tls   )
 	#echo -e "\n  1) HELO $host\n  2) MAIL FROM:<address>\n  3) RCPT TO:<address>\n  4) DATA\n  5) .\n  6) QUIT\n";
 	echo | openssl s_client -starttls smtp -connect $host:587 -cipher "EDH" 2>/dev/null | grep "Server Temp Key"; echo
 	newuser=$(echo -n $emailaddr | base64)
 	newpass=$(echo -n $emailpass | base64)
 	expect -c "
 	  spawn openssl s_client -starttls smtp -connect $host:587 -quiet
-	expect 250
+	expect -re (250|220)
 	  send \"EHLO $host\r\"
 	expect 250
 	  send \"AUTH LOGIN\r\"
@@ -75,11 +75,31 @@ case $1 in
 	interact
 	" 2> /dev/null ;;
 
-  -h|--help|* ) echo -e "
- Usage: _emailtest [option] [hostname] [address] [password]\n
-    -i|--imap ... Test IMAP-SSL to [hostname]
-    -p|--pop .... Test POP3-SSL to [hostname]
-    -s|--smtp ... Test SMTP-TLS to [hostname]" ;;
+  -S|--smtp-ssl   )
+        #echo -e "\n  1) HELO $host\n  2) MAIL FROM:<address>\n  3) RCPT TO:<address>\n  4) DATA\n  5) .\n  6) QUIT\n";
+        echo | openssl s_client -connect $host:465 -cipher "EDH" 2>/dev/null | grep "Server Temp Key"; echo
+        newuser=$(echo -n $emailaddr | base64)
+        newpass=$(echo -n $emailpass | base64)
+        expect -c "
+          spawn openssl s_client -connect $host:465 -quiet
+        expect -re (250|220)
+          send \"EHLO $host\r\"
+        expect 250
+          send \"AUTH LOGIN\r\"
+        expect 334
+          send \"$newuser\r\"
+        expect 334
+          send \"$newpass\r\"
+        expect 235
+          send \"QUIT\r\"
+        interact
+        " 2> /dev/null ;;
+
+  -h|--help|* ) echo -e " Usage: $(basename $0) [option] [hostname] [address] [password]\n
+    -i|--imap ...... Test IMAP-SSL to [hostname]
+    -p|--pop ....... Test POP3-SSL to [hostname]
+    -s|--smtp-tls .. Test SMTP-TLS to [hostname]
+    -S|--smtp-ssl .. Test SMTP-SSL to [hostname]" ;;
 
 esac
 echo
