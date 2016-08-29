@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-02-08
-# Updated: 2016-08-28
+# Updated: 2016-08-29
 #
 #
 #!/bin/bash
@@ -98,6 +98,12 @@ if [[ -n $1 ]]; then
   if [[ -z $3 ]]; then read -sp "Password: " emailpass; else emailpass=$3; fi
 fi
 
+# Check if expect is installed
+if [[ ! -x $(which expect 2>/dev/null) ]]; then
+  echo -e "\nThis script requires the expect package.\n"
+  echo -e "Try one of the following:\n  sudo yum install expect\n  sudo apt-get install expect\n"; exit 2;
+fi
+
 # Set the connection method for ssl/tls if selected
 if [[ $secure ]]; then
   domain=$(echo $emailaddr | cut -d@ -f2)
@@ -110,7 +116,7 @@ if [[ $secure ]]; then
 
   connect="openssl s_client $tlsopts -crlf $SNI -connect $host:$port $showcerts"
 else
-  # Check the utility to use for non-ssl connections
+  # Check the utility to use for non-ssl connections 
   if [[ -x $(which nc 2>/dev/null) ]]; then
     connect="nc -C $host $port"
   elif [[ -x $(which ncat 2>/dev/null) ]]; then
@@ -120,7 +126,7 @@ else
   elif [[ -x $(which telnet 2>/dev/null) ]]; then
     connect="telnet $host $port"
   else
-    echo -e "\nThis script requires telnet or netcat to continue.\n"
+    echo -e "\nThis script requires telnet or netcat for insecure connections.\n"
     echo -e "Try one of the following:\n  sudo yum install netcat\n  sudo yum install telnet\n  sudo apt-get install netcat\n  sudo apt-get install telnet\n"; exit 2;
   fi
 fi
