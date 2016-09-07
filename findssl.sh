@@ -74,7 +74,9 @@ for domain in $@; do
     # Connect to the IP at port; get SSL; Decode SSL; clean up output and print
     echo | openssl s_client -connect $I:$P $SNI 2>/dev/null | openssl x509 -text -noout 2>/dev/null | egrep -i 'subject:|dns:|issuer:'\
      | sed 's/DNS:/\nDNS:/;s/.*Subject: /\nSubject:\n/;s/.*Issuer: /Issuer:\n/;s/, /\n/g;s/[=:]/: /g;s/\/email/\nemail/g;s/\/busi/\nBusi/g;s/\/seri/\nSeri/g;s/\/1\.3\.6\./\n1\.3\.6\./g';
-    echo | openssl s_client -connect $I:$P $SNI 2>/dev/null | openssl x509 -text -noout | grep Signature.Algorithm | head -1 | sed 's/.*Sig/\nSig/g'
+    echo
+    echo | openssl s_client -connect $I:$P $SNI -cipher "EDH" 2>/dev/null | grep "Server Temp Key";
+    echo | openssl s_client -connect $I:$P $SNI 2>/dev/null | openssl x509 -text -noout | grep Signature.Algorithm | head -1 | sed 's/.*Sig/Sig/g'
     echo | openssl s_client -connect $I:$P $SNI 2>/dev/null | openssl x509 -text -noout | grep Not.After | sed 's/.*Not.After./Expires/g'
     echo;
 
