@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-11-01
-# Updated: 2016-08-26
+# Updated: 2016-09-04
 #
 #
 # Check/Repair/Optimize all tables in either one or more databases.
@@ -38,21 +38,25 @@ done
 # Database list if not already set to all databases
 if [[ -n "$@" ]]; then dblist="$@"; elif [[ -z "$@" && $all != '1' ]]; then read -p "Database: " dblist; fi
 
+# Create log file if it doesn't exist, and add header for current run
+if [[ ! -f  mysql_repair_$(date +%F).log ]]; then touch  mysql_repair_$(date +%F).log; fi
+echo -e "\nMySQL Database Repair Run :: $(date)\n" >> mysql_repair_$(date +%F).log
+
 # Start selected operations
 echo; for database in $dblist; do
   for table in $(mysql -Ne 'show tables' $database); do
     printf "%-60s" "$database.$table"
     if [[ $check == 1 ]]; then
       echo -n "[ Check ]";
-      mysql -Ne "check table $table" $database > /dev/null;
+      mysql -Ne "check table $table" $database 2>&1 >> mysql_repair_$(date +%F).log;
     fi
     if [[ $repair == 1 ]]; then
       echo -n "[ Repair ]";
-      mysql -Ne "repair table $table" $database > /dev/null;
+      mysql -Ne "repair table $table" $database 2>&1 >> mysql_repair_$(date +%F).log;
     fi
     if [[ $optimize == 1 ]]; then
       echo -n "[ Optimize ]";
-      mysql -Ne "optimize table $table" $database > /dev/null;
+      mysql -Ne "optimize table $table" $database 2>&1 >> mysql_repair_$(date +%F).log;
     fi
     echo
   done; echo
