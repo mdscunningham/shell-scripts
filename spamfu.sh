@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2016-07-31
+# Updated: 2016-09-19
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -52,10 +52,10 @@ DAYS=''; VERBOSE=0;
 main_menu(){
 PS3="Enter selection: "; clear
 echo -e "$(dash 80 =)\nCurrent Queue: $(exim -bpc)\n$(dash 40 -)\n\nWhat would you like to do?\n$(dash 40 -)"
-select OPTION in "Analyze Exim Logs" "Analyze PHP Logs" "Analyze Exim Queue" "Quit"; do
+select OPTION in "Analyze Exim Logs (RUN THIS FIRST)" "Analyze PHP Logs" "Analyze Exim Queue" "Quit"; do
   case $OPTION in
 
-    "Analyze Exim Logs")
+    "Analyze Exim Logs (RUN THIS FIRST)")
       log_select_menu "/var/log/exim_mainlog"
       if [[ $l != '0' && -f $LOGFILE && ! $(file -b $LOGFILE) =~ zip ]]; then line_count_menu; fi
       results_prompt $l; break ;;
