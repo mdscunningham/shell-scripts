@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-03-09
-# Updated: 2016-08-23
+# Updated: 2016-09-18
 #
 # Purpose: Checking blacklists both public and private by sending SMTP connections
 #
@@ -63,20 +63,21 @@ fi
 
 # Check to see if using NAT IPs behind HW Firewall
 if [[ $ip_list =~ ^172\. ]]; then
-  ipaddr=$(curl -s http://ip.robotzombies.net);
-  echo -e "\nServer appears to be NAT'd behind a firewall.\nThe public IP appears to be: $ipaddr";
+  dnsip=$(curl -s http://ip.robotzombies.net);
+  echo -e "\nServer appears to be NAT'd behind a firewall.\nThe public IP appears to be: $dnsip";
 fi
 
 for ipaddr in $ip_list; do
   if [[ ! $quiet ]]; then
-    echo -e "\n$(dash 80 =)\n${WHITE}  Web Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
-    rdns="$(dig +short -x $ipaddr)" # Check RDNS
+    if [[ $dnsip ]]; then realip=${dnsip}; else realip=${ipaddr}; fi
+    echo -e "\n$(dash 80 =)\n${WHITE}  Web Based Checks -- ${realip} ${NORMAL}\n$(dash 80 -)"
+    rdns="$(dig +short -x $realip)" # Check RDNS
     echo "rDNS/PTR: ${GREEN}${rdns:-${RED}Is not setup ...}${NORMAL}"
 
     # Web based lookups
-    echo "http://multirbl.valli.org/lookup/${YELLOW}${ipaddr}${NORMAL}.html"
-    echo "http://www.senderbase.org/lookup/?search_string=${YELLOW}${ipaddr}${NORMAL}"
-    echo "http://mxtoolbox.com/SuperTool.aspx?action=blacklist%3a${YELLOW}${ipaddr}${NORMAL}&run=toolpage"
+    echo "http://multirbl.valli.org/lookup/${YELLOW}${realip}${NORMAL}.html"
+    echo "http://www.senderbase.org/lookup/?search_string=${YELLOW}${realip}${NORMAL}"
+    echo "http://mxtoolbox.com/SuperTool.aspx?action=blacklist%3a${YELLOW}${realip}${NORMAL}&run=toolpage"
   fi
 
   # Sanity Check -- Does Swaks exist, if not, install it
@@ -96,7 +97,7 @@ for ipaddr in $ip_list; do
 done
 echo -e "$(dash 80 =)\n"
 
-unset ipaddr ip_list rdns result verb quiet cont from_addr
+unset ipaddr ip_list rdns result verb quiet cont from_addr dnsip realip
 }
 
 mailcheck "$@"
