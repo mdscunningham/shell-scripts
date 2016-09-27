@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2016-09-19
+# Updated: 2016-09-27
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -28,6 +28,11 @@
 #-----------------------------------------------------------------------------#
 ## Because /moar/ regex is always better
 shopt -s extglob
+
+#-----------------------------------------------------------------------------#
+## Workaround for exim logs with binary garbage in them
+shopt -s expand_aliases
+alias grep='grep -a'
 
 #-----------------------------------------------------------------------------#
 ## Utility functions, because prettier is better
