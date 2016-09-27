@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-07-12
-# Updated: 2015-11-17
+# Updated: 2016-09-26
 #
 #
 #!/bin/bash
@@ -29,5 +29,5 @@ dash(){ for ((i=1;i<=$1;i++)); do printf "-"; done; }
     fi;
 
     echo -e "\n---------- Large Databases $(dash 53)";
-    du -sh /var/lib/mysql/$(getusr)_* | grep -E '[0-9]G|[0-9]{3}M';
+    du -sh /var/lib/mysql/$(getusr | cut -c1-8)_* | grep -E '[0-9]G|[0-9]{3}M';
     echo
