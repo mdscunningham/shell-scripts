@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-10-10
-# Updated: 2016-10-10
+# Updated: 2016-10-30
 #
 # Purpose: Quickly and simply generate random, secure passwords
 #
@@ -58,7 +58,7 @@ case $method in
 	  wordList='/usr/share/dict/words';
 	  wordLength=$(( (${length} - 4) / 4 ))
 	  echo $(shuf -n 1000 $wordList | grep -E ^[a-z]{$wordLength}$ | shuf -n 4 )$(( ($RANDOM % 9000) + 1000 ))\
-	   | sed 's/\b\(.\)/\u\1/g' | sed 's/ //g' | cut -c 1-${2}
+	   | sed 's/\b\(.\)/\u\1/g' | sed 's/ //g' | cut -c 1-${length}
 
 	else
 	  n=0;  word=(); len=$(wc -l < $wordList)
