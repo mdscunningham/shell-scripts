@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2016-10-27
+# Updated: 2016-11-09
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -50,10 +50,32 @@ if [[ $(df | grep '/dev/md[0-9]') ]]; then
 
 if [[ -x /opt/MegaRAID/MegaCli/MegaCli64 ]]; then
   echo -e '          [ ] LSI Controller Firmware version 12.12.0-0073 or higher to fix vpd r/w failed error.'
-    /opt/MegaRAID/MegaCli/MegaCli64 -AdpAllInfo -a0 | grep "Package Build"; fi
+    /opt/MegaRAID/MegaCli/MegaCli64 -AdpAllInfo -a0 | grep "Package Build";
+
+## Will need to work out more logic on these commands
+#  echo '          [ ] LSI RAID configuration
+#              NOTE: "-Lx" should be "-L0" or "-L1" etc. so you are only targeting specific arrays. If all of the arrays use the same kind of disks, you can use "-Lall"
+#              NOTE: Occasionally, there will be two adapters in a server instead of one.  In which case, do not use "-aAll", but use "-aX" where "X" is the adapter you are modifying.'
+#
+#  echo "              [ ] SSDs"
+#  echo "                  [ ] Disk Cache is enabled"
+#    /opt/MegaRAID/MegaCli/MegaCli64 -LDInfo -L0 -aAll | grep -i 'Disk Cache'
+#
+#  echo "                      If disabled run the following commands and check to ensure its now enabled (otherwise may need a reboot)"
+#    /opt/MegaRAID/MegaCli/MegaCli64 -LDSetProp -EnDskCache -Immediate -L0 -aAll
+#
+#  echo "                  [ ] Read Ahead caching disabled"
+#    /opt/MegaRAID/MegaCli/MegaCli64 -LDSetProp -NORA -Immediate -L0 -aAll
+#
+#  echo "              [ ] Spinners"
+#  echo "                  [ ] Read Ahead caching enabled"
+#    /opt/MegaRAID/MegaCli/MegaCli64 -LDSetProp -RA -Immediate -L0 -aAll
+
+fi
 
 if [[ -x /usr/StorMan/arcconf ]]; then
   echo -e '          [ ] Adaptec RAID controller Firmware version 7.4-0 build 30862 or higher for 71605E cards:'
+    /usr/StorMan/arcconf getconfig 1 | grep Controller.Model
   if [[ $(/usr/StorMan/arcconf getconfig 1 | grep ASR71605E) ]]; then
     /usr/StorMan/arcconf getconfig 1 | egrep 'Firmware.*7.[0-9]' | awk '{ if ($4 > "(30861)") print "ASR71605E Firmware is up to date: " $4; else print "ASR71605E Build version is < 30862! **Please update!** " }';
   fi
@@ -144,7 +166,7 @@ if [[ -f /usr/sbin/r1soft/log/cdp.log ]]; then
     /etc/init.d/cdp-agent status
 
   echo -e "[ ]Port 1167 open/allowed in the software firewall."
-    iptables -nL | grep :1176
+    iptables -nL | grep :1167
 
   echo -e "[ ]Make sure the proper partitions are being backed up via the web interface."
   echo -e "[ ]If there a Dedicated MySQL drive make sure it is setup to be backed up."
