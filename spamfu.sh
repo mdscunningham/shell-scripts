@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2016-09-27
+# Updated: 2016-11-10
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -380,7 +380,7 @@ echo $HEADER_LIST | xargs -P5 grep --no-filename '^<>' 2>/dev/null\
 ## Count of 'frozen' messages by user
 section_header "Queue: Frozen (count)"
 echo $HEADER_LIST | xargs -P5 grep --no-filename '\-frozen' 2>/dev/null\
- | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+ | awk '($2 ~ /[0-9]/) {freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
 echo
 }
