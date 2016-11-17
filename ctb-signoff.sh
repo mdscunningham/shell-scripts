@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2016-11-09
+# Updated: 2016-11-15
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -186,6 +186,8 @@ echo -e "          [ ]mod_remoteip if Apache 2.4"
 echo -e '\n[ ]SonarPush is installed and working properly'
 if [[ -f /usr/local/lp/etc/sonar_password ]]; then
   echo 'Sonar is installed and configured. Check this using Radar link in Billing'
+  ps aux | grep [S]onarPush
+  echo "https://monitor.liquidweb.com/summary.php?search=$(cat /usr/local/lp/etc/lp-UID)"
 else
   echo -e 'Sonar password file missing :: /usr/local/lp/etc/sonar_password \nFix this if server is Managed. Ignore this if the server is Unmanaged'
 fi
