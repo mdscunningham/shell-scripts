@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2016-08-21
+# Updated: 2016-12-06
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -49,7 +49,7 @@ for domain in $@; do
   D=$(echo $domain | sed 's|^http:||g;s|https:||g;s|\/||g;');
 
   # If IP not specified lookup IP
-  if [[ ! $ip ]]; then I=$(dig +short $D | grep [0-9] | head -1); fi
+  if [[ ! $ip && $D =~ [a-z] ]]; then I=$(dig +short $D | grep [0-9] | head -1); else I=$D; fi
 
   # Check if local version of OpenSSL has SNI support
   if [[ $(openssl version | awk '{print $2}') =~ ^1\. ]]; then SNI="-servername $D"; else SNI=''; fi
