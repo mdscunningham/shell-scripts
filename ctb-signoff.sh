@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2016-11-19
+# Updated: 2016-12-18
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -59,7 +59,7 @@ if [[ -x /opt/MegaRAID/MegaCli/MegaCli64 ]]; then
 
   echo "              [ ] Solid State Drives"
   echo "                  [ ] Disk Cache is enabled"
-    /opt/MegaRAID/MegaCli/MegaCli* -LDInfo -Lall -aAll | grep -E 'Size|Cache
+    /opt/MegaRAID/MegaCli/MegaCli* -LDInfo -Lall -aAll | grep -E 'Size|Cache'
 
 #  echo "                      If disabled run the following commands and check to ensure its now enabled (otherwise may need a reboot)"
 #    /opt/MegaRAID/MegaCli/MegaCli64 -LDSetProp -EnDskCache -Immediate -L0 -aAll
@@ -87,7 +87,7 @@ echo -e '          [ ] Raider is configured and working properly'
 echo -e '          [ ] StorMan removed'
   if [[ -x /usr/bin/systemctl ]]; then
     systemctl stop stor_agent; systemctl disable stor_agent; systemctl status stor_agent
-  else
+  elif [[ -f /etc/init.d/stor_agent ]]; then
     /etc/init.d/stor_agent stop; chkconfig stor_agent off; /etc/init.d/stor_agent status
   fi
 fi
