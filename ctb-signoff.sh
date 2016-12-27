@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2016-12-18
+# Updated: 2016-12-26
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -50,32 +50,20 @@ if [[ $(df | grep '/dev/md[0-9]') ]]; then
 
 if [[ -x /opt/MegaRAID/MegaCli/MegaCli64 ]]; then
   echo '          [ ] LSI RAID configuration'
-#  echo '
-#              NOTE: "-Lx" should be "-L0" or "-L1" etc. so you are only targeting specific arrays. If all of the arrays use the same kind of disks, you can use "-Lall"
-#              NOTE: Occasionally, there will be two adapters in a server instead of one.  In which case, do not use "-aAll", but use "-aX" where "X" is the adapter you are modifying.'
-
-  echo -e '          [ ] LSI Controller Firmware version 12.12.0-0073 or higher to fix vpd r/w failed error.'
+  echo '          [ ] LSI Controller Firmware version 12.12.0-0073 or higher to fix vpd r/w failed error.'
     /opt/MegaRAID/MegaCli/MegaCli64 -AdpAllInfo -a0 | grep "Package Build";
 
   echo "              [ ] Solid State Drives"
   echo "                  [ ] Disk Cache is enabled"
+  echo "                  [ ] Read Ahead caching disabled"
+  echo "              [ ] SATA Drives"
+  echo "                  [ ] Read Ahead caching enabled"
     /opt/MegaRAID/MegaCli/MegaCli* -LDInfo -Lall -aAll | grep -E 'Size|Cache'
-
-#  echo "                      If disabled run the following commands and check to ensure its now enabled (otherwise may need a reboot)"
-#    /opt/MegaRAID/MegaCli/MegaCli64 -LDSetProp -EnDskCache -Immediate -L0 -aAll
-
-#  echo "                  [ ] Read Ahead caching disabled"
-#    /opt/MegaRAID/MegaCli/MegaCli64 -LDSetProp -NORA -Immediate -L0 -aAll
-
-#  echo "              [ ] SATA Drives"
-#  echo "                  [ ] Read Ahead caching enabled"
-#    /opt/MegaRAID/MegaCli/MegaCli64 -LDSetProp -RA -Immediate -L0 -aAll
-
 fi
 
 if [[ -x /usr/StorMan/arcconf ]]; then
   echo -e '          [ ] Adaptec RAID controller Firmware version 7.4-0 build 30862 or higher for 71605E cards:'
-    /usr/StorMan/arcconf getconfig 1 | grep Controller.Model
+    /usr/StorMan/arcconf getconfig 1 | grep Controller.Model | column -t
   if [[ $(/usr/StorMan/arcconf getconfig 1 | grep ASR71605E) ]]; then
     /usr/StorMan/arcconf getconfig 1 | egrep 'Firmware.*7.[0-9]' | awk '{ if ($4 > "(30861)") print "ASR71605E Firmware is up to date: " $4; else print "ASR71605E Build version is < 30862! **Please update!** " }';
   fi
@@ -184,10 +172,10 @@ echo -e "          [ ]mod_remoteip if Apache 2.4"
   if [[ $(httpd -v) =~ 2\.4 ]]; then httpd -M 2> /dev/null | grep remote; fi
 
 echo -e '\n[ ]SonarPush is installed and working properly'
+  ps aux | grep [S]onarPush
+  echo "https://monitor.liquidweb.com/summary.php?search=$(cat /usr/local/lp/etc/lp-UID)"; echo
 if [[ -f /usr/local/lp/etc/sonar_password ]]; then
   echo 'Sonar is installed and configured. Check this using Radar link in Billing'
-  ps aux | grep [S]onarPush
-  echo "https://monitor.liquidweb.com/summary.php?search=$(cat /usr/local/lp/etc/lp-UID)"
 else
   echo -e 'Sonar password file missing :: /usr/local/lp/etc/sonar_password \nFix this if server is Managed. Ignore this if the server is Unmanaged'
 fi
