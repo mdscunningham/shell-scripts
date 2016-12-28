@@ -72,12 +72,13 @@ for domain in $@; do
   # Print full output if not links mode
   if [[ ! $links ]]; then
     # Connect to the IP at port; get SSL; Decode SSL; clean up output and print
-    echo | openssl s_client -connect $I:$P $SNI 2>/dev/null | openssl x509 -text -noout 2>/dev/null | egrep -i 'subject:|dns:|issuer:'\
+    echo | openssl s_client -connect $I:$P $SNI 2>/dev/null | openssl x509 > $domain.pem
+    openssl x509 -noout -text -in $domain.pem | egrep -i 'subject:|dns:|issuer:'\
      | sed 's/DNS:/\nDNS:/;s/.*Subject: /\nSubject:\n/;s/.*Issuer: /Issuer:\n/;s/, /\n/g;s/[=:]/: /g;s/\/email/\nemail/g;s/\/busi/\nBusi/g;s/\/seri/\nSeri/g;s/\/1\.3\.6\./\n1\.3\.6\./g';
     echo
     echo | openssl s_client -connect $I:$P $SNI -cipher "EDH" 2>/dev/null | grep "Server Temp Key";
-    echo | openssl s_client -connect $I:$P $SNI 2>/dev/null | openssl x509 -text -noout | grep Signature.Algorithm | head -1 | sed 's/.*Sig/Sig/g'
-    echo | openssl s_client -connect $I:$P $SNI 2>/dev/null | openssl x509 -text -noout | grep Not.After | sed 's/.*Not.After./Expires/g'
+    openssl x509 -noout -text -in $domain.pem | grep Signature.Algorithm | head -1 | sed 's/.*Sig/Sig/g'
+    openssl x509 -noout -in $domain.pem -dates | sed 's/notBefore=/Issued : /;s/notAfter=/Expires: /'
     echo;
 
     # Check for common SSL issues, and their error messages.
@@ -87,5 +88,6 @@ for domain in $@; do
     if [[ $(echo $rcode | awk '{print $4}') =~ [0-9]{2} ]]; then
       curl -s https://www.openssl.org/docs/apps/verify.html | grep -A4 "$(echo $rcode | awk '{print $4}') X509" | grep -v X509 | sed 's/<[^>]*>//g' | tr '\n' ' '; echo;
     fi; echo
+    rm -f $domain.pem
   fi
 done
