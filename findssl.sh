@@ -4,18 +4,19 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2016-12-06
+# Updated: 2017-01-01
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
 dash(){ for ((i=1; i<=$1; i++)); do printf "$2"; done; }
 
+verbose=''
 quiet=''
 links=''
 ip=''
 P=443
 
-OPTIONS=$(getopt -o "hi:lp:q" -- "$@") # Execute getopt
+OPTIONS=$(getopt -o "hi:lp:qv" -- "$@") # Execute getopt
 eval set -- "$OPTIONS" # Magic
 while true; do # Evaluate the options for their options
 case $1 in
@@ -23,12 +24,14 @@ case $1 in
   -l ) links=1 ;;
   -q ) quiet=1 ;;
   -p ) P=$2; shift ;;
+  -v ) verbose=1 ;;
   -- ) shift; break ;; # More Magic
   -h|* ) echo -e "\n  Usage: $0 [options] <dom1> <dom2> ...
     -i ... <ipaddress> for SSL connections
     -l ... Print just web links
     -q ... Hide web links
     -p ... <port> for SSL connections
+    -v ... Verbose (Check revocation status with ocsp)
     -h ... Print this help and quit\n
   Examples:\n
   Check SSL loading for https (multiple domains)
@@ -72,14 +75,27 @@ for domain in $@; do
   # Print full output if not links mode
   if [[ ! $links ]]; then
     # Connect to the IP at port; get SSL; Decode SSL; clean up output and print
-    echo | openssl s_client -connect $I:$P $SNI 2>/dev/null | openssl x509 > $domain.pem
-    openssl x509 -noout -text -in $domain.pem | egrep -i 'subject:|dns:|issuer:'\
+    echo | openssl s_client -connect $I:$P $SNI -showcerts 2>/dev/null| awk '/BEGIN/,/END/ {print}' > /tmp/fullchain.pem
+      cat /tmp/fullchain.pem | openssl x509 > /tmp/$domain.pem
+
+    openssl x509 -noout -text -in /tmp/$domain.pem | egrep -i 'subject:|dns:|issuer:'\
      | sed 's/DNS:/\nDNS:/;s/.*Subject: /\nSubject:\n/;s/.*Issuer: /Issuer:\n/;s/, /\n/g;s/[=:]/: /g;s/\/email/\nemail/g;s/\/busi/\nBusi/g;s/\/seri/\nSeri/g;s/\/1\.3\.6\./\n1\.3\.6\./g';
     echo
     echo | openssl s_client -connect $I:$P $SNI -cipher "EDH" 2>/dev/null | grep "Server Temp Key";
-    openssl x509 -noout -text -in $domain.pem | grep Signature.Algorithm | head -1 | sed 's/.*Sig/Sig/g'
-    openssl x509 -noout -in $domain.pem -dates | sed 's/notBefore=/Issued : /;s/notAfter=/Expires: /'
+    openssl x509 -noout -text -in /tmp/$domain.pem | grep Signature.Algorithm | head -1 | sed 's/.*Sig/Sig/g'
+    openssl x509 -noout -in /tmp/$domain.pem -dates | sed 's/notBefore=/Issued : /;s/notAfter=/Expires: /'
     echo;
+
+    # If verbose mode, check OCSP for revocation status
+    if [[ $verbose ]]; then
+      linenum=$(grep -n BEGIN /tmp/fullchain.pem | awk -F: 'NR==2 {print $1}')
+        tail -n +$linenum /tmp/fullchain.pem > /tmp/chain.pem
+      ocspurl=$(openssl x509 -in /tmp/$domain.pem -noout -ocsp_uri)
+      ocsphost=$(echo $ocspurl | cut -d/ -f3)
+        echo -e "OCSP URL : $ocspurl\nOCSP HOST: $ocsphost"
+      openssl ocsp -no_nonce -header host $ocsphost -issuer /tmp/chain.pem -cert /tmp/$domain.pem -url $ocspurl -CAfile /tmp/chain.pem 2>/dev/null
+        echo
+    fi
 
     # Check for common SSL issues, and their error messages.
     echo "SSL Return Code"; echo "$(dash 80 -)";
@@ -88,6 +104,7 @@ for domain in $@; do
     if [[ $(echo $rcode | awk '{print $4}') =~ [0-9]{2} ]]; then
       curl -s https://www.openssl.org/docs/apps/verify.html | grep -A4 "$(echo $rcode | awk '{print $4}') X509" | grep -v X509 | sed 's/<[^>]*>//g' | tr '\n' ' '; echo;
     fi; echo
-    rm -f $domain.pem
+
+    rm -f /tmp/fullchain.pem /tmp/$domain.pem /tmp/chain.pem
   fi
 done
