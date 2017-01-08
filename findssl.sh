@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2017-01-01
+# Updated: 2017-01-07
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -20,7 +20,7 @@ OPTIONS=$(getopt -o "hi:lp:qv" -- "$@") # Execute getopt
 eval set -- "$OPTIONS" # Magic
 while true; do # Evaluate the options for their options
 case $1 in
-  -i ) I=$2; ip=1; shift ;;
+  -i ) I=$2; shift ;;
   -l ) links=1 ;;
   -q ) quiet=1 ;;
   -p ) P=$2; shift ;;
@@ -52,7 +52,7 @@ for domain in $@; do
   D=$(echo $domain | sed 's|^http:||g;s|https:||g;s|\/||g;');
 
   # If IP not specified lookup IP
-  if [[ ! $ip && $D =~ [a-z] ]]; then I=$(dig +short $D | grep [0-9] | head -1); else I=$D; fi
+  if [[ ! $I && $D =~ [a-z] ]]; then I=$(dig +short $D | grep [0-9] | head -1); fi
 
   # Check if local version of OpenSSL has SNI support
   if [[ $(openssl version | awk '{print $2}') =~ ^1\. ]]; then SNI="-servername $D"; else SNI=''; fi
