@@ -1,0 +1,30 @@
+#!/bin/bash
+#                                                          +----+----+----+----+
+#                                                          |    |    |    |    |
+# Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
+#                                                          +----+----+----+----+
+# Created: 2016-10-01
+# Updated: 2016-10-10
+#
+# Purpose: Log ownership and permissions for every file, so they can be recovered.
+#          This is intended as a safeguard agains recursive chown/chmod.
+#
+
+# Create full log of ownership and permissions for all files/dirs on the server
+logdir="/usr/local/lp/getfacl"
+if [[ ! -d $logdir ]]; then mkdir -p $logdir; fi
+
+# Log for everything not /home (compressed)
+find / -not -type l -not -path "/home*" -not -path "/proc*" \
+ | getfacl --absolute-names - 2> /dev/null \
+ | gzip -c --fast > ${logdir}/system_$(date +%F).log.gz;
+chmod 600 ${logdir}/system_$(date +%F).log.gz;
+
+# Log for /home (compressed)
+find /home* -not -type l \
+ | getfacl --absolute-names - 2> /dev/null \
+ | gzip -c --fast > ${logdir}/home_$(date +%F).log.gz;
+chmod 600 ${logdir}/home_$(date +%F).log.gz;
+
+# Remove logs more than seven (7) days old
+find $logdir -name "*.log.gz" -mtime +6 -delete;
