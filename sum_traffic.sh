@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2014-04-18
-# Updated: 2015-06-24
+# Updated: 2017-01-08
 #
 #
 #!/bin/bash
@@ -21,12 +21,12 @@
 shopt -s extglob
 
 ## Initializations
-hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done)); grandtotal=0; nocolor=0
+hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done)); grandtotal=0; nocolor=0; progress=''
 DECOMP="$(which grep)"; THRESH=''; DATE=$(date +"%d/%b/%Y"); FMT=" %5s"
 DOMAINS="/usr/local/apache/logs/access_log /usr/local/apache/domlogs/*/!(*[^ssl]_log*)";
 RANGE=$(for x in {23..0}; do date --date="-$x hour" +"%d/%b/%Y:%H:"; done);
 
-while getopts d:l:nr:8t:vh option; do
+while getopts d:l:npr:8t:vh option; do
     case "${option}" in
 	# Caclulate date string for searches
         d) DATE=$(date --date="-${OPTARG} days" +"%d/%b/%Y"); DECOMP="$(which zgrep)"; SUFFIX=$(date --date="-${OPTARG} days" +"-%b-%Y.gz")
@@ -38,6 +38,9 @@ while getopts d:l:nr:8t:vh option; do
 
 	# Print w/o color in b/w
 	n) nocolor=1 ;;
+
+	# Show progress indicator: account :: logfile
+	p) progress=1 ;;
 
 	# Print only a specified range of hours
 	r) INPUT=$(echo ${OPTARG} | sed 's/,/ /g'); FMT=" %7s";
@@ -57,6 +60,7 @@ while getopts d:l:nr:8t:vh option; do
     -h ... Print this help and quit
     -l ... list of domains <dom1,dom2,...>
     -n ... No Color (for output to files)
+    -p ... Progress, show name of current log
     -r ... Range of hours <start#,end#>
     -8 ... Auto set to previous 8 hours
     -t ... threshold value <#####>
@@ -72,6 +76,12 @@ printf "%8s %-s${NORMAL}\n" "Total" " Domain Name"
 ## Data gathering and display
 for logfile in $DOMAINS; do
         total=0;
+
+    # If progress flag is given then print
+    if [[ $progress ]]; then
+        log=$(echo $logfile | awk -F/ '{print $(NF-1)" :: "$NF}')
+        printf " Reading: %s                                                                                \r" "$log"
+    fi
 
     # Only print if the threshold condition is set/met
     if [[ -z $THRESH || $THRESH -le $($DECOMP -c $DATE $logfile) ]]; then
