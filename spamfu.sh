@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2016-11-10
+# Updated: 2017-01-15
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -349,37 +349,37 @@ HEADER_LIST=$(find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null
 
 ## Queue Senders
 section_header "Queue: Auth Users"
-echo $HEADER_LIST | xargs -P5 grep --no-filename 'auth_id' 2>/dev/null\
+echo $HEADER_LIST | xargs grep --no-filename 'auth_id' 2>/dev/null\
  | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Local Users
 section_header "Queue: Auth Local Users"
-echo $HEADER_LIST | xargs -P5 grep --no-filename -A1 'authenticated_local_user' 2>/dev/null\
+echo $HEADER_LIST | xargs grep --no-filename -A1 'authenticated_local_user' 2>/dev/null\
  | grep -v 'authenticated_local_user' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Subjects
 section_header "Queue: Subjects"
-echo $HEADER_LIST | xargs -P5 grep --no-filename "Subject: " 2>/dev/null\
+echo $HEADER_LIST | xargs grep --no-filename "Subject: " 2>/dev/null\
  | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Queue Scripts
 section_header "Queue: X-PHP-Scripts"
-echo $HEADER_LIST | xargs -P5 grep --no-filename "X-PHP.*-Script:" 2>/dev/null\
+echo $HEADER_LIST | xargs grep --no-filename "X-PHP.*-Script:" 2>/dev/null\
  | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
 
 ## Count of (non-bounceback) Sending Addresses in queue
 section_header "Queue: Senders"
-echo $HEADER_LIST | xargs -P5 grep --no-filename '^<[^>]' 2>/dev/null\
+echo $HEADER_LIST | xargs grep --no-filename '^<[^>]' 2>/dev/null\
  | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | tr -d '<>' | head -n $RESULTCOUNT
 
 ## Count of Bouncebacks in the queue
 section_header "Queue: Bouncebacks (count)"
-echo $HEADER_LIST | xargs -P5 grep --no-filename '^<>' 2>/dev/null\
+echo $HEADER_LIST | xargs grep --no-filename '^<>' 2>/dev/null\
  | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
 ## Count of 'frozen' messages by user
 section_header "Queue: Frozen (count)"
-echo $HEADER_LIST | xargs -P5 grep --no-filename '\-frozen' 2>/dev/null\
+echo $HEADER_LIST | xargs grep --no-filename '\-frozen' 2>/dev/null\
  | awk '($2 ~ /[0-9]/) {freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
 echo
