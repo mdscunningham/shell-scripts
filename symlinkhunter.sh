@@ -107,15 +107,17 @@ fi
 
 # Start new log only if not resuming a previous scan
 if [[ ! $resuming ]]; then
-  # Check last runs of EA to see if Symlink Protection is enabled
-  echo -e "$(dash 80 -)\n  Symlink Protection Status\n$(dash 40 -)\n" | tee $log;
-  if [[ -d /var/cpanel/easy/apache/runlog/ ]]; then
-    for logfile in /var/cpanel/easy/apache/runlog/build.*; do
-      echo -n "$(grep SymlinkProtection $logfile | sed 's/1/Enabled/g;s/0/Disabled/g') :: ";
-      stat $logfile | awk '/^Modify/ {print $2}';
-    done | tail -5 | tee -a $log;
-  else
-    grep symlink /var/cpanel/conf/apache/local
+  if [[ $cpanel ]]; then
+    # Check last runs of EA to see if Symlink Protection is enabled
+    echo -e "$(dash 80 -)\n  Symlink Protection Status\n$(dash 40 -)\n" | tee $log;
+    if [[ -d /var/cpanel/easy/apache/runlog/ ]]; then
+      for logfile in /var/cpanel/easy/apache/runlog/build.*; do
+        echo -n "$(grep SymlinkProtection $logfile | sed 's/1/Enabled/g;s/0/Disabled/g') :: ";
+        stat $logfile | awk '/^Modify/ {print $2}';
+      done | tail -5 | tee -a $log;
+    else #EA4
+      grep symlink /var/cpanel/conf/apache/local
+    fi
   fi
 
   # Start Symlink Hunting
@@ -155,7 +157,7 @@ for homedir in $userlist; do
       printf "%8s :: %-80s\n" "$count" "$homedir" | tee -a $log;
       printf "%-80s\r" "[$i/$t] :: $username :: Generating Report"
       awk -F/ '$NF=""; {freq[$0]++} END {for (x in freq) {printf "%8s :: {SYM} ::%s\n",freq[x],x}}' $tmplog\
-        | sed 's/\b /\//g; s/ home/ \/home/g; s/\/:/ :/g;' >> $log;
+        | sed 's/\b /\//g; s/ home/ \/home/g; s/ var/ \/var/g; s/\/:/ :/g;' >> $log;
       echo >> $log;
     else
       printf "%-80s\r" " ";
