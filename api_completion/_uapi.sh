@@ -72,7 +72,7 @@ case ${prev} in
     return 0 ;;
 
   DAV )
-    COMPREPLY=( $(compgen -W "disable_shared_global_addressbook enable_shared_global_addressbook get_calendar_contacts_config has_shared_global_addressbook is_dav_service_enabled﻿ is_horde_enabled" -- ${cur}) )
+    COMPREPLY=( $(compgen -W "disable_shared_global_addressbook enable_shared_global_addressbook get_calendar_contacts_config has_shared_global_addressbook is_dav_service_enabled is_horde_enabled" -- ${cur}) )
     return 0 ;;
 
   DCV )
