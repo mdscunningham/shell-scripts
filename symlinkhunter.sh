@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-12-21
-# Updated: 2016-02-04
+# Updated: 2017-02-06
 #
 # Purpose: Find accounts full of symlinks (indicating symlink hacks)
 #
@@ -61,8 +61,15 @@ else
 fi
 
 # Initialize and count the number of /home/dirs
-i=0; min=1; resuming='';
-userlist="/home*/*/public_html/";
+i=0; min=1; resuming=''; cpanel=''; plesk=''
+if [[ -x /usr/local/cpanel/bin/cpanel ]]; then #CPANEL
+  userlist="/home*/*/public_html/";
+  cpanel=1;
+elif [[ -d /var/www/vhosts/ ]]; then #PLESK
+  userlist="/var/www/vhosts/*/"
+  plesk=1;
+fi
+
 t=$(echo $userlist | wc -w);
 
 # /usr/local/maldetect/sess/session.160111-0004.20837 (for reference)
@@ -78,8 +85,12 @@ echo; while getopts fht:u: option; do
 	echo " Info :: Fast Mode Enabled :: Setting link search depth to 3" ;;
     t) min="${OPTARG}";
 	echo " Info :: Min Threshold Set :: Setting logging threshold to ${OPTARG} links" ;;
-    u) userlist="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /home*/${x}/public_html/; done)" ;
-	t=$(echo $userlist | wc -w) ;;
+    u) if [[ $cpanel ]]; then
+         userlist="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /home*/${x}/public_html/; done)" ;
+       elif [[ $plesk ]]; then
+         userlist="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /var/www/vhosts/${x}/; done)" ;
+       fi
+       t=$(echo $userlist | wc -w) ;;
   *|h) usage ;;
   esac
 done;
@@ -98,10 +109,14 @@ fi
 if [[ ! $resuming ]]; then
   # Check last runs of EA to see if Symlink Protection is enabled
   echo -e "$(dash 80 -)\n  Symlink Protection Status\n$(dash 40 -)\n" | tee $log;
-  for logfile in /var/cpanel/easy/apache/runlog/build.*; do
-    echo -n "$(grep SymlinkProtection $logfile | sed 's/1/Enabled/g;s/0/Disabled/g') :: ";
-    stat $logfile | awk '/^Modify/ {print $2}';
-  done | tail -5 | tee -a $log;
+  if [[ -d /var/cpanel/easy/apache/runlog/ ]]; then
+    for logfile in /var/cpanel/easy/apache/runlog/build.*; do
+      echo -n "$(grep SymlinkProtection $logfile | sed 's/1/Enabled/g;s/0/Disabled/g') :: ";
+      stat $logfile | awk '/^Modify/ {print $2}';
+    done | tail -5 | tee -a $log;
+  else
+    grep symlink /var/cpanel/conf/apache/local
+  fi
 
   # Start Symlink Hunting
   echo -e "\n$(dash 80 -)\n  Symlink Search Results\n$(dash 40 -)\n" | tee -a $log;
@@ -112,12 +127,26 @@ fi
 for homedir in $userlist; do
   # Print scanning progress
   count=0; ((i++));
-  username="$(echo $homedir | cut -d/ -f3)"
+
+  if [[ $cpanel ]]; then
+    username="$(echo $homedir | cut -d/ -f3)"
+  elif [[ $plesk ]]; then
+    username="$(echo $homedir | cut -d/ -f5)"
+  fi
+
   printf "%-80s\r" "[$i/$t] :: $username :: Scanning"
 
   # Actually search symlinks and count them
   if [[ ! -f ${logdir}/${username}.user ]]; then
-    find $homedir $maxdepth -type l -print > $tmplog;
+    echo -n > $tmplog
+
+    if [[ $cpanel ]]; then
+      find $homedir $maxdepth -type l -print | sort | uniq > $tmplog;
+    elif [[ $plesk && ! $homedir =~ /var/www/vhosts/system/.* ]]; then
+      homedirs=$(find $homedir -maxdepth 1 -type d -group psaserv -print)
+      find $homedirs $maxdepth -type l -print | sort | uniq > $tmplog;
+    fi
+
     count=$(wc -l < $tmplog)
 
     # Only print the results above the $min threshold
