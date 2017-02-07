@@ -101,6 +101,7 @@ if [[ ! $fullwhois ]]; then
   if [[ $verbose ]]; then
     # Check for default DKIM records
     dig $OPTS txt default._domainkey.$domain $resolver | grep 'TXT'
+    dig $OPTS txt _dmarc.$domain $resolver | grep 'TXT'
 
     # Lookup SRV records for live.com
     for SRV in '_sip._tls' '_sipfederationtls._tcp'; do
