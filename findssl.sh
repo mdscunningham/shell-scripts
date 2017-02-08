@@ -58,7 +58,7 @@ for domain in $@; do
   if [[ $(openssl version | awk '{print $2}') =~ ^1\. ]]; then SNI="-servername $D"; else SNI=''; fi
 
   # Add some TLS options if special ports are specified
-  if [[ $P == 587 ]]; then SNI="$SNI -starttls smtp";
+  if [[ $P == 587 || $P == 25 ]]; then SNI="$SNI -starttls smtp";
   elif [[ $P == 21 ]]; then SNI="$SNI -starttls ftp"; fi
 
   # Print header
