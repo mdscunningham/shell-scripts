@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-03-09
-# Updated: 2016-09-18
+# Updated: 2017-02-25
 #
 # Purpose: Checking blacklists both public and private by sending SMTP connections
 #
@@ -20,7 +20,7 @@
       BLINK=$(tput blink);	REVERSE=$(tput smso)
   UNDERLINE=$(tput smul)
 
-dash (){ for ((i=1; i<=$1; i++)); do printf "$2"; done; }
+dash(){ for ((i=1; i<=$1; i++)); do printf "$2"; done; }
 
 quiet=''; verb=''; from_addr=''; ip_list=''; all='';
 
@@ -53,6 +53,22 @@ while getopts af:i:qvh option; do
     -h ... Print this help and quit\n"; return 0 ;;
   esac
 done
+
+print_delist_link(){
+  if [[ $result =~ 5[0-9][0-9] ]]; then
+    printf "${CYAN}DeList:${NORMAL} "
+    case $domain in
+            aol.com ) echo "https://postmaster.aol.com/sa-ticket" ;;
+            att.net ) echo "http://rbl.att.net/cgi-bin/rbl/block_admin.cgi" ;;
+        comcast.net ) echo "http://postmaster.comcast.net/block-removal-request.html" ;;
+      earthlink.net ) echo "https://support.earthlink.net/articles/email/email-blocked-by-earthlink.php" ;;
+           live.com ) echo "https://support.live.com/eform.aspx?productKey=edfsmsbl3&ct=eformts&wa=wsignin1.0&scrx=1" ;;
+             rr.com ) echo "http://postmaster.rr.com/amIBlockedByRR" ;;
+        verizon.net ) echo "http://my.verizon.com/micro/whitelist/RequestForm.aspx?id=isp" ;;
+          yahoo.com ) echo "http://help.yahoo.com/l/us/yahoo/mail/postmaster/bulkv2.html" ;;
+    esac
+  fi
+  }
 
 # What IPs to check
 if [[ $all ]]; then
@@ -91,6 +107,7 @@ for ipaddr in $ip_list; do
     result=$(swaks -4 -q RCPT --server $mx -t $emailAddress $from_addr -li $ipaddr 2>&1 | egrep ' 4[25][01]| 5[257][0-4]';)
     if [[ $verb == "1" || -n $result ]]; then
       printf "\n%-40s  %-40s\n" "${CYAN}Domain:${NORMAL} $domain" "${CYAN}Server:${NORMAL} $mx"
+      print_delist_link
       echo -e "$(dash 80 -)\n${result:-No Reported Errors}";
     fi
   done; echo
