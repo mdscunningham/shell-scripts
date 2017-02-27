@@ -197,7 +197,7 @@ echo -e "[ ]Load Balancing"
 
 echo -e "[ ]IP Requests/VIPs"
 echo -e "[ ]Confirm private network cables are plugged into switch/server (ip addr ls dev ethX)"
-  for x in $(dmesg | grep -o eth. | sort | uniq); do
+  for x in $(dmesg | grep -o eth[0-9] | sort | uniq); do
     printf "$x :: "; ethtool $x | grep -i link.detect;
   done
 
