@@ -21,6 +21,7 @@
 
 # Setting defaults
 httpdconf=$(httpd -V 2>/dev/null | awk -F\" '/HTTPD_ROOT|SERVER_CONFIG_FILE/ {printf "/"$2}')
+publicIP=$(curl -s ip.liquidweb.com);
 notLive=''
 dnsLookup=''
 recordType="MX"
@@ -97,6 +98,8 @@ else # Print colors
 fi
 }
 
+
+
 # Printing Column Headers
 printf "\n$FMT" " Vhost-IP" " DNS-IP" "SSL" "MailEx" " Type" " Domain" " Additional Info"
 printf "$FMT" "$(dash 15)" "$(dash 15)" "---" "------" "--------" "$(dash $wide)" "$(dash $wide)"
@@ -105,6 +108,11 @@ printf "$FMT" "$(dash 15)" "$(dash 15)" "---" "------" "--------" "$(dash $wide)
 for domain in $domainList; do
   # Find the IP configured in httpd.conf
   vhostIP=$(grep -B5 -E "Server(Name|Alias).*\ $domain" $httpdconf | awk '/<VirtualHost.*:80/ {print $2}' | cut -d: -f1 | head -1;)
+
+  # If server is behind firewall and using NAT IPs.
+  #if [[ $vhostIP =~ ^172\.16\. ]]; then
+  #  vhostIP="$(echo $publicIP | awk -F. '{print $1"."$2}').$(echo $vhostIP | awk -F. '{print $3"."$4}')";
+  #fi
 
   # Find if there is an SSL installed on the domain
   if [[ -n $(grep -B5 -E "Server(Name|Alias).*\ $domain" $httpdconf | awk '/<VirtualHost.*:443/ {print}') ]]; then
