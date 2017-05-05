@@ -126,7 +126,7 @@ if [[ ! $resuming ]]; then
 fi
 
 # Loop through the homedirs
-for homedir in $userlist; do
+for homedir in $(echo $userlist); do
   # Print scanning progress
   count=0; ((i++));
 
