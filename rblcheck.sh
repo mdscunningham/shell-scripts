@@ -66,8 +66,8 @@ for IPADDR in "$@"; do
         LOOKUP="$(echo $IPADDR | awk -F. '{print $4"."$3"."$2"."$1}').${RBL}"
       else LOOKUP="$IPADDR.${RBL}"; fi
 
-      LISTED="$(dig +time=0 +tries=2 +short $LOOKUP | grep -v \;)"
-      REASON="$(dig +time=0 +tries=2 +short txt $LOOKUP | grep -v \;)"
+      LISTED="$(dig +time=1 +tries=1 +short $LOOKUP | grep -v \;)"
+      REASON="$(dig +time=1 +tries=1 +short txt $LOOKUP | grep -v \;)"
 
       if [[ $quiet ]]; then
         printf "\r_%-70s _[%-4.2f%%]\r" "${RBL}_" "$(echo "scale=4;${count}/${lineCount}*100.0" | bc)" | sed 's/ /./g;s/_/ /g'
