@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2017-02-07
+# Updated: 2017-03-13
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -356,6 +356,16 @@ echo $HEADER_LIST | xargs grep --no-filename 'auth_id' 2>/dev/null\
 section_header "Queue: Auth Local Users"
 echo $HEADER_LIST | xargs grep --no-filename -A1 'authenticated_local_user' 2>/dev/null\
  | grep -v 'authenticated_local_user' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+
+## Queue Spoofed Senders
+section_header "Queue: Spoofed Senders"
+FMT="%8s %-35s %s\n"
+printf "$FMT" "Count " " Auth-User" " Spoofed-User"
+printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
+echo $HEADER_LIST | xargs awk '/auth_id/{printf $2" "};/envelope-from/{print $2}' | tr -d '<>)'\
+ | awk '{ if ($1 != $2) freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
+ | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
+printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
 
 ## Queue Subjects
 section_header "Queue: Subjects"
