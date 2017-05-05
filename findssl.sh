@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2017-01-07
+# Updated: 2017-04-23
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -52,7 +52,7 @@ for domain in $@; do
   D=$(echo $domain | sed 's|^http:||g;s|https:||g;s|\/||g;');
 
   # If IP not specified lookup IP
-  if [[ ! $I && $D =~ [a-z] ]]; then I=$(dig +short $D | grep [0-9] | head -1); fi
+  if [[ ! $I && $D =~ [a-z] ]]; then I=$(dig +short $D | grep [0-9] | head -1); else I=$D; fi
 
   # Check if local version of OpenSSL has SNI support
   if [[ $(openssl version | awk '{print $2}') =~ ^1\. ]]; then SNI="-servername $D"; else SNI=''; fi
@@ -75,7 +75,7 @@ for domain in $@; do
   # Print full output if not links mode
   if [[ ! $links ]]; then
     # Connect to the IP at port; get SSL; Decode SSL; clean up output and print
-    echo | openssl s_client -connect $I:$P $SNI -showcerts 2>/dev/null| awk '/BEGIN/,/END/ {print}' > /tmp/fullchain.pem
+    echo | openssl s_client -connect $I:$P $SNI -showcerts 2>/dev/null| awk '/-----BEGIN/,/-----END/ {print}' > /tmp/fullchain.pem
       cat /tmp/fullchain.pem | openssl x509 > /tmp/$domain.pem
 
     openssl x509 -noout -text -in /tmp/$domain.pem | egrep -i 'subject:|dns:|issuer:'\
@@ -90,6 +90,12 @@ for domain in $@; do
     if [[ $verbose ]]; then
       linenum=$(grep -n BEGIN /tmp/fullchain.pem | awk -F: 'NR==2 {print $1}')
         tail -n +$linenum /tmp/fullchain.pem > /tmp/chain.pem
+
+      echo -e "$(dash 40 =)\nChain Verification"
+      echo | openssl s_client -connect $I:$P $SNI 2>&1 | grep -E 'depth|verify' | tac\
+       | sed -r 's/(verify)/----------------------------------------\n\1/g;'
+
+      echo -e "\n$(dash 40 =)\nRevocation Status\n$(dash 40 -)"
       ocspurl=$(openssl x509 -in /tmp/$domain.pem -noout -ocsp_uri)
       ocsphost=$(echo $ocspurl | cut -d/ -f3)
         echo -e "OCSP URL : $ocspurl\nOCSP HOST: $ocsphost"
@@ -105,6 +111,6 @@ for domain in $@; do
       curl -s https://www.openssl.org/docs/apps/verify.html | grep -A4 "$(echo $rcode | awk '{print $4}') X509" | grep -v X509 | sed 's/<[^>]*>//g' | tr '\n' ' '; echo;
     fi; echo
 
-    rm -f /tmp/fullchain.pem /tmp/$domain.pem /tmp/chain.pem
+    #rm -f /tmp/fullchain.pem /tmp/$domain.pem /tmp/chain.pem
   fi
 done
