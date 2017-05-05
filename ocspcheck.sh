@@ -14,7 +14,7 @@ domain=$1;
 echo | openssl s_client -connect $domain:443 -showcerts 2>/dev/null| awk '/BEGIN/,/END/ {print}' > /tmp/fullchain.pem
   cat /tmp/fullchain.pem | openssl x509 > /tmp/$domain.crt
 
-linenum=$(grep -n BEGIN fullchain.pem | awk -F: 'NR==2 {print $1}')
+linenum=$(grep -n BEGIN /tmp/fullchain.pem | awk -F: 'NR==2 {print $1}')
   tail -n +$linenum /tmp/fullchain.pem > /tmp/chain.pem
 
 ocspurl=$(openssl x509 -in /tmp/$domain.crt -noout -ocsp_uri)
