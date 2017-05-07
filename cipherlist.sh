@@ -4,63 +4,104 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2017-04-23
-# Updated: 2017-05-04
+# Updated: 2017-05-07
 #
 # Purpose: Check available SSL version and ciphers (replicate nmap ssl-enum-ciphers)
 #
 # Notes: Based on concept and initial code by JBurnham
 #
 
-i=0; tempfile="/tmp/cipherlist.tmp";
-echo -n > $tempfile; echo
+# Set starting defaults
+tempfile="/tmp/cipherlist.tmp";
+PORTS="443"; quiet=''
 
-if [[ $1 ]]; then DOMAIN="$1"; else read -p "Domain: " DOMAIN; fi
-if [[ $2 ]]; then PORT="$2"; else PORT=443; fi
+#Help output function
+usage(){
+  echo "
+Usage: $0 [-p port1,port2,...] host1 [host2] [host3] ...
+  -p ... Comma separated list of port numbers to test
+  -q ... Quiet, do not print progress
 
-case $PORT in
-  587) opt="-starttls smtp";;
-  25) opt="-starttls smtp";;
-  21) opt="-starttls ftp";;
-  110) opt="-starttls pop3";;
-  143) opt="-starttls imap";;
-  *) opt="";;
-esac
+  -h ... Print this help and quit
+"
+}
 
-for v in ssl2 ssl3 tls1 tls1_1 tls1_2; do
-
-  case $v in
-    ssl2) V="SSLv2.0";;
-    ssl3) V="SSLv3.0";;
-    tls1) V="TLSv1.0";;
-    tls1_1) V="TLSv1.1";;
-    tls1_2) V="TLSv1.2";;
-    # tls1_3) V="TLSv1.3";;
-  esac
-
-  for c in $(openssl ciphers 'ALL:eNULL' | tr ':' ' '); do
-    echo -ne " $V :: $c                    \r"
-    (echo | openssl s_client $opt -connect $DOMAIN:$PORT -cipher $c -$v > /dev/null 2> /dev/null && echo "|      $c" >> ${tempfile}.$v &)
-    i=$(($i+1))
-  done;
-
-  if [[ -f ${tempfile}.$v ]]; then
-    echo -e "|  $V:\n|    ciphers:" >> $tempfile;
-    cat ${tempfile}.$v | sort -r >> $tempfile;
-    rm -f ${tempfile}.$v;
-  fi
-
+#Argument parsing
+OPTIONS=$(getopt -o "p:qh" -- "$@") # Execute getopt
+eval set -- "$OPTIONS" # Magic
+while true; do # Evaluate the options for their options
+case $1 in
+  -p ) PORTS=$(echo $2 | sed 's/,/ /g'); shift ;;
+  -q ) quiet=1 ;;
+  -- ) shift; break ;; # More Magic
+  -h|--help|* ) usage; exit ;; # print help info
+esac;
+shift;
 done
 
-if [[ $DOMAIN =~ [a-z] ]]; then I=$(dig +short $DOMAIN | head -1); else I=$DOMAIN; fi
-rdns=$(dig +short -x $I)
-srv=$(awk "/ $PORT\/tcp/"'{print $2,"("$1")"}' /etc/services)
+if [[ ! $@ ]]; then usage; exit; fi
 
-echo -e "$DOMAIN ($I)                                        "
-if [[ -n $rdns ]]; then echo "rDNS for ($I): $rdns"; fi
-echo "$srv"
+#Outer loop over ports and hosts
+for DOMAIN in "$@"; do
+  for PORT in $PORTS; do
 
-cat $tempfile; echo -e "|_\n"
+    # Initialize counter, and create tempfile
+    i=0; echo -n > $tempfile; echo
 
-echo -e "Done: ($i) Ciphers Tested :: ($( grep -E '-' $tempfile | wc -l )) Ciphers Supported\n"
-rm -f $tempfile;
+    #Check port number for starttls requirements
+    case $PORT in
+      21) opt="-starttls ftp";;
+      25|26|587) opt="-starttls smtp";;
+      110) opt="-starttls pop3";;
+      143) opt="-starttls imap";;
+      *) opt="";;
+    esac
 
+
+
+    #Inner loop over protocols
+    for v in ssl2 ssl3 tls1 tls1_1 tls1_2; do
+
+        # Pretty up the version output
+        case $v in
+          ssl2) V="SSLv2.0";;
+          ssl3) V="SSLv3.0";;
+          tls1) V="TLSv1.0";;
+          tls1_1) V="TLSv1.1";;
+          tls1_2) V="TLSv1.2";;
+          # tls1_3) V="TLSv1.3";;
+        esac
+
+        # Loop over cipher list
+        for c in $(openssl ciphers 'ALL:eNULL' | tr ':' ' '); do
+          if [[ ! $quiet ]]; then echo -ne " $V :: $c                    \r"; fi
+          (echo | openssl s_client $opt -connect $DOMAIN:$PORT -cipher $c -$v > /dev/null 2> /dev/null && echo "|      $c" >> ${tempfile}.$v &)
+          i=$(($i+1))
+        done;
+
+        # Combine logs into final output
+        if [[ -f ${tempfile}.$v ]]; then
+          echo -e "|  $V:\n|    ciphers:" >> $tempfile;
+          cat ${tempfile}.$v | sort -r >> $tempfile;
+          rm -f ${tempfile}.$v;
+        fi
+
+    done
+
+    #Gather host/domain/service information, and output results
+    if [[ $DOMAIN =~ [a-z] ]]; then I=$(dig +short $DOMAIN | head -1); else I=$DOMAIN; fi
+    rdns=$(dig +short -x $I)
+    srv=$(awk "/ $PORT\/tcp/"'{print $2,"("$1")"}' /etc/services)
+
+    echo -e "$DOMAIN ($I)                                        "
+    if [[ -n $rdns ]]; then echo "rDNS for ($I): $rdns"; fi
+    echo "$srv"
+
+    cat $tempfile; echo -e "|_\n"
+
+    echo -e "Done: ($i) Ciphers Tested :: ($( grep -E '-' $tempfile | wc -l )) Ciphers Supported"
+    rm -f $tempfile;
+
+  done #end port loop
+done #end host loop
+echo
