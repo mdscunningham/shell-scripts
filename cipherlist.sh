@@ -58,9 +58,15 @@ for DOMAIN in "$@"; do
     esac
 
 
+    #Check OpenSSL version in use, and set protocol version list
+    if [[ $(openssl version) =~ 0\.9\.[0-9] ]]; then
+      PROTO="ssl2 ssl3 tls1";
+    else
+      PROTO="ssl2 ssl3 tls1 tls1_1 tls1_2";
+    fi
 
     #Inner loop over protocols
-    for v in ssl2 ssl3 tls1 tls1_1 tls1_2; do
+    for v in $PROTO; do
 
         # Pretty up the version output
         case $v in
@@ -69,7 +75,7 @@ for DOMAIN in "$@"; do
           tls1) V="TLSv1.0";;
           tls1_1) V="TLSv1.1";;
           tls1_2) V="TLSv1.2";;
-          # tls1_3) V="TLSv1.3";;
+          tls1_3) V="TLSv1.3";;
         esac
 
         # Loop over cipher list
@@ -99,7 +105,7 @@ for DOMAIN in "$@"; do
 
     cat $tempfile; echo -e "|_\n"
 
-    echo -e "Done: ($i) Ciphers Tested :: ($( grep -E '-' $tempfile | wc -l )) Ciphers Supported"
+    echo -e "Done: ($i) Ciphers Tested :: ($( grep -E '-' $tempfile | wc -l )) Ciphers Supported\nUsing: $(openssl version)"
     rm -f $tempfile;
 
   done #end port loop
