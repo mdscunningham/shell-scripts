@@ -59,10 +59,12 @@ for DOMAIN in "$@"; do
 
 
     #Check OpenSSL version in use, and set protocol version list
-    if [[ $(openssl version) =~ 0\.9\.[0-9] ]]; then
+    if [[ $(openssl version) =~ 0\.9\.[0-9] ]]; then #v0.9.x -- OLD
       PROTO="ssl2 ssl3 tls1";
+    elif [[ $(openssl version) =~ 1\.[1-9]\.[1-9] ]]; then #1.1.x -- NEW
+      PROTO="ssl2 ssl3 tls1 tls1_1 tls1_2 tls1_3";
     else
-      PROTO="ssl2 ssl3 tls1 tls1_1 tls1_2";
+      PROTO="ssl2 ssl3 tls1 tls1_1 tls1_2"; #1.0.x -- CURRENT
     fi
 
     #Inner loop over protocols
