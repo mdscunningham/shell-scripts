@@ -81,12 +81,12 @@ for DOMAIN in "$@"; do
         # Loop over cipher list
         for c in $(openssl ciphers 'ALL:eNULL' | tr ':' ' '); do
           if [[ ! $quiet ]]; then echo -ne " $V :: $c                    \r"; fi
-          (echo | openssl s_client $opt -connect $DOMAIN:$PORT -cipher $c -$v > /dev/null 2> /dev/null && echo "|      $c" >> ${tempfile}.$v &)
+          (echo | openssl s_client $opt -connect $DOMAIN:$PORT -cipher $c -$v 2>/dev/null | awk '/Cipher.*:/ && !/0000/ {print "|      "$NF}' >> ${tempfile}.$v &)
           i=$(($i+1))
         done;
 
         # Combine logs into final output
-        if [[ -f ${tempfile}.$v ]]; then
+        if [[ -s ${tempfile}.$v ]]; then
           echo -e "|  $V:\n|    ciphers:" >> $tempfile;
           cat ${tempfile}.$v | sort -r >> $tempfile;
           rm -f ${tempfile}.$v;
@@ -97,7 +97,7 @@ for DOMAIN in "$@"; do
     #Gather host/domain/service information, and output results
     if [[ $DOMAIN =~ [a-z] ]]; then I=$(dig +short $DOMAIN | head -1); else I=$DOMAIN; fi
     rdns=$(dig +short -x $I)
-    srv=$(awk "/ $PORT\/tcp/"'{print $2,"("$1")"}' /etc/services)
+    srv=$(awk "/ $PORT\/tcp/ || /\t$PORT\/tcp/"'{print $2,"("$1")"}' /etc/services)
 
     echo -e "$DOMAIN ($I)                                        "
     if [[ -n $rdns ]]; then echo "rDNS for ($I): $rdns"; fi
