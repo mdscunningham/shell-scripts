@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2017-03-13
+# Updated: 2017-05-07
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -48,7 +48,9 @@ QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
 l=1; p=0; q=0; full_log=0; fast_mode='';
 LINECOUNT='1000000'
 RESULTCOUNT='10'
-DAYS=''; VERBOSE=0;
+DAYS=''; VERBOSE=0; OUT_LIST=''
+L_OUT='LDir LAcct LAuth L-IP LFail LSpoof LBulk LSubj LBnce'
+Q_OUT='QSum QAuth QLoc QSpoof QSubj QScript QSend QBnce QFrzn'
 
 #-----------------------------------------------------------------------------#
 # Menus for the un-initiated
@@ -153,7 +155,7 @@ date_lookup(){
 # Setup how much of the log file to read and how.
 set_decomp(){
   # Servername and Current time of Analysis, and exim version
-  echo -e "Hostname: $(hostname)\nCur.Date: $(date +'%A, %B %d, %Y -- %Y.%m.%d')\nExim Ver: $(/usr/sbin/exim --version | head -n1)\n"
+  echo -e "Hostname: $(hostname)\nCur.Date: $(date +'%A, %B %d, %Y -- %Y.%m.%d')\nExim Ver: $(/usr/sbin/exim --version 2>/dev/null | head -n1)\n"
 
   # Compressed file -- decompress and read whole log
   if [[ $(file -b $1) =~ zip ]]; then
@@ -208,7 +210,7 @@ set_decomp(){
 # Process commandline flags
 arg_parse(){
   local OPTIND;
-  while getopts ac:d:f:Fhn:pqv OPTIONS; do
+  while getopts ac:d:f:Fhn:o:pqv OPTIONS; do
     case "${OPTIONS}" in
       a) full_log=1 ;;
       c) LINECOUNT=${OPTARG} ;;
@@ -216,6 +218,7 @@ arg_parse(){
       f) LOGFILE=${OPTARG}; QUEUEFILE=${OPTARG}; PHPLOG=${OPTARG} ;; # Specify a log/queue file
       F) fast_mode=1 ;;
       n) RESULTCOUNT=${OPTARG} ;;
+      o) OUT_LIST=$(echo ${OPTARG} | sed 's/,/ /g') ;;
       p) l=0; p=1; q=0 ;; # PHP log
       q) l=0; q=1; p=0 ;; # Analyze queue instead of log
       v) VERBOSE=1 ;; # Debugging Output
@@ -227,6 +230,29 @@ arg_parse(){
     -f ... </path/to/logfile> to use instead of default
     -F ... FastMode (skip dumping exim queue to log)
     -n ... <#results> to show from analysis
+    -o ... Output only selected section(s) of mail analysis
+             provided as comma separated list [LDir,LAcct,LAuth...]
+           ----------------------------------------
+           LDir .... Directories
+           LAcct ... Accounts/Domain
+           LAuth ... Authenticated Users
+           L-IP .... IP-Address / Auth-Users
+           LFail ... Failed Login IPs
+           LSpoof .. Spoofed Senders
+           LBulk ... Bulk Senders
+           LSubj ... Subjects (Non-Bounceback)
+           LBnce ... Bouncebacks (address)
+           ----------------------------------------
+           QSum .... Queue Summary
+           QAuth ... Authenticated Users
+           QLoc .... Authenticated Local Users
+           QSpoof .. Spoofed Senders
+           QSubj ... Subjects
+           QScript . X-PHP-Scripts
+           QSend ... Senders
+           QBnce ... Bouncebacks (count)
+           QFrzn ... Frozen (count)
+           ----------------------------------------
     -p ... Look for 'X-PHP-Script' in the php mail log
     -q ... Create a queue logfile and analyze the queue
     -v ... Verbose (debugging output)\n
@@ -245,37 +271,41 @@ mail_logs(){
 date_lookup $LOGFILE
 echo; set_decomp $LOGFILE;
 
-## Count of messages sent by scripts
+if [[ $OUT_LIST ]]; then L_OUT=$OUT_LIST; fi
+for opt in $L_OUT; do
+  case $opt in
+
+LDir) ## Count of messages sent by scripts
 section_header "Directories"
 $DECOMP $LOGFILE | grep 'cwd=' | grep -Eiv 'spool|error|exim' | perl -pe 's/.*cwd=(\/.*?)\ [0-9]\ args:.*/\1/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
- | sort -rn | head -n $RESULTCOUNT
+ | sort -rn | head -n $RESULTCOUNT ;;
 
-# Count of messages per "Account/Domains"
+LAcct) # Count of messages per "Account/Domains"
 section_header "Accounts/Domains"
 $DECOMP $LOGFILE | grep -o '<=\ [^<>].*\ U=.*\ P=' | perl -pe 's/.*@(.*?)\ U=(.*?)\ P=/\2 \1/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
- | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-10s %s\n",$1,$2,$3}'
+ | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-10s %s\n",$1,$2,$3}' ;;
 
-# Count of messages per Auth-Users
+LAuth) # Count of messages per Auth-Users
 section_header "Auth-Users"
 $DECOMP $LOGFILE | grep -Eo 'A=.*in:.*\ S=' | perl -pe 's/.*:(.*?)\ S=/\1/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
- | sort -rn | head -n $RESULTCOUNT
+ | sort -rn | head -n $RESULTCOUNT ;;
 
-# Count of IPs per Auth-Users
+L-IP) # Count of IPs per Auth-Users
 section_header "IP-Addresses/Auth-Users"
 $DECOMP $LOGFILE | grep 'A=.*in:.*\ S=' | perl -pe 's/.*[^I=]\[(.*?)\].*A=.*in:(.*?)\ S=.*$/\1 \2/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
- | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-15s %s\n",$1,$2,$3}'
+ | sort -rn | head -n $RESULTCOUNT | awk '{printf "%8s %-15s %s\n",$1,$2,$3}' ;;
 
-# Count of IPs that failed login
+LFail) # Count of IPs that failed login
 section_header "Failed Login IPs"
 $DECOMP $LOGFILE | grep 'authenticator failed' | perl -pe 's/.*\ \[(.*?)\]:.*/\1/g'\
  | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
- | sort -rn | head -n $RESULTCOUNT
+ | sort -rn | head -n $RESULTCOUNT ;;
 
-# Spoofed Sender Addresses
+LSpoof) # Spoofed Sender Addresses
 section_header "Spoofed Senders"
 FMT="%8s %-35s %s\n"
 printf "$FMT" "Count " " Auth-User" " Spoofed-User"
@@ -283,9 +313,9 @@ printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
 $DECOMP $LOGFILE | grep 'A=.*in:.*\ S=' | perl -pe 's/.*<=\ (.*?)\ .*A=.*in:(.*?)\ .*/\2 \1/g'\
  | awk '{ if ($1 != $2) freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
-printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
+printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)" ;;
 
-# Show sent messages with the most recipients
+LBulk) # Show sent messages with the most recipients
 section_header "Bulk Senders"
 FMT="%8s %-16s %s\n"
 printf "$FMT" "RCPTs " " MessageID" " Auth-User"
@@ -293,21 +323,24 @@ printf "$FMT" "--------" "$(dash 16 -)" "$(dash 40 -)"
 $DECOMP $LOGFILE | grep "<=.*A=.*in:.*\ for\ "\
  | perl -pe 's/.*\ (.*?)\ <=\ .*A=.*in:(.*)\ S=.*\ for\ (.*)//g; print $count = scalar(split(" ",$3))," ",$1," ",$2;'\
  | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
-printf "$FMT" "--------" "$(dash 16 -)" "$(dash 40 -)"
+printf "$FMT" "--------" "$(dash 16 -)" "$(dash 40 -)" ;;
 
-# Count of Messages by Subject
+LSubj) # Count of Messages by Subject
 section_header "Subjects (Non-Bounceback)"
 $DECOMP $LOGFILE | grep '<=.*T=' | perl -pe 's/.*T=\"(.*?)\".*/\1/g'\
  | awk '!/failed: |deferred: / {freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
- | sort -rn | head -n $RESULTCOUNT
+ | sort -rn | head -n $RESULTCOUNT ;;
 
-# Count of Bouncebacks by address
+LBnce) # Count of Bouncebacks by address
 section_header "Bouncebacks (address)"
 $DECOMP $LOGFILE | grep '<= <>.*\ for\ ' | perl -pe 's/.*\".*for\ (.*$)/\1/g'\
  | awk '{freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
- | sort -rn | head -n $RESULTCOUNT
+ | sort -rn | head -n $RESULTCOUNT ;;
 
-echo
+*) echo "$opt is not a valid output option." ;;
+
+  esac
+done; echo
 }
 
 #-----------------------------------------------------------------------------#
@@ -319,6 +352,15 @@ mail_queue(){
 if [[ $full_log == 1 ]]; then READLIMIT="cat"; LOGLIMIT="cat"
   else READLIMIT="head -n $LINECOUNT"; LOGLIMIT="head -n $(( $LINECOUNT * 3 ))"; fi
 
+## Generate Header File List
+HEADER_LIST=$(find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | $READLIMIT)
+
+if [[ $OUT_LIST ]]; then Q_OUT=$OUT_LIST; fi
+
+for opt in $Q_OUT; do
+  case $opt in
+
+QSum) ## Queue Summary
 ## Current Queue Dump
 if [[ -f $QUEUEFILE ]]; then
   echo -e "\nFound existing queue dump ( $QUEUEFILE ).\n"
@@ -337,27 +379,23 @@ elif [[ ! $fast_mode ]]; then
   du -sh $QUEUEFILE | awk -v LINES="$LINECOUNT" '{print "Last",LINES,"lines of: "$2,"("$1")"}';
 fi
 
-## Queue Summary
 if [[ -s $QUEUEFILE && ! $fast_mode ]]; then
 section_header "Queue: Summary"
 $DECOMP $QUEUEFILE | /usr/sbin/exiqsumm | head -3 | tail -2;
 cat $QUEUEFILE | /usr/sbin/exiqsumm | sort -rnk1 | grep -v "TOTAL$" | head -n $RESULTCOUNT
-fi
+fi ;;
 
-## Generate Header File List
-HEADER_LIST=$(find /var/spool/exim/input/ -type f -name "*-H" -print 2>/dev/null | $READLIMIT)
-
-## Queue Senders
+QAuth) ## Queue Auth Users
 section_header "Queue: Auth Users"
 echo $HEADER_LIST | xargs grep --no-filename 'auth_id' 2>/dev/null\
- | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+ | sed 's/-auth_id //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT ;;
 
-## Queue Local Users
+QLoc) ## Queue Auth  Local Users
 section_header "Queue: Auth Local Users"
 echo $HEADER_LIST | xargs grep --no-filename -A1 'authenticated_local_user' 2>/dev/null\
- | grep -v 'authenticated_local_user' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+ | grep -v 'authenticated_local_user' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT ;;
 
-## Queue Spoofed Senders
+QSpoof) ## Queue Spoofed Senders
 section_header "Queue: Spoofed Senders"
 FMT="%8s %-35s %s\n"
 printf "$FMT" "Count " " Auth-User" " Spoofed-User"
@@ -365,34 +403,37 @@ printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
 echo $HEADER_LIST | xargs awk '/auth_id/{printf $2" "};/envelope-from/{print $2}' | tr -d '<>)'\
  | awk '{ if ($1 != $2) freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
-printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
+printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)" ;;
 
-## Queue Subjects
+QSubj) ## Queue Subjects
 section_header "Queue: Subjects"
 echo $HEADER_LIST | xargs grep --no-filename "Subject: " 2>/dev/null\
- | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+ | sed 's/.*Subject: //g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT ;;
 
-## Queue Scripts
+QScript) ## Queue Scripts
 section_header "Queue: X-PHP-Scripts"
 echo $HEADER_LIST | xargs grep --no-filename "X-PHP.*-Script:" 2>/dev/null\
- | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT
+ | sed 's/^.*X-PHP.*-Script: //g;s/\ for\ .*$//g' | sort | uniq -c | sort -rn | head -n $RESULTCOUNT ;;
 
-## Count of (non-bounceback) Sending Addresses in queue
+QSend) ## Count of (non-bounceback) Sending Addresses in queue
 section_header "Queue: Senders"
 echo $HEADER_LIST | xargs grep --no-filename '^<[^>]' 2>/dev/null\
- | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | tr -d '<>' | head -n $RESULTCOUNT
+ | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | tr -d '<>' | head -n $RESULTCOUNT ;;
 
-## Count of Bouncebacks in the queue
+QBnce) ## Count of Bouncebacks in the queue
 section_header "Queue: Bouncebacks (count)"
 echo $HEADER_LIST | xargs grep --no-filename '^<>' 2>/dev/null\
- | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+ | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT ;;
 
-## Count of 'frozen' messages by user
+QFrzn) ## Count of 'frozen' messages by user
 section_header "Queue: Frozen (count)"
 echo $HEADER_LIST | xargs grep --no-filename '\-frozen' 2>/dev/null\
- | awk '($2 ~ /[0-9]/) {freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
+ | awk '($2 ~ /[0-9]/) {freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT ;;
 
-echo
+*) echo "$opt is not a valid output option" ;;
+
+  esac
+done; echo
 }
 
 # Check that X_Header is turned on and process the php_maillog
@@ -468,6 +509,9 @@ if [[ $VERBOSE == 1 ]]; then
    full_log : $full_log
   LINECOUNT : $LINECOUNT
 RESULTCOUNT : $RESULTCOUNT
+   OUT_LIST : ${OUT_LIST:-Unset}
+      L_OUT : $L_OUT
+      Q_OUT : $Q_OUT
        DAYS : ${DAYS:-Unset}
        DATE : ${DATE:-Unset}\n"
 fi
