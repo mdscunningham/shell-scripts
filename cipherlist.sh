@@ -23,6 +23,9 @@ Usage: $0 [-p port1,port2,...] host1 [host2] [host3] ...
   -q ... Quiet, do not print progress
 
   -h ... Print this help and quit
+
+  Example:
+  $0 -p443,465,2087 domain1.com ip.ad.dre.ss
 "
 }
 
@@ -90,18 +93,18 @@ for DOMAIN in "$@"; do
         # Combine logs into final output
         if [[ -s ${tempfile}.$v ]]; then
           echo -e "|  $V:\n|    ciphers:" >> $tempfile;
-          cat ${tempfile}.$v | sort -r >> $tempfile;
+          cat ${tempfile}.$v | sort -r | uniq >> $tempfile;
           rm -f ${tempfile}.$v;
         fi
 
     done
 
     #Gather host/domain/service information, and output results
-    if [[ $DOMAIN =~ [a-z] ]]; then I=$(dig +short $DOMAIN | head -1); else I=$DOMAIN; fi
-    rdns=$(dig +short -x $I)
+    if [[ $DOMAIN =~ [a-z] ]]; then I=$(dig +short $DOMAIN | grep -v [a-z] | head -1); else I=$DOMAIN; fi
+    rdns=$(dig +short -x $I | head -1)
     srv=$(awk "/ $PORT\/tcp/ || /\t$PORT\/tcp/"'{print $2,"("$1")"}' /etc/services)
 
-    echo -e "$DOMAIN ($I)                                        "
+    echo -e "Scan report for $DOMAIN ($I)                                        "
     if [[ -n $rdns ]]; then echo "rDNS for ($I): $rdns"; fi
     echo "$srv"
 
