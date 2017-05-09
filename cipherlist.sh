@@ -30,16 +30,12 @@ Usage: $0 [-p port1,port2,...] host1 [host2] [host3] ...
 }
 
 #Argument parsing
-OPTIONS=$(getopt -o "p:qh" -- "$@") # Execute getopt
-eval set -- "$OPTIONS" # Magic
-while true; do # Evaluate the options for their options
-case $1 in
-  -p ) PORTS=$(echo $2 | sed 's/,/ /g'); shift ;;
-  -q ) quiet=1 ;;
-  -- ) shift; break ;; # More Magic
-  -h|--help|* ) usage; exit ;; # print help info
-esac;
-shift;
+while getopts p:qh option; do
+  case "${option}" in
+    p ) PORTS=$(echo ${OPTARG} | sed 's/,/ /g'); shift ;;
+    q ) quiet=1 ;;
+    h|* ) usage; exit ;; # print help info
+  esac
 done
 
 if [[ ! $@ ]]; then usage; exit; fi
