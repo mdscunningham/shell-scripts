@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2017-04-23
+# Updated: 2017-05-09
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -79,7 +79,7 @@ for domain in $@; do
       cat /tmp/fullchain.pem | openssl x509 > /tmp/$domain.pem
 
     openssl x509 -noout -text -in /tmp/$domain.pem | egrep -i 'subject:|dns:|issuer:'\
-     | sed 's/DNS:/\nDNS:/;s/.*Subject: /\nSubject:\n/;s/.*Issuer: /Issuer:\n/;s/, /\n/g;s/[=:]/: /g;s/\/email/\nemail/g;s/\/busi/\nBusi/g;s/\/seri/\nSeri/g;s/\/1\.3\.6\./\n1\.3\.6\./g';
+     | sed 's/DNS:/\nDNS:/;s/.*Subject: /\nSubject:\n/;s/.*Issuer: /Issuer:\n/;s/, Inc./ Inc./g;s/, /\n/g;s/[=:]/: /g;s/\/email/\nemail/g;s/\/busi/\nBusi/g;s/\/seri/\nSeri/g;s/\/1\.3\.6\./\n1\.3\.6\./g';
     echo
     echo | openssl s_client -connect $I:$P $SNI -cipher "EDH" 2>/dev/null | grep "Server Temp Key";
     openssl x509 -noout -text -in /tmp/$domain.pem | grep Signature.Algorithm | head -1 | sed 's/.*Sig/Sig/g'
