@@ -62,7 +62,7 @@ fi
 
 # Initialize and count the number of /home/dirs
 i=0; min=1; resuming=''; cpanel=''; plesk=''
-if [[ -x /usr/local/cpanel/bin/cpanel ]]; then #CPANEL
+if [[ -d /usr/local/cpanel/ ]]; then #CPANEL
   userlist="/home*/*/public_html/";
   cpanel=1;
 elif [[ -d /var/www/vhosts/ ]]; then #PLESK
