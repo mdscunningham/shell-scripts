@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2016-12-26
+# Updated: 2017-05-18
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -16,34 +16,49 @@
 
 div='--------------------------------------------------------------------------------';
 
+# Taste the rainbow
+      BLACK=$(tput setaf 0);        RED=$(tput setaf 1)
+      GREEN=$(tput setaf 2);     YELLOW=$(tput setaf 3)
+       BLUE=$(tput setaf 4);     PURPLE=$(tput setaf 5)
+       CYAN=$(tput setaf 6);      WHITE=$(tput setaf 7)
+
+     BRIGHT=$(tput bold);        NORMAL=$(tput sgr0)
+      BLINK=$(tput blink);      REVERSE=$(tput smso)
+  UNDERLINE=$(tput smul)
+
+info(){ echo -e "${BRIGHT}${GREEN}${1}${NORMAL}"; }
+alert(){ echo -e "${BRIGHT}${YELLOW}${1}${NORMAL}"; }
+warning(){ echo -e "${BRIGHT}${RED}${1}${NORMAL}"; }
+
 echo -e "\n${div}\n  $HOSTNAME\n${div}";
 
-echo "Base Setup
-[ ]Order in Billing matches order in ticket – has setups signed off on the following for all servers in order:
+info "Base Setup"
+echo "[ ]Order in Billing matches order in ticket – has setups signed off on the following for all servers in order:
         [ ] SYENG account exists for each MES service (if any)
           [ ] Naming scheme matches standard:
            -  https://wiki.int.liquidweb.com/articles/Standardized_Hostnames_for_Managed_Engineering_Servers_and_Services
           [ ] Pricing has been set in billing and is not \$0"
 
-echo -e '\n        [ ]CPU/Base Build';
-  grep model.name /proc/cpuinfo | head -1;
+info '\n    [ ]CPU/Base Build';
+  grep model.name /proc/cpuinfo | head -1 | sed 's/^/\t/g'
+  echo -e "\t$(grep -c model.name /proc/cpuinfo) Cores"
 
-echo -e '\n          [ ] CPUspeed is off';
+info '\n    [ ] CPUspeed is off';
 if [[ -x /usr/bin/systemctl ]]; then
-  systemctl status cpuspeed
+  systemctl status cpuspeed | sed 's/^/\t/g'
 else
-  /etc/init.d/cpuspeed status;
+  /etc/init.d/cpuspeed status | sed 's/^/\t/g'
 fi
 
-echo -e '\n    [ ]OS';
+info '\n    [ ]OS';
 if [[ -f /etc/redhat-release ]]; then
   cat /etc/redhat-release
 elif [[ -x /usr/bin/lsb_release ]]; then
-  lsb_release -a;
-fi
+  lsb_release -a
+fi | sed 's/^/\t/g'
 
 if [[ $(dmesg | grep -i raid) ]]; then
-  echo -e '\n    [ ]RAID'
+  info '\n    [ ]RAID'
 
 if [[ $(df | grep '/dev/md[0-9]') ]]; then
   echo -e '          [ ] Software RAID'; fi
@@ -51,21 +66,22 @@ if [[ $(df | grep '/dev/md[0-9]') ]]; then
 if [[ -x /opt/MegaRAID/MegaCli/MegaCli64 ]]; then
   echo '          [ ] LSI RAID configuration'
   echo '          [ ] LSI Controller Firmware version 12.12.0-0073 or higher to fix vpd r/w failed error.'
-    /opt/MegaRAID/MegaCli/MegaCli64 -AdpAllInfo -a0 | grep "Package Build";
+    /opt/MegaRAID/MegaCli/MegaCli64 -AdpAllInfo -a0 | grep Package. Build | sed 's/^/\t\t/g';
 
   echo "              [ ] Solid State Drives"
   echo "                  [ ] Disk Cache is enabled"
   echo "                  [ ] Read Ahead caching disabled"
   echo "              [ ] SATA Drives"
   echo "                  [ ] Read Ahead caching enabled"
-    /opt/MegaRAID/MegaCli/MegaCli* -LDInfo -Lall -aAll | grep -E 'Size|Cache'
+    /opt/MegaRAID/MegaCli/MegaCli* -LDInfo -Lall -aAll | grep -E 'Size|Cache' | sed 's/^/\t\t/g'
 fi
 
 if [[ -x /usr/StorMan/arcconf ]]; then
   echo -e '          [ ] Adaptec RAID controller Firmware version 7.4-0 build 30862 or higher for 71605E cards:'
-    /usr/StorMan/arcconf getconfig 1 | grep Controller.Model | column -t
+    /usr/StorMan/arcconf getconfig 1 | grep Controller.Model | column -t | sed 's/^/\t\t/g';
   if [[ $(/usr/StorMan/arcconf getconfig 1 | grep ASR71605E) ]]; then
-    /usr/StorMan/arcconf getconfig 1 | egrep 'Firmware.*7.[0-9]' | awk '{ if ($4 > "(30861)") print "ASR71605E Firmware is up to date: " $4; else print "ASR71605E Build version is < 30862! **Please update!** " }';
+    alert "Adaptec RAID 71605E Found:"
+    /usr/StorMan/arcconf getconfig 1 | egrep 'Firmware.*7.[0-9]' | awk '{ if ($4 > "(30861)") print "ASR71605E Firmware is up to date: " $4; else print "ASR71605E Build version is < 30862! **Please update!** " }' | sed 's/^/\t\t/g';
   fi
 fi
 
@@ -80,17 +96,17 @@ echo -e '          [ ] StorMan removed'
   fi
 fi
 
-echo -e '\n    [ ]Drive Size';
-  fdisk -l 2>/dev/null | grep -i disk./dev;
+info '\n    [ ]Drive Size';
+  fdisk -l 2>/dev/null | grep -i disk./dev | sed 's/^/\t/g'
 
-echo -e '\n    [ ]RAM';
-  free -m;
+info '\n    [ ]RAM';
+  free -m | sed 's/^/\t/g'
 
-echo -e '\n    [ ]Partitioning';
-  lsblk;
+info '\n    [ ]Partitioning';
+  lsblk | sed 's/^/\t/g'
 
 if [[ -f /etc/redhat-release && $(cat /etc/redhat-release | grep ' 6\.') ]]; then
-  echo -e '\n[ ]e1000e kmod update per wiki, if Cent6 and intel e1000e driver is in use.'
+  alert '\n[ ]e1000e kmod update per wiki, if Cent6 and intel e1000e driver is in use.'
   lsb_release -a|awk -F: '{
         sub(/^[ \t\r\n]+/, "",$NF) ;
         if($1 ~ /^Dis/) d=$2;
@@ -119,86 +135,102 @@ if [[ -f /etc/redhat-release && $(cat /etc/redhat-release | grep ' 6\.') ]]; the
 fi
 
 if [[ -d /usr/local/cpanel/ ]]; then
-echo -e '\n    [ x]Cpanel/Non-Cpanel'
-echo -e '\n          [ ] If cPanel, make sure the server has a full license.'
-  /usr/local/cpanel/cpkeyclt
-  if [[ $(df | grep /backup) ]]; then
-    echo -e '\n          [ x] Disable cPanel Backups if no backup drive was ordered.'
+info '\n[ x]Cpanel/Non-Cpanel'
+echo -e '\n    [ ] If cPanel, make sure the server has a full license.'
+  /usr/local/cpanel/cpkeyclt | sed 's/^/\t/g'
+
+  alert "\n       License Type:"
+    MAINIP=$(curl -s ip.liquidweb.com)
+    curl -s https://verify.cpanel.net/index.cgi?ip=$MAINIP | grep -Eio '>.*LIQUIDWEB.*<' | tr -d '<>' | sed 's/^/\t/g'
+
+  alert "\n       Backup Config:"
+    whmapi1 backup_config_get|grep -E "backup(_daily|_monthly|_weekly|days)" | sed 's/^/\t/g'
+
+  if [[ ! $(df | grep /backup) ]]; then
+    warning "\n       No Backup Drive Found :: Make Sure Backups are Disabled"
+    echo -e '      [ ] Disable cPanel Backups if no backup drive was ordered.'
   fi
 
   if [[ $(ip a | egrep ' 192\.| 10\.') ]]; then
-  echo -e '\n          [ ] Private IP addresses are marked as reserved.'
+  echo -e '\n      [ ] Private IP addresses are marked as reserved.'
     if [[ ! -s /etc/reservedips ]]; then
     mkdir -p /root/bin;
     wget -qO /root/bin/reserveips http://scripts.ent.liquidweb.com/reserveips;
     chmod +x /root/bin/reserveips;
     reserveips
     else
-      cat /etc/reservedips
+      cat /etc/reservedips | sed 's/^/\t/g'
     fi
   fi
 
   if [[ $(ip a | grep ' 172\.') ]]; then
-    echo -e '\n          [ ] If servers are behind hardware FW, make sure the UDP inspection policy is set to "maximum client auto" ** poke networking or check in NOC **'
+    alert '\n      [ ] If servers are behind hardware FW, make sure the UDP inspection policy is set to "maximum client auto" ** poke networking or check in NOC **'
   fi
 fi
 
-echo -e '\n    [ ]Complex Root or User Passwords are setup
-           "pwgen -syn 15 1" or longer
-        [ ]Cable runs requested and acknowledged by Maintenance
-        [ ]IPMI - Verified working.'
+echo -e '\n[ ]Complex Root or User Passwords are setup
+       "pwgen -syn 15 1" or longer
+     [ ]Cable runs requested and acknowledged by Maintenance
+     [ ]IPMI - Verified working.'
 
 if [[ -f /usr/sbin/r1soft/log/cdp.log ]]; then
-  echo -e "\nGuardian"
-  echo -e "[ ]buagent or cdp-agent is installed and running (/etc/init.d/cdp-agent status)"
-    /etc/init.d/cdp-agent status
+  info '\nGuardian'
+  echo -e '[ ]buagent or cdp-agent is installed and running (/etc/init.d/cdp-agent status)'
+    /etc/init.d/cdp-agent status | sed 's/^/    /g'
 
-  echo -e "[ ]Port 1167 open/allowed in the software firewall."
-    iptables -nL | grep :1167
+  echo -e '[ ]Port 1167 open/allowed in the software firewall.'
+    iptables -nL | grep :1167 | sed 's/^/    /g'
 
-  echo -e "[ ]Make sure the proper partitions are being backed up via the web interface."
-  echo -e "[ ]If there a Dedicated MySQL drive make sure it is setup to be backed up."
+  echo -e '[ ]Make sure the proper partitions are being backed up via the web interface.'
+    # Lookup the backup manager from the CDP config and the Guardian IP
+
+  echo -e '[ ]If there a Dedicated MySQL drive make sure it is setup to be backed up.'
     mysqldata=$(mysql -Ne 'select @@datadir' | sed 's|/$||g')
-    if [[ $(grep $mysqldata /etc/fstab) ]]; then echo "Dedicated MySQL Drive :: Make sure to check this in Guardian"; fi
+    if [[ $(grep $mysqldata /etc/fstab) ]]; then alert "    Dedicated MySQL Drive :: Make sure to check this in Guardian"; fi
 
   echo -e "[ ]Verify that backups complete"
   echo -e "[ ]Make sure Guardian monitoring is enabled on the Guardian subaccount"
 fi
 
 echo -e "\n[ ]Remote IP override module installed or updated if applicable"
-echo -e "          [ ]mod_zeus if Apache 2.2"
-  if [[ $(httpd -v) =~ 2\.2 ]]; then httpd -M 2> /dev/null | grep zeus; fi
-echo -e "          [ ]mod_remoteip if Apache 2.4"
+echo -e "     [ ]mod_zeus if Apache 2.2"
+  if [[ $(httpd -v) =~ 2\.2 ]]; then httpd -M 2> /dev/null | grep zeus ; fi
+echo -e "     [ ]mod_remoteip if Apache 2.4"
   if [[ $(httpd -v) =~ 2\.4 ]]; then httpd -M 2> /dev/null | grep remote; fi
 
 echo -e '\n[ ]SonarPush is installed and working properly'
   ps aux | grep [S]onarPush
-  echo "https://monitor.liquidweb.com/summary.php?search=$(cat /usr/local/lp/etc/lp-UID)"; echo
+  alert "https://monitor.liquidweb.com/summary.php?search=$(cat /usr/local/lp/etc/lp-UID)\n"
 if [[ -f /usr/local/lp/etc/sonar_password ]]; then
-  echo 'Sonar is installed and configured. Check this using Radar link in Billing'
+  echo 'Sonar is installed and configured. Check this using Radar link highlighted above.'
 else
-  echo -e 'Sonar password file missing :: /usr/local/lp/etc/sonar_password \nFix this if server is Managed. Ignore this if the server is Unmanaged'
+  warning 'Sonar password file missing :: /usr/local/lp/etc/sonar_password'
+  alert 'Fix this if server is Managed. Ignore this if the server is Unmanaged'
 fi
 
 echo -e '\nMaintenance
 [ x]Servers moved to correct building if necessary
 [ x]Cable runs complete'
 
-echo -e "\nNetworking"
+info "\nNetworking"
 echo -e "[ ]Public/NAT IPs Configured Correctly ***Consult the original CTB***"
-  ip -o -4 a | grep -v ': lo';
+for x in $(ip -o -4 a | awk '{print $2}' | uniq | grep -v lo); do
+  echo -n "${BRIGHT}$x: ${NORMAL}"; ip -o -4 a | awk "/$x/"'{print $4}' | cut -d/ -f1 | tr '\n' ' '; echo;
+done | sed 's/^/    /g';
+
+# ip -o -4 a | grep -v ': lo' | sed 's/^/    /g';
 
 echo -e "[ ]If required, verify that the servers are behind a FW."
-  if [[ $(ip -o -4 a | grep ' 172\.') ]]; then echo "Behind NAT Firewall"; fi
+  if [[ $(ip -o -4 a | grep ' 172\.') ]]; then alert "    Behind NAT Firewall"; fi
 
 echo -e "[ ]Private Switch/Networking"
 echo -e "[ ]Load Balancing"
-  httpd -M 2> /dev/null | egrep 'zeus|remote'
+  httpd -M 2> /dev/null | egrep 'zeus|remote' | sed 's/^/    /g'
 
 echo -e "[ ]IP Requests/VIPs"
 echo -e "[ ]Confirm private network cables are plugged into switch/server (ip addr ls dev ethX)"
   for x in $(dmesg | grep -o eth[0-9] | sort | uniq); do
-    printf "$x :: "; ethtool $x | grep -i link.detect;
+    (printf "$x :: "; ethtool $x | grep -i link.detect) | sed 's/^/    /g';
   done
 
 echo -e "\nMigrations
@@ -209,10 +241,10 @@ echo -e "\nMigrations
 if [[ ! -d /usr/local/cpanel ]]; then
   echo -e "\nSupport (For Managed and CoreManaged Customers) – Do requested versions match customer request:"
   echo -e "\n[ ]Apache"
-    if [[ -x $(which httpd) ]]; then httpd -v 2> /dev/null; elif [[ -x $(which apache2) ]]; then apache2 -v 2> /dev/null; fi
+    if [[ -x $(which httpd) ]]; then httpd -v 2> /dev/null; elif [[ -x $(which apache2) ]]; then apache2 -v 2> /dev/null; fi | sed 's/^/    /g'
   echo -e "\n[ ]MySQL"
     if [[ -x $(which mysql) ]]; then
-      mysql --version
+      mysql --version | sed 's/^/    /g'
     fi
   echo -e '\n[ ]DNS/Nameservers as requested
 [ ]ServerSecure
