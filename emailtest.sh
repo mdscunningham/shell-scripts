@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-02-08
-# Updated: 2016-08-29
+# Updated: 2017-05-23
 #
 #
 #!/bin/bash
@@ -24,7 +24,7 @@ echo -e "\n Usage: $(basename $0) [options] [hostname] [email-address] [password
     -p | --pop3 ..... Test POP3
     -s | --smtp ..... Test SMTP
     -S | --ssl ...... Use SSL connection
-    -T | --tls ...... Use TLS connection
+    -T | --tls ...... Use StartTLS connection
     -P | --port ..... Set alternate port
     -v | --verbose .. Show full SSL Cert output
 
@@ -70,8 +70,8 @@ while true; do # Evaluate the options for their options
   -T|--tls)
     case $method in
       smtp) port=587; tlsopts="-starttls smtp" ;;
-      imap) port=993; tlsopts="-starttls imap" ;;
-      pop3) port=995; tlsopts="-starttls pop3" ;;
+      imap) tlsopts="-starttls imap" ;;
+      pop3) tlsopts="-starttls pop3" ;;
     esac; secure=1;
     ;;
 
