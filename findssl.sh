@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2017-05-21
+# Updated: 2017-05-23
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -60,8 +60,12 @@ for domain in $@; do
   if [[ $(openssl version | awk '{print $2}') =~ ^1\. ]]; then SNI="-servername $D"; else SNI=''; fi
 
   # Add some TLS options if special ports are specified
-  if [[ $P == 587 || $P == 25 ]]; then SNI="$SNI -starttls smtp";
-  elif [[ $P == 21 ]]; then SNI="$SNI -starttls ftp"; fi
+  case $P in
+    25|587) SNI="$SNI -starttls smtp" ;;
+    21) SNI="$SNI -starttls ftp" ;;
+    110) SNI="$SNI -starttls pop3" ;;
+    143) SNI="$SNI -starttls imap" ;;
+  esac
 
   # Print header
   echo "$(dash 80 =)"; echo "$D :: $I:$P"; echo "$(dash 80 -)";
