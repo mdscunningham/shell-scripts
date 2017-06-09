@@ -173,6 +173,19 @@ echo -e '\n[ ]Complex Root or User Passwords are setup
      [ ]Cable runs requested and acknowledged by Maintenance
      [ ]IPMI - Verified working.'
 
+# https://www.thomas-krenn.com/en/wiki/Configuring_IPMI_under_Linux_using_ipmitool
+if [[ -x $(which ipmitool 2>/dev/null) ]]; then
+  ipmi_ip=$(ipmitool lan print 1 | awk '/IP Address.*10\./ {print $NF}');
+  subacct=$(cat /usr/local/lp/etc/lp-UID);
+  if [[ $ipmi_ip ]]; then
+    alert "\thttps://$ipmi_ip \neasyipmi $ipmi_ip $subacct";
+  else
+    warning '\tIPMI does not appear to have an IP configured'
+  fi
+else
+  warning '\tIPMItool is missing or not executable.'
+fi
+
 if [[ -f /usr/sbin/r1soft/log/cdp.log ]]; then
   info '\nGuardian'
   echo -e '[ ]buagent or cdp-agent is installed and running (/etc/init.d/cdp-agent status)'
