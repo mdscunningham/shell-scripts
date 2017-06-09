@@ -92,7 +92,7 @@ for ipaddr in $ip_list; do
 
     # Web based lookups
     echo "http://multirbl.valli.org/lookup/${YELLOW}${realip}${NORMAL}.html"
-    echo "http://www.senderbase.org/lookup/?search_string=${YELLOW}${realip}${NORMAL}"
+    echo "https://www.talosintelligence.com/reputation_center/lookup?search=${YELLOW}${realip}${NORMAL}#ip-addresses"
     echo "http://mxtoolbox.com/SuperTool.aspx?action=blacklist%3a${YELLOW}${realip}${NORMAL}&run=toolpage"
   fi
 
