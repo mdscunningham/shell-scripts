@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-20
-# Updated: 2016-08-23
+# Updated: 2017-06-28
 #
 #
 # Purpose: Quick DNS Summary for domain to confirm server/mail/rdns/ns/etc
@@ -54,7 +54,7 @@ fi;
 
 # Clean up inputs and start loop
 for domain in $(echo $D | sed 's/\///g;s/http://g;s/https://g'); do
-  echo -e "\nDNS Summary: $domain\nIntoDNS: http://www.intodns.com/check/?domain=$domain"
+  echo -e "\nDNS Summary: ${domain}\nIntoDNS: http://www.intodns.com/${domain}\nWhatsMyDNS: https://www.whatsmydns.net/#A/${domain}\nGeoPeeker: https://geopeeker.com/fetch/?url=${domain}"
 
 if [[ ! $fullwhois ]]; then
   # Attempt to check whois for nameservers and registrar if verbose
