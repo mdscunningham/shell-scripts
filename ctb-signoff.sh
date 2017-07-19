@@ -66,14 +66,14 @@ if [[ $(df | grep '/dev/md[0-9]') ]]; then
 if [[ -x /opt/MegaRAID/MegaCli/MegaCli64 ]]; then
   echo '          [ ] LSI RAID configuration'
   echo '          [ ] LSI Controller Firmware version 12.12.0-0073 or higher to fix vpd r/w failed error.'
-    /opt/MegaRAID/MegaCli/MegaCli64 -AdpAllInfo -a0 | grep Package. Build | sed 's/^/\t\t/g';
+    /opt/MegaRAID/MegaCli/MegaCli64 -AdpAllInfo -a0 | grep Package.Build | sed 's/^/\t\t/g';
 
   echo "              [ ] Solid State Drives"
   echo "                  [ ] Disk Cache is enabled"
   echo "                  [ ] Read Ahead caching disabled"
   echo "              [ ] SATA Drives"
   echo "                  [ ] Read Ahead caching enabled"
-    /opt/MegaRAID/MegaCli/MegaCli* -LDInfo -Lall -aAll | grep -E 'Size|Cache' | sed 's/^/\t\t/g'
+    /opt/MegaRAID/MegaCli/MegaCli64 -LDInfo -Lall -aAll | grep -E 'Size|Cache' | sed 's/^/\t\t/g'
 fi
 
 if [[ -x /usr/StorMan/arcconf ]]; then
