@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2017-05-18
+# Updated: 2017-09-03
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -13,6 +13,9 @@
 #	 [x] Check for RAID, and run appropriate hardware RAID Checks
 #	 [x] Check link for all eth devices mentioned in dmesg
 #	 [x] Corrected mysql drive lookup in Guardian section
+#        [x] Added check for CloudLinux bits 'n' pieces
+#        [x] Alert if cPanel license is still 15-day-test
+#        [x] No Color mode for emailing or other processing
 
 div='--------------------------------------------------------------------------------';
 
@@ -26,9 +29,17 @@ div='---------------------------------------------------------------------------
       BLINK=$(tput blink);      REVERSE=$(tput smso)
   UNDERLINE=$(tput smul)
 
-info(){ echo -e "${BRIGHT}${GREEN}${1}${NORMAL}"; }
-alert(){ echo -e "${BRIGHT}${YELLOW}${1}${NORMAL}"; }
-warning(){ echo -e "${BRIGHT}${RED}${1}${NORMAL}"; }
+if [[ $1 == '-n' ]]; then
+  # No color mode
+  info(){ echo -e "${1}"; }
+  alert(){ echo -e "${1}"; }
+  warning(){ echo -e "${1}"; }
+else
+  # Colors for alerting
+  info(){ echo -e "${BRIGHT}${GREEN}${1}${NORMAL}"; }
+  alert(){ echo -e "${BRIGHT}${YELLOW}${1}${NORMAL}"; }
+  warning(){ echo -e "${BRIGHT}${RED}${1}${NORMAL}"; }
+fi
 
 echo -e "\n${div}\n  $HOSTNAME\n${div}";
 
@@ -51,10 +62,21 @@ else
 fi
 
 info '\n    [ ]OS';
-if [[ -f /etc/redhat-release ]]; then
+if [[ -f /etc/redhat-release && $(uname -r | grep -i lve) ]]; then #CloudLinux
   cat /etc/redhat-release
-elif [[ -x /usr/bin/lsb_release ]]; then
+  # Check for LVEManager
+  if [[ -x $(which lvectl) && -x $(which lveinfo) ]]; then info "LVE Manager appears to be installed"; else warning "LVE utilities appear to be missing"; fi
+  # Check for mod_hostinglimits
+  if [[ $(httpd -M 2>/dev/null| grep hostinglimits) ]]; then info "mod_hostinglimits installed"; else warning "mod_hostinglimits missing"; fi
+  # Check for LVE kernel
+  if [[ $(uname -r) =~ lve ]]; then info "Server is using an LVE kernel\n$(uname -r)"; else warning "Server is not running LVE kernel\n$(uname -r)"; fi
+
+elif [[ -f /etc/redhat-release ]]; then # CentOS
+  cat /etc/redhat-release
+  uname -r
+elif [[ -x /usr/bin/lsb_release ]]; then #Ubuntu
   lsb_release -a
+  uname -r
 fi | sed 's/^/\t/g'
 
 if [[ $(dmesg | grep -i raid) ]]; then
@@ -105,7 +127,7 @@ info '\n    [ ]RAM';
 info '\n    [ ]Partitioning';
   lsblk | sed 's/^/\t/g'
 
-if [[ -f /etc/redhat-release && $(cat /etc/redhat-release | grep ' 6\.') ]]; then
+if [[ $(uname -r | grep -i el6) ]]; then
   alert '\n[ ]e1000e kmod update per wiki, if Cent6 and intel e1000e driver is in use.'
   lsb_release -a|awk -F: '{
         sub(/^[ \t\r\n]+/, "",$NF) ;
@@ -141,7 +163,12 @@ echo -e '\n    [ ] If cPanel, make sure the server has a full license.'
 
   alert "\n       License Type:"
     MAINIP=$(curl -s ip.liquidweb.com)
-    curl -s https://verify.cpanel.net/index.cgi?ip=$MAINIP | grep -Eio '>.*LIQUIDWEB.*<' | tr -d '<>' | sed 's/^/\t/g'
+    LICENSE=$(curl -s https://verify.cpanel.net/index.cgi?ip=$MAINIP | grep -Eio '>.*(LIQUIDWEB|TEST).*<' | tr -d '<>')
+    if [[ $LICENSE =~ LIQUIDWEB ]]; then
+      info $LICENSE | grep LIQUIDWEB
+    else
+      warning $LICENSE
+    fi | sed 's/^/\t/g'
 
   alert "\n       Backup Config:"
     whmapi1 backup_config_get|grep -E "backup(_daily|_monthly|_weekly|days)" | sed 's/^/\t/g'
@@ -228,7 +255,7 @@ echo -e '\nMaintenance
 info "\nNetworking"
 echo -e "[ ]Public/NAT IPs Configured Correctly ***Consult the original CTB***"
 for x in $(ip -o -4 a | awk '{print $2}' | uniq | grep -v lo); do
-  echo -n "${BRIGHT}$x: ${NORMAL}"; ip -o -4 a | awk "/$x/"'{print $4}' | cut -d/ -f1 | tr '\n' ' '; echo;
+  echo -n $(info "$x: "); ip -o -4 a | awk "/$x/"'{print $4}' | cut -d/ -f1 | tr '\n' ' '; echo;
 done | sed 's/^/    /g';
 
 # ip -o -4 a | grep -v ': lo' | sed 's/^/    /g';
