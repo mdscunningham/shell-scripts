@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2013-12-05
-# Updated: 2016-03-22
+# Updated: 2017-10-04
 #
 #
 
@@ -65,7 +65,7 @@ if [[ -f nameserver ]]; then
  data=($(cat nameserver))
 else
 # Read in data from remote file
- data=($(curl -s http://sh.mdsc.info/nameserver))
+ data=($(curl -sL http://sh.mdsc.info/nameserver))
 fi
 
 # Execute Getopt
