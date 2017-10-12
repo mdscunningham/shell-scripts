@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2017-09-03
+# Updated: 2017-10-04
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -70,6 +70,8 @@ if [[ -f /etc/redhat-release && $(uname -r | grep -i lve) ]]; then #CloudLinux
   if [[ $(httpd -M 2>/dev/null| grep hostinglimits) ]]; then info "mod_hostinglimits installed"; else warning "mod_hostinglimits missing"; fi
   # Check for LVE kernel
   if [[ $(uname -r) =~ lve ]]; then info "Server is using an LVE kernel\n$(uname -r)"; else warning "Server is not running LVE kernel\n$(uname -r)"; fi
+  # Check for enabled Repos
+  if [[ $(grep 'enabled.*=.*1' /etc/yum.repos.d/cloudlinux*) ]]; then info "$(grep 'enabled.*=.*1' /etc/yum.repos.d/cloudlinux*)"; else warning "No cloudlinux repos enabled at this time"; fi
 
 elif [[ -f /etc/redhat-release ]]; then # CentOS
   cat /etc/redhat-release
