@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2017-10-04
+# Updated: 2017-10-23
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -43,6 +43,10 @@ fi
 
 echo -e "\n${div}\n  $HOSTNAME\n${div}";
 
+####################
+# CPU and Operating System
+##########
+
 info "Base Setup"
 echo "[ ]Order in Billing matches order in ticket – has setups signed off on the following for all servers in order:
         [ ] SYENG account exists for each MES service (if any)
@@ -62,8 +66,10 @@ else
 fi
 
 info '\n    [ ]OS';
-if [[ -f /etc/redhat-release && $(uname -r | grep -i lve) ]]; then #CloudLinux
+if [[ $(grep -i cloud /etc/redhat-release 2>/dev/null) ]]; then #CloudLinux
   cat /etc/redhat-release
+  # Force refresh of CL License
+  clnreg_ks --force
   # Check for LVEManager
   if [[ -x $(which lvectl) && -x $(which lveinfo) ]]; then info "LVE Manager appears to be installed"; else warning "LVE utilities appear to be missing"; fi
   # Check for mod_hostinglimits
@@ -80,6 +86,10 @@ elif [[ -x /usr/bin/lsb_release ]]; then #Ubuntu
   lsb_release -a
   uname -r
 fi | sed 's/^/\t/g'
+
+####################
+# RAID
+##########
 
 if [[ $(dmesg | grep -i raid) ]]; then
   info '\n    [ ]RAID'
@@ -120,11 +130,15 @@ echo -e '          [ ] StorMan removed'
   fi
 fi
 
-info '\n    [ ]Drive Size';
-  fdisk -l 2>/dev/null | grep -i disk./dev | sed 's/^/\t/g'
+####################
+# Hardware
+##########
 
 info '\n    [ ]RAM';
   free -m | sed 's/^/\t/g'
+
+info '\n    [ ]Drive Size';
+  fdisk -l 2>/dev/null | grep -i disk./dev | sed 's/^/\t/g'
 
 info '\n    [ ]Partitioning';
   lsblk | sed 's/^/\t/g'
@@ -157,6 +171,10 @@ if [[ $(uname -r | grep -i el6) ]]; then
         }
     }'
 fi
+
+####################
+# cPanel/CloudLinux
+##########
 
 if [[ -d /usr/local/cpanel/ ]]; then
 info '\n[ x]Cpanel/Non-Cpanel'
@@ -195,7 +213,20 @@ echo -e '\n    [ ] If cPanel, make sure the server has a full license.'
   if [[ $(ip a | grep ' 172\.') ]]; then
     alert '\n      [ ] If servers are behind hardware FW, make sure the UDP inspection policy is set to "maximum client auto" ** poke networking or check in NOC **'
   fi
+
+  echo -e "\n      [ ] RWHOIS open for cPanel API"
+  rwhois=$(iptables -nL | grep :4321)
+  if [[ $rwhois ]]; then
+    info "$rwhois" | sed 's/^/\t/g'
+  else
+    warning "Firewall not open for RWHOIS (port 4321)" | sed 's/^/\t/g'
+  fi
+
 fi
+
+####################
+# Remote Access
+##########
 
 echo -e '\n[ ]Complex Root or User Passwords are setup
        "pwgen -syn 15 1" or longer
@@ -206,7 +237,9 @@ echo -e '\n[ ]Complex Root or User Passwords are setup
 if [[ -x $(which ipmitool 2>/dev/null) ]]; then
   ipmi_ip=$(ipmitool lan print 1 | awk '/IP Address.*10\./ {print $NF}');
   subacct=$(cat /usr/local/lp/etc/lp-UID);
-  if [[ $ipmi_ip ]]; then
+  if [[ $(ip -o -4 a | egrep $ipmi_ip) ]]; then
+    warning "\tIPMI appears to be using an IP assigned to $(ip -o -4 a | grep $ipmi_ip | awk '{print $2}')"
+  elif [[ $ipmi_ip ]]; then
     alert "\thttps://$ipmi_ip \neasyipmi $ipmi_ip $subacct";
   else
     warning '\tIPMI does not appear to have an IP configured'
@@ -214,6 +247,10 @@ if [[ -x $(which ipmitool 2>/dev/null) ]]; then
 else
   warning '\tIPMItool is missing or not executable.'
 fi
+
+####################
+# R1Soft Backups
+##########
 
 if [[ -f /usr/sbin/r1soft/log/cdp.log ]]; then
   info '\nGuardian'
@@ -234,11 +271,23 @@ if [[ -f /usr/sbin/r1soft/log/cdp.log ]]; then
   echo -e "[ ]Make sure Guardian monitoring is enabled on the Guardian subaccount"
 fi
 
+####################
+# Load Balancing
+##########
+
 echo -e "\n[ ]Remote IP override module installed or updated if applicable"
 echo -e "     [ ]mod_zeus if Apache 2.2"
-  if [[ $(httpd -v) =~ 2\.2 ]]; then httpd -M 2> /dev/null | grep zeus ; fi
+  if [[ $(httpd -v) =~ 2\.2\. ]]; then httpd -M 2> /dev/null | grep zeus ; fi
 echo -e "     [ ]mod_remoteip if Apache 2.4"
-  if [[ $(httpd -v) =~ 2\.4 ]]; then httpd -M 2> /dev/null | grep remote; fi
+  if [[ $(httpd -v) =~ 2\.4\. ]]; then httpd -M 2> /dev/null | grep remote; fi
+echo -e "     [ ]mod_cloudflare"
+  httpd -M 2>/dev/null | grep cloudflare
+echo -e "     [ ]mod_rpaf"
+  httpd -M 2>/dev/null | grep rpaf
+
+####################
+# Monitoring
+##########
 
 echo -e '\n[ ]SonarPush is installed and working properly'
   ps aux | grep [S]onarPush
@@ -253,6 +302,10 @@ fi
 echo -e '\nMaintenance
 [ x]Servers moved to correct building if necessary
 [ x]Cable runs complete'
+
+####################
+# Networking
+##########
 
 info "\nNetworking"
 echo -e "[ ]Public/NAT IPs Configured Correctly ***Consult the original CTB***"
@@ -275,10 +328,9 @@ echo -e "[ ]Confirm private network cables are plugged into switch/server (ip ad
     (printf "$x :: "; ethtool $x | grep -i link.detect) | sed 's/^/    /g';
   done
 
-echo -e "\nMigrations
-[ ]Migration ticket is open and owned by system-restore/migrations
-[ ]Migration is scheduled and customer has been notified of time frame
-[ ]Customer has confirmed that migration was successful"
+####################
+# Core Managed
+##########
 
 if [[ ! -d /usr/local/cpanel ]]; then
   echo -e "\nSupport (For Managed and CoreManaged Customers) – Do requested versions match customer request:"
@@ -296,5 +348,10 @@ fi
 
 echo -e "\nSpecial Software Requests
 [ ] List any requests here. Example: FFMPEG, Tomcat, NGINX"
+
+echo -e "\nMigrations
+[ ]Migration ticket is open and owned by system-restore/migrations
+[ ]Migration is scheduled and customer has been notified of time frame
+[ ]Customer has confirmed that migration was successful"
 
 echo -e "\n$div\n"
