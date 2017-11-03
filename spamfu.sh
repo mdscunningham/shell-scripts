@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2017-05-07
+# Updated: 2017-11-02
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
