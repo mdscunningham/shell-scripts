@@ -42,8 +42,7 @@ section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 #-----------------------------------------------------------------------------#
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
-PHPCONF=$(php -i | awk '/php.ini$/ {print $NF}' | head -1);
-if [[ -n $PHPCONF ]]; then PHPLOG=$(awk '/mail.log/ {print $NF}' $PHPCONF | tail -1 | tr -d \"\'); fi
+PHPLOG=$(grep -h ^mail.log /usr/local/lib/php.ini /opt/cpanel/ea-php*/root/etc/php.ini | tr -d '"' | awk '{print $NF}' | sort | uniq | head -1);
 QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
 l=1; p=0; q=0; full_log=0; fast_mode='';
 LINECOUNT='1000000'
@@ -441,10 +440,8 @@ mail_php(){
 echo -e "\n$(php -v | head -1)\n"
 date_lookup $PHPLOG
 
-if [[ -f $PHPCONF && -n $(grep -Ei 'mail.add_x_header.*(on|1)' $PHPCONF) ]]; then
-  echo "php.ini : $PHPCONF"
+if [[ -f $PHPLOG ]]; then
   echo "mail.log: $PHPLOG ($(du -sh $PHPLOG | awk '{print $1}'))"
-  echo -e "X_Header: Enabled\n"
 
   set_decomp $PHPLOG;
 
@@ -454,10 +451,9 @@ if [[ -f $PHPCONF && -n $(grep -Ei 'mail.add_x_header.*(on|1)' $PHPCONF) ]]; the
    | awk -F: '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n $RESULTCOUNT
 
   echo
-elif [[ ! -f $PHPCONF ]]; then
-  echo "Could not find php.ini file."
+
 else
-  echo "X_Header: Disabled"
+  echo "php_maillog configuration could not be located"
 
   ## Prompt and configure php_maillog if confirmed.
   read -p "Would you like to enable add_x_header and the php_maillog? " yn;
