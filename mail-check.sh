@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-03-09
-# Updated: 2017-09-10
+# Updated: 2017-12-03
 #
 # Purpose: Checking blacklists both public and private by sending SMTP connections
 #
@@ -101,7 +101,7 @@ for ipaddr in $ip_list; do
   echo -e "\n$(dash 80 =)\n${WHITE}  Swaks Based Checks -- ${ipaddr} ${NORMAL}\n$(dash 80 -)"
 
   # Send test emails with swaks to check for errors
-  for domain in aol.com att.net comcast.net earthlink.com gmail.com live.com rr.com verizon.net yahoo.com; do
+  for domain in aol.com att.net comcast.net earthlink.net gmail.com live.com rr.com verizon.net yahoo.com; do
     mx=$(dig mx +short ${domain} | awk 'END {print $NF}')
     if [[ $domain =~ gmail.com ]]; then emailAddress="no-reply@gmail.com"; else emailAddress="postmaster@${domain}"; fi
     result=$(swaks -4 -q RCPT --server $mx -t $emailAddress $from_addr -li $ipaddr 2>&1 | egrep ' 4[25][01]| 5[257][0-4]';)
