@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2013-11-10
-# Updated: 2015-03-19
+# Updated: 2017-12-17
 #
 #
 #!/bin/bash
@@ -40,15 +40,22 @@ dbname=$(grep '$db ' $CONFIG | cut -d\' -f2)
 prefix=$(grep '$dbprefix ' $CONFIG | cut -d\' -f2)
 
 # Check location of version file
-if [[ -f "$SITEPATH/libraries/cms/version/version.php" ]]; then VERFILE="$SITEPATH/libraries/cms/version/version.php"; else VERFILE="$SITEPATH/libraries/joomla/version.php"; fi
+
+## 1.5-1.7
+if [[ -f "$SITEPATH/libraries/joomla/version.php" ]]; then VERFILE="$SITEPATH/libraries/joomla/version.php";
+ ## 2.5-3.8
+ elif [[ -f "$SITEPATH/libraries/cms/version.php" ]]; then VERFILE="$SITEPATH/libraries/cms/version.php";
+ ## 3.9-4.0
+ elif [[ -f "$SITEPATH/libraries/src/Version.php" ]]; then VERFILE="$SITEPATH/libraries/src/Version.php";
+fi
 
 # Gather version information
-RELEASE="$(grep '$RELEASE' $VERFILE | cut -d\' -f2)";
-DEV_LEVEL="$(grep '$DEV_LEVEL' $VERFILE | cut -d\' -f2)";
-DEV_STATUS="$(grep '$DEV_STATUS' $VERFILE | cut -d\' -f2)";
-BUILD="$(grep '$BUILD' $VERFILE | cut -d\' -f2)";
-RELDATE="$(grep '$RELDATE' $VERFILE | cut -d\' -f2)";
-CODENAME="$(grep '$CODENAME' $VERFILE | cut -d\' -f2)";
+RELEASE="$(grep 'RELEASE' $VERFILE | head -1 | cut -d\' -f2)";
+DEV_LEVEL="$(grep 'DEV_LEVEL' $VERFILE | head -1 | cut -d\' -f2)";
+DEV_STATUS="$(grep 'DEV_STATUS' $VERFILE | head -1 | cut -d\' -f2)";
+BUILD="$(grep 'BUILD' $VERFILE | head -1 | cut -d\' -f2)";
+RELDATE="$(grep 'RELDATE' $VERFILE | head -1 | cut -d\' -f2)";
+CODENAME="$(grep 'CODENAME' $VERFILE | head -1 | cut -d\' -f2)";
 VERSION="$RELEASE.$DEV_LEVEL $DEV_STATUS ($RELDATE) $BUILD";
 
 _joomlausage(){
