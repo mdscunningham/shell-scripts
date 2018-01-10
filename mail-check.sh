@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-03-09
-# Updated: 2017-12-03
+# Updated: 2018-01-10
 #
 # Purpose: Checking blacklists both public and private by sending SMTP connections
 #
@@ -62,7 +62,7 @@ print_delist_link(){
             att.net ) echo "Send email to abuse_rbl@abuse-att.net" ;;
         comcast.net ) echo "http://postmaster.comcast.net/block-removal-request.html" ;;
       earthlink.net ) echo "https://support.earthlink.net/articles/email/email-blocked-by-earthlink.php" ;;
-           live.com ) echo "https://support.live.com/eform.aspx?productKey=edfsmsbl3&ct=eformts&wa=wsignin1.0&scrx=1" ;;
+           live.com ) echo "https://support.microsoft.com/en-us/getsupport?oaspworkflow=start_1.0.0.0&wfname=capsub&productkey=edfsmsbl3" ;;
              rr.com ) echo "http://postmaster.rr.com/amIBlockedByRR" ;;
         verizon.net ) echo "http://my.verizon.com/micro/whitelist/RequestForm.aspx?id=isp" ;;
           yahoo.com ) echo "http://help.yahoo.com/l/us/yahoo/mail/postmaster/bulkv2.html" ;;
