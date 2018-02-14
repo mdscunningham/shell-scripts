@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2014-04-18
-# Updated: 2017-07-24
+# Updated: 2018-02-14
 #
 #
 #!/bin/bash
@@ -25,13 +25,14 @@ hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done)); grandtotal=0; nocolor=0; p
 DECOMP="$(which grep)"; THRESH=''; DATE=$(date +"%d/%b/%Y"); FMT=" %5s"
 DOMAINS="/usr/local/apache/logs/access_log /usr/local/apache/domlogs/*/!(*[^ssl]_log*)";
 RANGE=$(for x in {23..0}; do date --date="-$x hour" +"%d/%b/%Y:%H:"; done);
+DATESET=''
 
 while getopts a:d:l:npr:8t:vh option; do
     case "${option}" in
 	a) DOMAINS=$(for user in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /usr/local/apache/domlogs/$user/* | grep -Ev '(ftp_log|bytes_log|.offset)$'; done) ;;
 
 	# Caclulate date string for searches
-        d) DATE=$(date --date="-${OPTARG} days" +"%d/%b/%Y"); DECOMP="$(which zgrep)"; SUFFIX=$(date --date="-${OPTARG} days" +"-%b-%Y.gz")
+        d) DATESET=1; DATE=$(date --date="-${OPTARG} days" +"%d/%b/%Y"); DECOMP="$(which zgrep)"; SUFFIX=$(date --date="-${OPTARG} days" +"-%b-%Y.gz")
 	   DOMAINS="/usr/local/apache/logs/access_log /home/*/logs/!(*[^ssl]_log*)$SUFFIX"
 	   RANGE=$(for x in {23..0}; do date --date="-${OPTARG} days -$x hour" +"%d/%b/%Y:%H:"; done) ;;
 
@@ -89,7 +90,7 @@ for logfile in $DOMAINS; do
     # Only print if the threshold condition is set/met
     if [[ -z $THRESH || $THRESH -le $($DECOMP -c $DATE $logfile) ]]; then
         if [[ $nocolor != '1' ]]; then color="${BLUE}"; else color=''; fi
-	if [[ $DATE != $(date +"%d/%b/%Y") ]]; then
+	if [[ $DATE != $(date +"%d/%b/%Y") || $DATESET ]]; then
 	    ACCT=$(echo $logfile | cut -d/ -f3)
 	    SITE=$(basename $logfile $SUFFIX)
 	else
