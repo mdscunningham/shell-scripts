@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-10-10
-# Updated: 2016-10-30
+# Updated: 2018-02-15
 #
 # Purpose: Quickly and simply generate random, secure passwords
 #
@@ -54,8 +54,9 @@ case $method in
 	;;
 
   xkcd )
+        wordList='/usr/share/dict/words';
+
 	if [[ -x /usr/bin/shuf ]]; then
-	  wordList='/usr/share/dict/words';
 	  wordLength=$(( (${length} - 4) / 4 ))
 	  echo $(shuf -n 1000 $wordList | grep -E ^[a-z]{$wordLength}$ | shuf -n 4 )$(( ($RANDOM % 9000) + 1000 ))\
 	   | sed 's/\b\(.\)/\u\1/g' | sed 's/ //g' | cut -c 1-${length}
@@ -64,8 +65,8 @@ case $method in
 	  n=0;  word=(); len=$(wc -l < $wordList)
 	  while [[ $n -lt 4 ]]; do
 	    rnd=$(( $(od -vAn -N4 -tu4 < /dev/urandom) % $len + 1 ));
-	    word[$n]=$(sed -n "${rnd}p" $wordList | grep -E ^[a-z]{4,8}$ | sed 's:\b\(.\):\u\1:');
-	    if [[ -n ${word[$n]} ]]; then n=$n+1; fi;
+	    word[$n]=$(sed -n "${rnd}p" $wordList | grep -E '^[a-z]{4,8}$' | sed 's:\b\(.\):\u\1:');
+	    if [[ -n ${word[$n]} ]]; then ((n++)); fi;
 	  done;
 	  echo "${word[0]}${word[1]}${word[2]}${word[3]}$(( $RANDOM % 9000 + 1000 ))";
 	  unset n word len
