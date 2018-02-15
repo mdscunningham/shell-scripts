@@ -44,7 +44,7 @@ prefix=$(grep '$dbprefix ' $CONFIG | cut -d\' -f2)
 ## 1.5-1.7
 if [[ -f "$SITEPATH/libraries/joomla/version.php" ]]; then VERFILE="$SITEPATH/libraries/joomla/version.php";
  ## 2.5-3.8
- elif [[ -f "$SITEPATH/libraries/cms/version.php" ]]; then VERFILE="$SITEPATH/libraries/cms/version.php";
+ elif [[ -f "$SITEPATH/libraries/cms/version/version.php" ]]; then VERFILE="$SITEPATH/libraries/cms/version/version.php";
  ## 3.9-4.0
  elif [[ -f "$SITEPATH/libraries/src/Version.php" ]]; then VERFILE="$SITEPATH/libraries/src/Version.php";
 fi
