@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2017-11-02
+# Updated: 2018-02-16
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -42,7 +42,7 @@ section_header(){ echo -e "\n$1\n$(dash 40 -)"; }
 #-----------------------------------------------------------------------------#
 ## Initializations
 LOGFILE="/var/log/exim_mainlog"
-PHPLOG=$(grep -h ^mail.log /usr/local/lib/php.ini /opt/cpanel/ea-php*/root/etc/php.ini | tr -d '"' | awk '{print $NF}' | sort | uniq | head -1);
+PHPLOG=$(grep -h ^mail.log /usr/local/lib/php.ini /opt/cpanel/ea-php*/root/etc/php.ini 2>/dev/null | tr -d '"' | awk '{print $NF}' | sort | uniq | head -1);
 QUEUEFILE="/tmp/exim_queue_$(date +%Y.%m.%d_%H.%M)"
 l=1; p=0; q=0; full_log=0; fast_mode='';
 LINECOUNT='1000000'
@@ -154,7 +154,7 @@ date_lookup(){
 # Setup how much of the log file to read and how.
 set_decomp(){
   # Servername and Current time of Analysis, and exim version
-  echo -e "Hostname: $(hostname)\nCur.Date: $(date +'%A, %B %d, %Y -- %Y.%m.%d')\nExim Ver: $(/usr/sbin/exim --version 2>/dev/null | head -n1)\n"
+  echo -e "Hostname: $(hostname)\nCur.Date: $(date +'%A, %B %d, %Y -- %Y.%m.%d')\nExim Ver: $($(which exim) --version 2> /dev/null | head -n1)\n"
 
   # Compressed file -- decompress and read whole log
   if [[ $(file -b $1) =~ zip ]]; then
