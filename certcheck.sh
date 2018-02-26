@@ -4,16 +4,23 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2017-06-27
-# Updated: 2017-07-19
+# Updated: 2018-02-26
 #
 # Purpose: Check hashes of cert parts to confirm they match
 #
 
+HASH='md5'
+
+case $1 in
+  md5|sha1|sha256|sha512) HASH=$1; echo -e "\nUsing $HASH method\n"; shift;;
+  -h|--help) echo -e "\nUsage: \n  $0 [hash method] <certfile1> [<certfile2> <certfile3> ...]\n\n  Valid Hash-Methods\n    md5, sha1, sha256, sha512\n"; exit ;;
+esac
+
 for x in $@; do
-  echo -n "$(basename $x) :: "
   case $x in
-    *.key) openssl rsa -noout -modulus -in $x | openssl md5 | awk '{print $NF}' ;;
-    *.csr) openssl req -noout -modulus -in $x | openssl md5 | awk '{print $NF}' ;;
-    *.crt) openssl x509 -noout -modulus -in $x | openssl md5 | awk '{print $NF}' ;;
+    *.key) echo $(openssl rsa -noout -modulus -in $x | openssl $HASH | awk '{print $NF}') :: $(basename $x) ;;
+    *.csr) echo $(openssl req -noout -modulus -in $x | openssl $HASH | awk '{print $NF}') :: $(basename $x) ;;
+    *.crt) echo $(openssl x509 -noout -modulus -in $x | openssl $HASH | awk '{print $NF}') :: $(basename $x) ;;
   esac
 done
+
