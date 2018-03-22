@@ -41,6 +41,11 @@ else
   warning(){ echo -e "${BRIGHT}${RED}${1}${NORMAL}"; }
 fi
 
+if [[ -x $(which ipmitool 2>/dev/null) ]]; then
+echo "Doing an IPMI reset to help ensure logins work..."
+(ipmitool mc reset cold &)
+fi
+
 echo -e "\n${div}\n  $HOSTNAME\n${div}";
 
 ####################
