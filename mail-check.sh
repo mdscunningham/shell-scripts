@@ -103,7 +103,7 @@ for ipaddr in $ip_list; do
   # Send test emails with swaks to check for errors
   for domain in aol.com att.net comcast.net earthlink.net gmail.com live.com rr.com verizon.net yahoo.com; do
     mx=$(dig mx +short ${domain} | awk 'END {print $NF}')
-    if [[ $domain =~ gmail.com ]]; then emailAddress="no-reply@gmail.com"; else emailAddress="postmaster@${domain}"; fi
+    if [[ $domain =~ gmail.com ]]; then emailAddress="dns-admin@google.com"; else emailAddress="postmaster@${domain}"; fi
     result=$(swaks -4 -q RCPT --server $mx -t $emailAddress $from_addr -li $ipaddr 2>&1 | egrep ' 4[25][01]| 5[257][0-4]';)
     if [[ $verb == "1" || -n $result ]]; then
       printf "\n%-40s  %-40s\n" "${CYAN}Domain:${NORMAL} $domain" "${CYAN}Server:${NORMAL} $mx"
