@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2017-10-23
+# Updated: 2018-04-06
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -41,10 +41,10 @@ else
   warning(){ echo -e "${BRIGHT}${RED}${1}${NORMAL}"; }
 fi
 
-if [[ -x $(which ipmitool 2>/dev/null) ]]; then
-echo "Doing an IPMI reset to help ensure logins work..."
-(ipmitool mc reset cold &)
-fi
+#if [[ -x $(which ipmitool 2>/dev/null) ]]; then
+#echo "Doing an IPMI reset to help ensure logins work..."
+#(ipmitool mc reset cold &>/dev/null &)
+#fi
 
 echo -e "\n${div}\n  $HOSTNAME\n${div}";
 
@@ -96,7 +96,7 @@ fi | sed 's/^/\t/g'
 # RAID
 ##########
 
-if [[ $(dmesg | grep -i raid) ]]; then
+if [[ $(lspci | grep -i raid) ]]; then
   info '\n    [ ]RAID'
 
 if [[ $(df | grep '/dev/md[0-9]') ]]; then
@@ -246,6 +246,7 @@ if [[ -x $(which ipmitool 2>/dev/null) ]]; then
     warning "\tIPMI appears to be using an IP assigned to $(ip -o -4 a | grep $ipmi_ip | awk '{print $2}')"
   elif [[ $ipmi_ip ]]; then
     alert "\thttps://$ipmi_ip \neasyipmi $ipmi_ip $subacct";
+    info "\tIf you can't log in try running\n\t\tipmitool mc reset cold"
   else
     warning '\tIPMI does not appear to have an IP configured'
   fi
