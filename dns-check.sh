@@ -88,7 +88,7 @@ while true; do
     if [[ -f anycast ]]; then
       data=($(cat anycast))
     else
-      data=($(curl -s sh.mdsc.info/anycast))
+      data=($(curl -sL sh.mdsc.info/anycast))
     fi ;;
 
   -l|--links)
