@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-07-14
-# Updated: 2016-07-31
+# Updated: 2018-04-18
 #
 #
 #!/bin/bash
@@ -16,8 +16,8 @@ if [[ -f rbl-ip ]]; then
   DNSBL="$(cat rbl-ip)" # Local
   lineCount=$(wc -l < rbl-ip)
 else
-  DNSBL=$(curl -s axeblade.net/rbl-ip) # Remote
-  lineCount=$(curl -s axeblade.net/rbl-ip | wc -l)
+  DNSBL=$(curl -sL axeblade.net/rbl-ip) # Remote
+  lineCount=$(curl -sL axeblade.net/rbl-ip | wc -l)
 fi
 
 OPTIONS=$(getopt -o "f:hiqd" -- "$@") # Execute getopt
@@ -34,16 +34,16 @@ case $1 in
          lineCount=$(wc -l < rbl-info)
          DNSBL="$(cat rbl-info)"
        else
-         lineCount=$(curl -s axeblade.net/rbl-info | wc -l)
-         DNSBL=$(curl -s axeblade.net/rbl-info)
+         lineCount=$(curl -sL axeblade.net/rbl-info | wc -l)
+         DNSBL=$(curl -sL axeblade.net/rbl-info)
        fi ;;
   -d ) domain=1
        if [[ -f rbl-domain ]]; then
          lineCount=$(wc -l < rbl-domain)
          DNSBL="$(cat rbl-domain)"
        else
-         lineCount=$(curl -s axeblade.net/rbl-domain | wc -l)
-         DNSBL=$(curl -s axeblade.net/rbl-domain)
+         lineCount=$(curl -sL axeblade.net/rbl-domain | wc -l)
+         DNSBL=$(curl -sL axeblade.net/rbl-domain)
        fi ;;
   -q ) quiet=1 ;;
   -- ) shift; break ;; # More Magic
