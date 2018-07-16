@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2017-08-01
+# Updated: 2018-07-16
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -73,7 +73,7 @@ for domain in $@; do
   # Print SSL checker service URLs
   if [[ ! $quiet ]]; then
     echo "https://www.sslshopper.com/ssl-checker.html#hostname=$D:$P"
-    echo "https://certlogik.com/ssl-checker/$D:$P"
+    # echo "https://certlogik.com/ssl-checker/$D:$P"
     echo "https://www.ssllabs.com/ssltest/analyze.html?d=${D}&s=${I}&latest"
     echo
   fi
