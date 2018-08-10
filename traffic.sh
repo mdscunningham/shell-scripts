@@ -1,15 +1,17 @@
+#!/bin/bash
 #							   +----+----+----+----+
 # 							   |    |    |    |    |
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-08-10
-# Updated: 2015-05-15
+# Updated: 2018-08-10
 #
 #
-#!/bin/bash
+# Purpose: Interface for quick and effective Apache access_log parsing
+#
 
 _trafficUsage(){
-echo " Usage: traffic DOMAIN COMMAND [OPTIONS]
+echo " Usage: traffic DOMAIN/LOGFILE COMMAND [OPTIONS]
 
  Commands:
     ua | useragent . Top User Agents by # of hits
@@ -37,7 +39,7 @@ echo " Usage: traffic DOMAIN COMMAND [OPTIONS]
     -h | --help .... Print this help and exit
 
  Notes:
-    DOMAIN can be '.' to find the domain from the PWD
+    DOMAIN can be '.' to find the domain and log from the PWD
     DOMAIN can also be 'access_log' to check the apache access_log"; return 0;
 }
 
@@ -50,12 +52,21 @@ if [[ $1 == '.' ]]; then DOMAIN=$(grep -B5 "DocumentRoot $PWD$" /usr/local/apach
 opt=$1; shift; # Set option variable using command parameter
 
 # Determin Log File Location
-if [[ $DOMAIN == 'access_log' ]]; then LOGFILE="/usr/local/apache/logs/access_log"
-  else LOGFILE="$(echo /usr/local/apache/domlogs/*/${DOMAIN})"; fi
+if [[ -f $DOMAIN ]]; then
+  LOGFILE=$DOMAIN;
+elif [[ $DOMAIN == 'access_log' ]]; then
+  LOGFILE="/usr/local/apache/logs/access_log"
+else
+  LOGFILE="$(echo /usr/local/apache/domlogs/*/${DOMAIN})";
+fi
 
 SEARCH=''; DATE=$(date +%d/%b/%Y); TOP='20'; DECOMP='grep -Eh'; VERBOSE=0; # Initialize variables
 OPTIONS=$(getopt -o "s:d:n:hv" --long "search:,days:,lines:,help,verbose" -- "$@") # Execute getopt
 eval set -- "$OPTIONS" # Magic
+
+# Check for compressed log
+if [[ $(file -b $LOGFILE) =~ zip ]]; then DECOMP="zgrep -Eh"; fi
+
 
 while true; do # Evaluate the options for their options
 case $1 in
