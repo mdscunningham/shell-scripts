@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2018-02-16
+# Updated: 2018-10-26
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -319,8 +319,13 @@ section_header "Bulk Senders"
 FMT="%8s %-16s %s\n"
 printf "$FMT" "RCPTs " " MessageID" " Auth-User"
 printf "$FMT" "--------" "$(dash 16 -)" "$(dash 40 -)"
-$DECOMP $LOGFILE | grep "<=.*A=.*in:.*\ for\ "\
- | perl -pe 's/.*\ (.*?)\ <=\ .*A=.*in:(.*)\ S=.*\ for\ (.*)//g; print $count = scalar(split(" ",$3))," ",$1," ",$2;'\
+
+#This missed webmail logins sending bulk mail
+#$DECOMP $LOGFILE | grep "<=.*A=.*in:.*\ for\ "\
+# | perl -pe 's/.*\ (.*?)\ <=\ .*A=.*in:(.*)\ S=.*\ for\ (.*)//g; print $count = scalar(split(" ",$3))," ",$1," ",$2;'\
+
+$DECOMP $LOGFILE | grep '<=\ .*id=.*\ for\ '\
+ | perl -pe 's/.*\ (.*?)\ <=\ (.*).*id=.*\ for\ (.*)//g; print $count = scalar(split(" ",$3))," ",$1," ",$2;'\
  | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
 printf "$FMT" "--------" "$(dash 16 -)" "$(dash 40 -)" ;;
 
