@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2015-12-21
-# Updated: 2017-02-06
+# Updated: 2018-08-14
 #
 # Purpose: Find accounts full of symlinks (indicating symlink hacks)
 #
@@ -41,6 +41,7 @@ usage(){
   -f ... Fast Mode, set scan directory depth to 3
   -t ... Threshold count of links to be logged
   -u ... User list: <usr1,usr2,usr3...>
+  -v ... Verbose: Count link targets outside of account
 
   -h ... Print this help information and quit.
   ";
@@ -50,6 +51,7 @@ usage(){
 # Check for other running instances, and abort
 pidfile="/var/run/symlinkhunter.pid"
 if [[ -f $pidfile ]]; then scanid=$(cat $pidfile); fi
+
 if [[ -f $pidfile && -d /proc/${scanid} ]]; then
   echo -e "
   It looks like another scan [${scanid}] is running.
@@ -60,17 +62,18 @@ else
   echo "$$" > $pidfile; scanid="$$"
 fi
 
-# Initialize and count the number of /home/dirs
+# Initialize and count the number of DocumentRoots
 i=0; min=1; resuming=''; cpanel=''; plesk=''
 if [[ -d /usr/local/cpanel/ ]]; then #CPANEL
+  docroots=$(awk -F'[ /]' '/DocumentRoot/ {print "/"$3"/"$4"/"$5"/"}' /usr/local/apache/conf/httpd.conf | sort | uniq)
   userlist="/home*/*/public_html/";
   cpanel=1;
 elif [[ -d /var/www/vhosts/ ]]; then #PLESK
-  userlist="/var/www/vhosts/*/"
+  docroots="/var/www/vhosts/*/"
   plesk=1;
 fi
 
-t=$(echo $userlist | wc -w);
+t=$(echo $docroots | wc -w);
 
 # /usr/local/maldetect/sess/session.160111-0004.20837 (for reference)
 logdir="/usr/local/symdetect"
@@ -79,18 +82,19 @@ log="${logdir}/symlinkhunter.$(date +%y%m%d-%H%M).${scanid}.log"
 if [[ ! -d $logdir ]]; then mkdir -p $logdir; fi
 
 # Argument parsing
-echo; while getopts fht:u: option; do
+echo; while getopts fht:u:v option; do
   case "${option}" in
     f) maxdepth="-maxdepth 3";
 	echo " Info :: Fast Mode Enabled :: Setting link search depth to 3" ;;
     t) min="${OPTARG}";
 	echo " Info :: Min Threshold Set :: Setting logging threshold to ${OPTARG} links" ;;
     u) if [[ $cpanel ]]; then
-         userlist="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /home*/${x}/public_html/; done)" ;
+         userlist="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo $docroots | grep ${x}; done)" ;
        elif [[ $plesk ]]; then
          userlist="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /var/www/vhosts/${x}/; done)" ;
        fi
        t=$(echo $userlist | wc -w) ;;
+    v) verbose=1 ;;
   *|h) usage ;;
   esac
 done;
@@ -126,26 +130,26 @@ if [[ ! $resuming ]]; then
 fi
 
 # Loop through the homedirs
-for homedir in $(echo $userlist); do
+for docroot in $docroots; do
   # Print scanning progress
   count=0; ((i++));
 
   if [[ $cpanel ]]; then
-    username="$(echo $homedir | cut -d/ -f3)"
+    username="$(echo $docroot | cut -d/ -f3)"
   elif [[ $plesk ]]; then
-    username="$(echo $homedir | cut -d/ -f5)"
+    username="$(echo $docroot | cut -d/ -f5)"
   fi
 
-  printf "%-80s\r" "[$i/$t] :: $username :: Scanning"
+  printf "%-120s\r" "[$i/$t] :: $username :: $docroot :: Scanning"
 
   # Actually search symlinks and count them
   if [[ ! -f ${logdir}/${username}.user ]]; then
     echo -n > $tmplog
 
     if [[ $cpanel ]]; then
-      find $homedir $maxdepth -type l -print | sort | uniq > $tmplog;
-    elif [[ $plesk && ! $homedir =~ /var/www/vhosts/system/.* ]]; then
-      homedirs=$(find $homedir -maxdepth 1 -type d -group psaserv -print)
+      find $docroot $maxdepth -type l -print | sort | uniq > $tmplog;
+    elif [[ $plesk && ! $docroot =~ /var/www/vhosts/system/.* ]]; then
+      homedirs=$(find $docroot -maxdepth 1 -type d -group psaserv -print)
       find $homedirs $maxdepth -type l -print | sort | uniq > $tmplog;
     fi
 
@@ -154,10 +158,18 @@ for homedir in $(echo $userlist); do
     # Only print the results above the $min threshold
     if [[ $count -ge $min ]]; then
       # Count per subdirectory (verbose output sent to log)
-      printf "%8s :: %-80s\n" "$count" "$homedir" | tee -a $log;
-      printf "%-80s\r" "[$i/$t] :: $username :: Generating Report"
+      printf "%8s :: %-80s\n" "$count" "$docroot" | tee -a $log;
+      printf "%-120s\r" "[$i/$t] :: $docroot :: Generating Report"
       awk -F/ '$NF=""; {freq[$0]++} END {for (x in freq) {printf "%8s :: {SYM} ::%s\n",freq[x],x}}' $tmplog\
         | sed 's/\b /\//g; s/ home/ \/home/g; s/ var/ \/var/g; s/\/:/ :/g;' >> $log;
+      if [[ $verbose && $count -lt 1000 ]]; then
+        ext_count=0;
+        while read linkname; do
+          #printf "%-120s\r" "Checking $linkname";
+          if [[ $(readlink -f $linkname | grep -Fv $username;) ]]; then ((ext_count++)); fi
+        done < $tmplog;
+        echo "            External Links: $ext_count" >> $log;
+      fi
       echo >> $log;
     else
       printf "%-80s\r" " ";
