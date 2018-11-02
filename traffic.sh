@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-08-10
-# Updated: 2018-08-10
+# Updated: 2018-11-01
 #
 #
 # Purpose: Interface for quick and effective Apache access_log parsing
@@ -19,6 +19,7 @@ echo " Usage: traffic DOMAIN/LOGFILE COMMAND [OPTIONS]
    scr | scripts.... Top empty User Agents (likely scripts) by # of hits
     ip | ipaddress . Top IPs by # of hits
     bw | bandwidth . Top IPs by bandwidth usage
+   bwf | bwfile .... Top urls by bandwidth usage
    bwt | bwtotal ... Total bandwidth used for a given day
    url | file ...... Top URLs/files by # of hits
    ref | referrer .. Top Referrers by # of hits
@@ -95,6 +96,8 @@ scr|scripts	) $DECOMP "$SEARCH" $LOGFILE | awk -F\" '($6 ~ /^-?$/) {print $1}' |
 ip|ipaddress	) $DECOMP "$SEARCH" $LOGFILE | awk '{freq[$1]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}' | sort -rn | head -n$TOP ;;
 
 bw|bandwidth	) $DECOMP "$SEARCH" $LOGFILE | awk '{tx[$1]+=$10} END {for (x in tx) {printf "   %-15s   %8s M\n",x,(tx[x]/1024000)}}' | sort -k 2n | tail -n$TOP | tac ;;
+
+bwf|bwfile	) $DECOMP "$SEARCH" $LOGFILE | awk '{tx[$7]+=$10} END {for (x in tx) {printf "%8s %s\n",(tx[x]/1024000)"M",x}}' | sort -rn | head -n$TOP ;;
 
 bwt|bwtotal     ) $DECOMP "$SEARCH" $LOGFILE | awk '{tx+=$10} END {print (tx/1024000)"M"}' ;;
 
