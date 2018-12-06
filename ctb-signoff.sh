@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2018-04-06
+# Updated: 2018-11-30
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -268,6 +268,7 @@ if [[ -f /usr/sbin/r1soft/log/cdp.log ]]; then
 
   echo -e '[ ]Make sure the proper partitions are being backed up via the web interface.'
     # Lookup the backup manager from the CDP config and the Guardian IP
+    alert "    https://$(grep server.allow /usr/sbin/r1soft/log/cdp.log | tail -1 | awk -F/ '{print $NF}' | tr -d "'") :: $subacct"
 
   echo -e '[ ]If there a Dedicated MySQL drive make sure it is setup to be backed up.'
     mysqldata=$(mysql -Ne 'select @@datadir' | sed 's|/$||g')
