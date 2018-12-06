@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2015-04-23
-# Updated: 2018-10-26
+# Updated: 2018-12-06
 #
 # Purpose: Automate the process of analyzing exim_mainlog and queue, to locate
 #          the usual suspects related to a server sending outbound spam mail.
@@ -404,7 +404,7 @@ section_header "Queue: Spoofed Senders"
 FMT="%8s %-35s %s\n"
 printf "$FMT" "Count " " Auth-User" " Spoofed-User"
 printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)"
-echo $HEADER_LIST | xargs awk '/auth_id/{printf $2" "};/envelope-from/{print $2}' | tr -d '<>)'\
+echo $HEADER_LIST | xargs awk '/auth_id/{printf $2" "};/envelope-from/{print $2}' 2>/dev/null | tr -d '<>)'\
  | awk '{ if ($1 != $2) freq[$0]++} END {for (x in freq) {printf "%8s %s\n",freq[x],x}}'\
  | sort -rn | head -n $RESULTCOUNT | awk -v FMT="$FMT" '{printf FMT,$1" ",$2,$3}'
 printf "$FMT" "--------" "$(dash 35 -)" "$(dash 35 -)" ;;
