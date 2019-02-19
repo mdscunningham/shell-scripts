@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2014-04-18
-# Updated: 2018-02-14
+# Updated: 2018-02-18
 #
 #
 #!/bin/bash
@@ -21,15 +21,24 @@
 shopt -s extglob
 
 ## Initializations
-hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done)); grandtotal=0; nocolor=0; progress=''
-DECOMP="$(which grep)"; THRESH=''; DATE=$(date +"%d/%b/%Y"); FMT=" %5s"
+hourtotal=($(for ((i=0;i<23;i++)); do echo 0; done)); 
+grandtotal=0;
+nocolor='';
+progress='';
+CSV='';
+DECOMP="$(which grep)";
+DATE=$(date +"%d/%b/%Y");
+DATESET=''
+FMT=" %5s"
 DOMAINS="/usr/local/apache/logs/access_log /usr/local/apache/domlogs/*/!(*[^ssl]_log*)";
 RANGE=$(for x in {23..0}; do date --date="-$x hour" +"%d/%b/%Y:%H:"; done);
-DATESET=''
+THRESH='';
 
-while getopts a:d:l:npr:8t:vh option; do
+while getopts "a:cd:l:npr:8t:vh" option; do
     case "${option}" in
 	a) DOMAINS=$(for user in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /usr/local/apache/domlogs/$user/* | grep -Ev '(ftp_log|bytes_log|.offset)$'; done) ;;
+
+	c) CSV=1; BRIGHT=''; NORMAL=''; FMT='"%s",' ;;
 
 	# Caclulate date string for searches
         d) DATESET=1; DATE=$(date --date="-${OPTARG} days" +"%d/%b/%Y"); DECOMP="$(which zgrep)"; SUFFIX=$(date --date="-${OPTARG} days" +"-%b-%Y.gz")
@@ -40,7 +49,7 @@ while getopts a:d:l:npr:8t:vh option; do
         l) DOMAINS="$(for x in $(echo ${OPTARG} | sed 's/,/ /g'); do echo /usr/local/apache/domlogs/*/$x; done)" ;;
 
 	# Print w/o color in b/w
-	n) nocolor=1 ;;
+	n) nocolor=1; color=''; BRIGHT=''; NORMAL='' ;;
 
 	# Show progress indicator: account :: logfile
 	p) progress=1 ;;
@@ -60,6 +69,7 @@ while getopts a:d:l:npr:8t:vh option; do
 	# Help output
 	h) echo -e "\n ${BRIGHT}Usage:${NORMAL} $0 [OPTIONS]\n
     -a ... Accounts <accnt1,accnt2,...>
+    -c ... CSV format (for spreadsheet or graphing)
     -d ... days-ago <##>
     -h ... Print this help and quit
     -l ... list of domains <dom1,dom2,...>
@@ -73,23 +83,38 @@ while getopts a:d:l:npr:8t:vh option; do
 done; echo
 
 ## Header
-printf "${BRIGHT} %15s" "User/Hour";
-for hour in $RANGE; do printf "$FMT" "$(echo $hour | cut -d: -f2):00"; done;
-printf "%8s %-s${NORMAL}\n" "Total" " Domain Name"
+if [[ $CSV ]]; then
+  printf '"",';
+else
+  printf "${BRIGHT} %15s" "User/Hour";
+fi
+
+for hour in $RANGE; do
+  printf "$FMT" "$(echo $hour | cut -d: -f2):00";
+done
+
+if [[ $CSV ]]; then
+  printf '\"\"\n'
+else
+  printf "%8s %-s${NORMAL}\n" "Total" " Domain Name"
+fi
 
 ## Data gathering and display
 for logfile in $DOMAINS; do
         total=0;
 
     # If progress flag is given then print
-    if [[ $progress ]]; then
+    if [[ $progress && ! $CSV ]]; then
         log=$(echo $logfile | awk -F/ '{print $(NF-1)" :: "$NF}')
         printf " Reading: %s                                                                                \r" "$log"
     fi
 
     # Only print if the threshold condition is set/met
     if [[ -z $THRESH || $THRESH -le $($DECOMP -c $DATE $logfile) ]]; then
-        if [[ $nocolor != '1' ]]; then color="${BLUE}"; else color=''; fi
+
+        if [[ ! $nocolor && ! $CSV ]]; then color="${BLUE}"; fi
+
+	# Set the logs to use based on the date searched
 	if [[ $DATE != $(date +"%d/%b/%Y") || $DATESET ]]; then
 	    ACCT=$(echo $logfile | cut -d/ -f3)
 	    SITE=$(basename $logfile $SUFFIX)
@@ -97,34 +122,56 @@ for logfile in $DOMAINS; do
 	    ACCT=$(echo $logfile | cut -d/ -f6)
 	    SITE=$(echo $logfile | cut -d/ -f7)
 	fi
-        printf "${color} %15s" "$ACCT"
+
+	# Print either the account or the domain with formatting
+	if [[ $CSV && $ACCT == 'access_log' ]]; then
+	  printf '"%s",' "$ACCT"
+	elif [[ $CSV ]]; then
+	  printf '"%s",' "$SITE"
+	else
+	  printf "${color} %15s" "$ACCT"
+	fi
 
 	i=0;
+
 	# Iterate through the hours
         for hour in $RANGE; do
-                count=$($DECOMP -c "$hour" $logfile);
-                hourtotal[$i]=$((${hourtotal[$i]}+$count))
+		count=$($DECOMP -c "$hour" $logfile);
+		hourtotal[$i]=$((${hourtotal[$i]}+$count))
 
-                if [[ $nocolor != '1' ]]; then ## COLOR VERSION (HEAT MAP)
+		if [[ $nocolor || $CSV ]]; then
+		  printf "$FMT" "$count"
+		else ## COLOR VERSION (HEAT MAP)
                     if [[ $count -gt 20000 ]]; then color="${BRIGHT}${RED}";
                     elif [[ $count -gt 2000 ]]; then color="${RED}";
                     elif [[ $count -gt 200 ]]; then color="${YELLOW}";
                     else color="${GREEN}"; fi
-                else color=''; fi
+		    printf "${color}$FMT${NORMAL}" "$count"
+		fi
 
-                printf "${color}$FMT${NORMAL}" "$count"
-                total=$((${total}+${count})); i=$(($i+1))
-        done
-        grandtotal=$(($grandtotal+$total))
+	  # Totals for all the hours checked
+	  total=$((${total}+${count})); i=$(($i+1))
+	done
 
-        if [[ $nocolor != '1' ]]; then ## Color version
-          printf "${CYAN}%8s ${PURPLE}%-s${NORMAL}\n" "$total" "$SITE"
-        else printf "%8s %-s\n" "$total" "$SITE"; fi
+	# Total the totals
+	grandtotal=$(($grandtotal+$total))
+
+	# Print Totals
+	if [[ $CSV ]]; then
+	  printf '""\n'
+        elif [[ $nocolor ]]; then
+	  printf "%8s %-s\n" "$total" "$SITE"
+        else ## Color version
+	  printf "${CYAN}%8s ${PURPLE}%-s${NORMAL}\n" "$total" "$SITE"
+	fi
+
     fi
 done
 
 ## Footer
-printf "${BRIGHT} %15s" "Total"
-for x in $(seq 0 $((${i}-1))); do printf "$FMT" "${hourtotal[$x]}"; done
-printf "%8s %-s${NORMAL}\n" "$grandtotal" "<< Grand Total"
+if [[ ! $CSV ]]; then
+  printf "${BRIGHT} %15s" "Total"
+  for x in $(seq 0 $((${i}-1))); do printf "$FMT" "${hourtotal[$x]}"; done
+  printf "%8s %-s${NORMAL}\n" "$grandtotal" "<< Grand Total"
+fi
 echo
