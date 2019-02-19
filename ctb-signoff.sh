@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham                      | M  | D  | S  | C  |
 #                                                          +----+----+----+----+
 # Created: 2016-08-31
-# Updated: 2018-11-30
+# Updated: 2018-12-13
 #
 # Purpose: Quick rundown of CTB Activation checklist for hardware
 #
@@ -188,7 +188,7 @@ echo -e '\n    [ ] If cPanel, make sure the server has a full license.'
 
   alert "\n       License Type:"
     MAINIP=$(curl -s ip.liquidweb.com)
-    LICENSE=$(curl -s https://verify.cpanel.net/index.cgi?ip=$MAINIP | grep -Eio '>.*(LIQUIDWEB|TEST).*<' | tr -d '<>')
+    LICENSE=$(curl -s https://verify.cpanel.net/app/verify?ip=$MAINIP | grep -Eio '>.*(LIQUIDWEB|TEST).*<' | tr -d '<>')
     if [[ $LICENSE =~ LIQUIDWEB ]]; then
       info $LICENSE | grep LIQUIDWEB
     else
