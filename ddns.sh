@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-20
-# Updated: 2017-06-28
+# Updated: 2019-03-15
 #
 #
 # Purpose: Quick DNS Summary for domain to confirm server/mail/rdns/ns/etc
@@ -88,8 +88,14 @@ if [[ ! $fullwhois ]]; then
       echo -e "$(dash 80)";
     fi
 
-    # Loop through DNS record lookups
-    for record in a aaaa ns mx txt soa; do
+    # Lookup A record and first record for www if not already given
+    dig $OPTS a $domain $resolver
+    if [[ ! $domain =~ ^[wW][wW][wW]\. ]]; then
+      dig $OPTS www.${domain} $resolver | head -1
+    fi
+
+    # Loop through the rest of the DNS record lookups
+    for record in aaaa ns mx txt soa; do
       if [[ $record == 'ns' || $record == 'mx' ]]; then
         dig $OPTS $record $domain $resolver | grep -v root \
         | while read result; do echo "$result -> "$(dig +short $(echo $result | awk '{print $NF}') $resolver); done | sort -k5
@@ -100,7 +106,8 @@ if [[ ! $fullwhois ]]; then
 
   if [[ $verbose ]]; then
     # Check for default DKIM records
-    dig $OPTS txt default._domainkey.$domain $resolver | grep 'TXT'
+    for DKIM in default google protonmail; do
+      dig $OPTS txt $DKIM._domainkey.$domain $resolver | grep 'TXT'; done
     dig $OPTS txt _dmarc.$domain $resolver | grep 'TXT'
 
     # Lookup SRV records for live.com
