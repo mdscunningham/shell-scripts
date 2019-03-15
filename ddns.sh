@@ -108,6 +108,8 @@ if [[ ! $fullwhois ]]; then
     # Check for default DKIM records
     for DKIM in default google protonmail; do
       dig $OPTS txt $DKIM._domainkey.$domain $resolver | grep 'TXT'; done
+    for DKIM in selector1 selector2; do
+      dig $OPTS cname $DKIM._domainkey.$domain $resolver | grep 'CNAME'; done
     dig $OPTS txt _dmarc.$domain $resolver | grep 'TXT'
 
     # Lookup SRV records for live.com
