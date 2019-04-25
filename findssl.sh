@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2018-07-16
+# Updated: 2019-04-25
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -105,7 +105,11 @@ for domain in $@; do
       ocspurl=$(openssl x509 -in /tmp/$domain.pem -noout -ocsp_uri)
       ocsphost=$(echo $ocspurl | cut -d/ -f3)
         echo -e "OCSP URL : $ocspurl\nOCSP HOST: $ocsphost"
-      openssl ocsp -no_nonce -header host $ocsphost -issuer /tmp/chain.pem -cert /tmp/$domain.pem -url $ocspurl -CAfile /tmp/chain.pem 2>/dev/null
+      if [[ $(openssl version) =~ 1\.\1\. ]]; then
+        openssl ocsp -no_nonce -header host=$ocsphost -issuer /tmp/chain.pem -cert /tmp/$domain.pem -url $ocspurl -CAfile /tmp/chain.pem 2>/dev/null
+      else
+        openssl ocsp -no_nonce -header host $ocsphost -issuer /tmp/chain.pem -cert /tmp/$domain.pem -url $ocspurl -CAfile /tmp/chain.pem 2>/dev/null
+      fi
         echo
     fi
 
