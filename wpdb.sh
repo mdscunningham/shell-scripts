@@ -3,7 +3,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-05-07
-# Updated: 2014-07-26
+# Updated: 2020-02-25
 #
 #
 #!/bin/bash
@@ -103,8 +103,9 @@ case $opt in
 
 -u | --users )
     if [[ -z $param ]]; then _wpdbconnect -e "select * from ${prefix}users\G";
+    elif [[ $param =~ -a ]]; then _wpdbconnect -e "select u.ID, u.user_login FROM ${prefix}users u, ${prefix}usermeta m WHERE u.ID = m.user_id AND m.meta_key LIKE '${prefix}capabilities' AND m.meta_value LIKE '%administrator%'";
     elif [[ $param =~ -s ]]; then _wpdbconnect -e "select id,user_login,display_name,user_email,user_pass from ${prefix}users ORDER BY id";
-    elif [[ $param == '-h' || $param == '--help' ]]; then echo -e " Usage: wpdb [path] <-u|--user> [-s|--short]"; fi
+    elif [[ $param == '-h' || $param == '--help' ]]; then echo -e " Usage: wpdb [path] <-u|--users> [-a|--admin|-s|--short]"; fi
     ;;
 
 -P | --password )
