@@ -4,7 +4,7 @@
 # Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
 # 							   +----+----+----+----+
 # Created: 2014-03-29
-# Updated: 2019-04-25
+# Updated: 2020-02-28
 #
 # Purpose: Test SSL connection and cert loading on a particular server and port
 
@@ -118,7 +118,7 @@ for domain in $@; do
     rcode=$(echo | openssl s_client -connect $I:$P $SNI 2>/dev/null | grep Verify.*)
     echo $rcode
     if [[ $(echo $rcode | awk '{print $4}') =~ [0-9]{2} ]]; then
-      curl -s https://www.openssl.org/docs/apps/verify.html | grep -A4 "$(echo $rcode | awk '{print $4}') X509" | grep -v X509 | sed 's/<[^>]*>//g' | tr '\n' ' '; echo;
+      curl -s https://www.openssl.org/docs/man1.1.1/man1/verify.html | grep -A4 "$(echo $rcode | awk '{print $4}') X509" | grep -v X509 | sed 's/<[^>]*>//g' | tr '\n' ' '; echo;
     fi; echo
 
     #rm -f /tmp/fullchain.pem /tmp/$domain.pem /tmp/chain.pem
