@@ -22,11 +22,13 @@
 # Setting defaults
 httpdconf=$(httpd -V 2>/dev/null | awk -F\" '/HTTPD_ROOT|SERVER_CONFIG_FILE/ {printf "/"$2}')
 publicIP=$(curl -s ip.liquidweb.com);
+live=''
 notLive=''
 dnsLookup=''
 recordType="MX"
 account=".*"
 csvMode=''
+unsusp=''
 wide=40
 main=''
 
@@ -36,13 +38,15 @@ dash(){ for ((i=1; i<=$1; i++)); do printf "-"; done; }
 
 # Parsing input from command line flags
 #local OPTIND
-while getopts a:cd:mnwh option; do
+while getopts a:cd:lmnuwh option; do
   case "${option}" in
     a) if [[ ${OPTARG} == '.' ]]; then account=$(getusr); else account=${OPTARG}; fi ;;
     c) csvMode=1 ;;
     d) recordType=${OPTARG}; dnsLookup=1;;
+    l) live=1 ;;
     m) main=1 ;;
     n) notLive=1 ;;
+    u) unsusp=1 ;;
     w) wide=60 ;;
     h) echo "
   ${BRIGHT}Usage:${NORMAL} $0 [OPTIONS] [ARGUMENTS]
@@ -50,8 +54,10 @@ while getopts a:cd:mnwh option; do
     -a ... Specify Account or use '.' for AutoDetect using \$PWD
     -c ... Format output as CSV (use with > to file)
     -d ... DNS lookup for given record type
+    -l ... Only list domains pointing to the server
     -n ... Only list domains NOT pointed to the server
     -m ... Only list main domains for each account
+    -u ... Only list domains that are not suspended
     -w ... Wide mode (60 character columns; default is 40)
     -h ... Print this help and quit
 
@@ -143,14 +149,16 @@ for domain in $domainList; do
 
   if [[ $dnsLookup ]]; then addInfo="$dnsRecordIP $dnsRecord"; else addInfo="$docRoot"; fi
 
-  if [[ (-n $main && $domType =~ main) || -z $main ]]; then
-    if [[ ($vhostIP == $dnsIP) && -z $notLive ]]; then
-      printf "$FMT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
-    elif [[ $vhostIP != $dnsIP ]]; then
-      # Check if the domain is using a masking service and then report that
-      masking=$(curl -s ipinfo.io/$dnsIP | grep -Eio 'cloudflare|incapsula|sucuri' | tail -1)
-      if [[ $masking ]]; then dnsIP=$masking; fi
-      printf "$HIGHLIGHT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
+  if [[ ($unsusp && ! -f /var/cpanel/suspended/$acct) || ! $unsusp ]]; then
+    if [[ ($main && $domType =~ main) || ! $main ]]; then
+      if [[ ($vhostIP == $dnsIP) && ! $notLive ]]; then
+        printf "$FMT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
+      elif [[ ($vhostIP != $dnsIP) && ! $live ]]; then
+        # Check if the domain is using a masking service and then report that
+        masking=$(curl -s ipinfo.io/$dnsIP | grep -Eio 'cloudflare|incapsula|sucuri' | tail -1)
+        if [[ $masking ]]; then dnsIP=$masking; fi
+        printf "$HIGHLIGHT" "$vhostIP" "$dnsIP" "${ssl:- - }" "$(_remoteLocal $domain)" "$domType" "$domain" "$addInfo"
+      fi
     fi
   fi
 done; echo
