@@ -9,6 +9,7 @@
 # * wildcard detection
 # * commom hostname lookup (only if a wildcard isn't detected)
 # * Zone transfer check
+# * Check for _dmarc records
 #
 # Created: 2014-03-20
 # Updated: 2020-04-22
@@ -56,7 +57,8 @@ while true; do
 done;
 
 # Prompt for input if none provided
-if [[ -z "$@" ]]; then  read -p "Domain Name: " D;
+if [[ -z "$@" ]]; then
+  read -p "Domain Name: " D;
 else
   D="$@";
 fi;
