@@ -6,8 +6,9 @@
 #							   +----+----+----+----+
 # Changelog
 # Since the orignal script mark wrote I (CJ) have added:
-# wildcard detection and commom hostname lookup
-# Zone transfer check
+# * wildcard detection
+# * commom hostname lookup (only if a wildcard isn't detected)
+# * Zone transfer check
 #
 # Created: 2014-03-20
 # Updated: 2020-04-22
