@@ -118,7 +118,7 @@ if [[ ! $fullwhois ]]; then
   if [[ $verbose && $(dig $OPTS a $random_subdomain.$domain $resolver) ]];then
 	echo ""
 	echo "${bold}** Wildcard Detected **"
-	echo "${normal}I will not look up common subdomains for you sanity."
+	echo "${normal}I will not look up common subdomains for your sanity."
 	echo ""
   elif [[ $verbose ]]; then
     # Check for common A Records
