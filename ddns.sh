@@ -1,10 +1,18 @@
 #!/bin/bash
 #							   +----+----+----+----+
 # 							   |    |    |    |    |
-# Author: Mark David Scott Cunningham			   | M  | D  | S  | C  |
-# 							   +----+----+----+----+
+# Orignal Author: Mark David Scott Cunningham		   | M  | D  | S  | C  |
+# Updated By: CJ Saathoff				   |    |    |    |    |
+#							   +----+----+----+----+
+# Changelog
+# Since the orignal script mark wrote I (CJ) have added:
+# * wildcard detection
+# * commom hostname lookup (only if a wildcard isn't detected)
+# * Zone transfer check
+# * Check for _dmarc records
+#
 # Created: 2014-03-20
-# Updated: 2019-03-15
+# Updated: 2020-04-22
 #
 #
 # Purpose: Quick DNS Summary for domain to confirm server/mail/rdns/ns/etc
@@ -17,6 +25,9 @@ all=''
 fullwhois=''
 nameserver=''
 verbose=''
+bold=$(tput bold)
+normal=$(tput sgr0)
+random_subdomain=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 
 # Argument parsing with getopt
 OPTIONS=$(getopt -o "an:vwh" -- "$@")
@@ -88,19 +99,64 @@ if [[ ! $fullwhois ]]; then
       echo -e "$(dash 80)";
     fi
 
+  # Testing for zone transfer before doing all the having to do all the lookups
+  if [[ $(dig $OPTS axfr $domain $resolver | grep -v "Transfer failed") ]];  then
+   echo "${bold}Zone transfers appear to be enabled"
+   echo "${normal}Doing zone transfer instead"
+   echo -e "$(dash 50)";
+   dig $OPTS axfr $domain $resolver 
+   exit
+  fi
+
     # Lookup A record and first record for www if not already given
     dig $OPTS a $domain $resolver
     if [[ ! $domain =~ ^[wW][wW][wW]\. ]]; then
       dig $OPTS www.${domain} $resolver | head -1
     fi
+  
+  # Wildcard detection by looking for randomly generated 32 character subdomain
+  if [[ $verbose && $(dig $OPTS a $random_subdomain.$domain $resolver) ]];then
+	echo ""
+	echo "${bold}** Wildcard Detected **"
+	echo "${normal}I will not look up common subdomains for your sanity."
+	echo ""
+  elif [[ $verbose ]]; then
+    # Check for common A Records
+    # Added some speed inproments by forking procresses into the backgroud and spliting them up
+    (for subdomains1 in about content mail mail1 mail2 mail3 remote blog email; do
+      dig $OPTS A $subdomains1.$domain $resolver | grep 'A'; done ) &
+
+    (for subdomains2 in ww1 ww2 www1 www2 host web web01 web02 web1 web2 support; do
+      dig $OPTS A $subdomains2.$domain $resolver | grep 'A'; done ) &
+
+    (for subdomains3 in  api app app1 app2 m shop ftp test portal ns2 smtp securel; do
+      dig $OPTS A $subdomains3.$domain $resolver | grep 'A'; done ) &
+     
+    (for subdomains4 in  vps news lb lb01 lb02 mdlb mdlb1 mdlb01 ns ns1 server; do
+      dig $OPTS A $subdomains4.$domain $resolver | grep 'A'; done ) & 
+
+    (for subdomains5 in video upload static search sites mobile cpanel webmail; do
+      dig $OPTS A $subdomains5.$domain $resolver | grep 'A'; done ) &
+
+    (for subdomains6 in  support dev mx mx0 mx1 mx2 mx3 email cloud; do
+      dig $OPTS A $subdomains6.$domain $resolver | grep 'A'; done ) &
+
+    (for subdomains7 in  fourm store download info admin mx2 mx3 dev; do
+      dig $OPTS A $subdomains7.$domain $resolver | grep 'A'; done ) &
+
+    (for subdomains8 in  webmail server ns ns1 ns2 smtp secure vpn; do
+      dig $OPTS A $subdomains8.$domain $resolver | grep 'A'; done ) &
+
+    wait
+  fi
 
     # Loop through the rest of the DNS record lookups
     for record in aaaa ns mx txt soa; do
       if [[ $record == 'ns' || $record == 'mx' ]]; then
-        dig $OPTS $record $domain $resolver | grep -v root \
+        dig $OPTS $record $domain $resolver | grep -v 'root\|run' \
         | while read result; do echo "$result -> "$(dig +short $(echo $result | awk '{print $NF}') $resolver); done | sort -k5
       else
-        dig $OPTS $record $domain $resolver
+        dig $OPTS $record $domain $resolver | grep -v 'root\|run'
       fi
     done;
 
@@ -110,7 +166,7 @@ if [[ ! $fullwhois ]]; then
       dig $OPTS txt $DKIM._domainkey.$domain $resolver | grep 'TXT'; done
     for DKIM in selector1 selector2; do
       dig $OPTS cname $DKIM._domainkey.$domain $resolver | grep 'CNAME'; done
-    dig $OPTS txt _dmarc.$domain $resolver | grep 'TXT'
+      dig $OPTS txt _dmarc.$domain $resolver | grep 'TXT'
 
     # Lookup SRV records for live.com
     for SRV in '_sip._tls' '_sipfederationtls._tcp'; do
